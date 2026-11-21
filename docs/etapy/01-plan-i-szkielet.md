@@ -38,7 +38,7 @@ Nie robi:
 - Zmiany autora dociągane przez merge z `upstream`, bez rebase: brak force-push, historia forka zostaje.
 - Nowe pola konfiguracji tylko na końcu zapisu we flashu: stary cfg.bin dalej się wczytuje.
 - Klawiatura/mysz tylko w trybach z interfejsami złożonymi (PS5, DS4-gyro): tryby konsolowe muszą zostać pojedynczym HID.
-- Build na LAB: `tools/build-lab.sh` (arduino-cli 1.6.0 przenośne w %LOCALAPPDATA%Programsrduino-cli, rdzeń adafruit:nrf52 1.7.0): na LAB nie ma make ani python3.
+- Build na LAB: `tools/build-lab.sh` (arduino-cli 1.6.0 przenośne w %LOCALAPPDATA%/Programs/arduino-cli, rdzeń adafruit:nrf52 1.7.0): na LAB nie ma make ani python3.
 - Test `tests/xinput` wymaga kompilatora C/C++ (na LAB brak): do decyzji, portable kompilator albo krok testu w Actions forka.
 - Strona: jeden rysunek Steam Controllera z nazwami zależnymi od typu pada zamiast osobnych padów: to fizyczny pad w ręku, bez cudzych grafik.
 
