@@ -18,19 +18,19 @@ Nie robi:
 
 ## Kryteria zamknięcia
 - [x] cel i zakres opisane w pliku etapu
-- [ ] technologie i powody w sekcji "Decyzje"
+- [x] technologie i powody w sekcji "Decyzje"
 - [x] etapy 02-05 w roadmapie jako PLANOWANY
-- [ ] build firmware działa (lokalnie albo w Actions forka) i daje .uf2
+- [x] build firmware działa (lokalnie albo w Actions forka) i daje .uf2
 - [ ] test `tests/xinput` przechodzi
-- [ ] `CHECKLISTA.md` po polsku w repo
+- [x] `CHECKLISTA.md` po polsku w repo
 - [ ] fork `Koutasora/openpuck` jako `origin`, repo autora jako `upstream`
 
 ## Plan
 - [ ] Użytkownik robi fork na GitHubie, potem dodanie `origin`
 - [x] Plik etapu i roadmapa w `docs/etapy/`
-- [ ] Build: przenośny `arduino-cli` + rdzeń Adafruit nRF52, `make build`; dodatkowo Actions forka
+- [x] Build: przenośny `arduino-cli` + rdzeń Adafruit nRF52, `make build`; dodatkowo Actions forka
 - [ ] Test: `tests/xinput` przez g++ (ucrt64)
-- [ ] `CHECKLISTA.md` w katalogu głównym
+- [x] `CHECKLISTA.md` w katalogu głównym
 - Sprawdzenie: wynik `make build` i plik .uf2, wynik testu, Actions forka
 
 ## Decyzje
@@ -38,6 +38,8 @@ Nie robi:
 - Zmiany autora dociągane przez merge z `upstream`, bez rebase: brak force-push, historia forka zostaje.
 - Nowe pola konfiguracji tylko na końcu zapisu we flashu: stary cfg.bin dalej się wczytuje.
 - Klawiatura/mysz tylko w trybach z interfejsami złożonymi (PS5, DS4-gyro): tryby konsolowe muszą zostać pojedynczym HID.
+- Build na LAB: `tools/build-lab.sh` (arduino-cli 1.6.0 przenośne w %LOCALAPPDATA%Programsrduino-cli, rdzeń adafruit:nrf52 1.7.0): na LAB nie ma make ani python3.
+- Test `tests/xinput` wymaga kompilatora C/C++ (na LAB brak): do decyzji, portable kompilator albo krok testu w Actions forka.
 - Strona: jeden rysunek Steam Controllera z nazwami zależnymi od typu pada zamiast osobnych padów: to fizyczny pad w ręku, bez cudzych grafik.
 
 ## Podsumowanie
