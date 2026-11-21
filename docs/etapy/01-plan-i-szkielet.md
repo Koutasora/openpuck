@@ -23,10 +23,8 @@ Nie robi:
 - [x] build firmware działa (lokalnie albo w Actions forka) i daje .uf2
 - [ ] test `tests/xinput` przechodzi
 - [x] `CHECKLISTA.md` po polsku w repo
-- [ ] fork `Koutasora/openpuck` jako `origin`, repo autora jako `upstream`
 
 ## Plan
-- [ ] Użytkownik robi fork na GitHubie, potem dodanie `origin`
 - [x] Plik etapu i roadmapa w `docs/etapy/`
 - [x] Build: przenośny `arduino-cli` + rdzeń Adafruit nRF52, `make build`; dodatkowo Actions forka
 - [ ] Test: `tests/xinput` przez g++ (ucrt64)
@@ -40,6 +38,7 @@ Nie robi:
 - Klawiatura/mysz tylko w trybach z interfejsami złożonymi (PS5, DS4-gyro): tryby konsolowe muszą zostać pojedynczym HID.
 - Build na LAB: `tools/build-lab.sh` (arduino-cli 1.6.0 przenośne w %LOCALAPPDATA%/Programs/arduino-cli, rdzeń adafruit:nrf52 1.7.0): na LAB nie ma make ani python3.
 - Test `tests/xinput` wymaga kompilatora C/C++ (na LAB brak): do decyzji, portable kompilator albo krok testu w Actions forka.
+- Na razie bez forka i bez GitHuba: praca tylko lokalnie, repo autora jako `upstream` do dociągania zmian; własne repo założy użytkownik później.
 - Strona: jeden rysunek Steam Controllera z nazwami zależnymi od typu pada zamiast osobnych padów: to fizyczny pad w ręku, bez cudzych grafik.
 
 ## Podsumowanie

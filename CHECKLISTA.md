@@ -4,7 +4,6 @@
 - [x] Klon repo autora, gałąź `etap-01-plan-i-szkielet`
 - [x] Plan etapów w `docs/etapy/`
 - [x] Build firmware na LAB (`sh tools/build-lab.sh`), plik `build/openpuck/OpenPuck.uf2`
-- [ ] Fork `Koutasora/openpuck` na GitHubie, podpięty jako `origin`
 - [ ] Test `tests/xinput` uruchomiony
 
 ## Etap 02: przypisania i profile
