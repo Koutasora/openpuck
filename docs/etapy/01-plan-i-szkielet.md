@@ -21,13 +21,13 @@ Nie robi:
 - [x] technologie i powody w sekcji "Decyzje"
 - [x] etapy 02-05 w roadmapie jako PLANOWANY
 - [x] build firmware działa (lokalnie albo w Actions forka) i daje .uf2
-- [ ] test `tests/xinput` przechodzi
+- [ ] użytkownik wgrał .uf2 z LAB na głównym PC i pad działa jak na firmware autora
 - [x] `CHECKLISTA.md` po polsku w repo
 
 ## Plan
 - [x] Plik etapu i roadmapa w `docs/etapy/`
 - [x] Build: przenośny `arduino-cli` + rdzeń Adafruit nRF52, `make build`; dodatkowo Actions forka
-- [ ] Test: `tests/xinput` przez g++ (ucrt64)
+- [ ] Test ręczny na głównym PC: wgranie `build/openpuck/OpenPuck.uf2`, parowanie, tryb PS5 i Xbox, tylne przyciski
 - [x] `CHECKLISTA.md` w katalogu głównym
 - Sprawdzenie: wynik `make build` i plik .uf2, wynik testu, Actions forka
 
@@ -37,7 +37,7 @@ Nie robi:
 - Nowe pola konfiguracji tylko na końcu zapisu we flashu: stary cfg.bin dalej się wczytuje.
 - Klawiatura/mysz tylko w trybach z interfejsami złożonymi (PS5, DS4-gyro): tryby konsolowe muszą zostać pojedynczym HID.
 - Build na LAB: `tools/build-lab.sh` (arduino-cli 1.6.0 przenośne w %LOCALAPPDATA%/Programs/arduino-cli, rdzeń adafruit:nrf52 1.7.0): na LAB nie ma make ani python3.
-- Test `tests/xinput` wymaga kompilatora C/C++ (na LAB brak): do decyzji, portable kompilator albo krok testu w Actions forka.
+- Testy na sprzęcie robi użytkownik na głównym PC z własnym padem; `tests/xinput` pominięty (na LAB brak kompilatora C/C++).
 - Na razie bez forka i bez GitHuba: praca tylko lokalnie, repo autora jako `upstream` do dociągania zmian; fork na GitHubie zrobi użytkownik, gdy będzie miał fizyczny dostęp do komputera.
 - Strona: jeden rysunek Steam Controllera z nazwami zależnymi od typu pada zamiast osobnych padów: to fizyczny pad w ręku, bez cudzych grafik.
 

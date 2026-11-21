@@ -4,7 +4,7 @@
 - [x] Klon repo autora, gałąź `etap-01-plan-i-szkielet`
 - [x] Plan etapów w `docs/etapy/`
 - [x] Build firmware na LAB (`sh tools/build-lab.sh`), plik `build/openpuck/OpenPuck.uf2`
-- [ ] Test `tests/xinput` uruchomiony
+- [ ] Wgrany .uf2 z LAB działa na głównym PC jak firmware autora
 
 ## Etap 02: przypisania i profile
 - [ ] Tylny przycisk: przycisk pada, kombinacja, makro
