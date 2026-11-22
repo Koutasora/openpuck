@@ -1,7 +1,7 @@
 // sounds_fw.h -- firmware side of sounds.h: sounds.bin, playing melodies as HAPTIC_LFO_TONE relays, events.
 //
-// Tones go out like rumble: relayEnqueue() of OUTPUT report 0x83 to every linked controller. sounds.bin is its
-// own InternalFS file (a bad or missing one means the default melodies).
+// Tones go out like rumble: relayEnqueue() of OUTPUT report 0x83 to every linked controller, one per voice
+// side. sounds.bin is its own InternalFS file (a bad or missing one means the default melodies).
 #pragma once
 #include <stdint.h>
 #include "sounds.h"
@@ -17,7 +17,8 @@ bool soundsFwPlayEvent(uint8_t event);
 // Melody slot n (listen from the console / page), whatever the confirmation setting. False when n is out of range
 // or empty.
 bool soundsFwPlaySlot(uint8_t n);
-// A melody that is not stored (WebUSB preview): [count][count x {freq u16 LE, ms u16 LE}]. False when invalid.
+// A melody that is not stored (WebUSB preview): [count][count x {freq u16 LE, ms u16 LE}], one voice played
+// on both trackpads. False when invalid.
 bool soundsFwPlayRaw(const uint8_t *buf, uint8_t len);
 
 // A controller (re)connected (haptics.cpp): play the connect melody once it is ready.

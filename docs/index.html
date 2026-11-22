@@ -60,8 +60,13 @@
   .chord-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 24px}
   .chord-cols .row{margin:10px 0}
   .chord-cols .row label{flex:0 0 108px}
-  #sndEvents select{flex:0 1 320px;max-width:320px}
-  .chord-cols .chordDesc{margin:-6px 0 10px 122px}
+  .sctable{width:100%;border-collapse:collapse;margin:6px 0}
+  .sctable th,.sctable td{padding:6px 8px;border-bottom:1px solid #272d3d;text-align:left;vertical-align:middle}
+  .sctable th{color:var(--mut);font-weight:600;font-size:12px}
+  .sctable select{width:100%;max-width:340px}
+  .sctable .scProf{display:flex;align-items:center;gap:8px;margin:2px 0}
+  .sctable .scProf span{flex:0 0 64px;color:var(--mut)}
+  .sctable .chordDesc{margin:2px 0 0}
   .colhead{color:var(--mut);font-size:12px;font-weight:600;margin:2px 0 0}
   .note{color:var(--mut);font-size:12px;margin-top:10px}
   #log{font:12px ui-monospace,Menlo,monospace;color:var(--mut);white-space:pre-wrap;margin-top:8px;max-height:140px;overflow:auto}
@@ -226,6 +231,41 @@
   <div class="card" id="shortcutsCard">
     <h2>Shortcuts</h2>
     <p class="note" id="scNote" style="margin-top:0"></p>
+    <div id="scEdit" class="hide">
+      <div id="scSnd" class="hide">
+        <div class="row"><label>Confirm with</label><select id="sndConfirm"></select></div>
+        <div class="row"><label>Volume</label><input type="range" id="sndVol" min="-60" max="0" step="1"><span class="val" id="sndVolV"></span></div>
+        <p class="note" style="margin-top:0">A profile switch is confirmed by vibration (as many pulses as the profile number) or by the profile's melody. The melodies of mode changes and of a controller connecting play only when this includes Sound or Both. 0 dB is the loudest. Confirm with and Volume are saved at once.</p>
+      </div>
+      <table class="sctable" id="scTable">
+        <thead><tr><th>Shortcut (hold all four back paddles)</th><th>Switches to / does</th><th class="scMelCol">Melody</th></tr></thead>
+        <tbody>
+          <tr data-dyn="a"><td>back4 + A</td><td>Steam (fixed)</td><td class="scMelCol"><select class="scMel"></select><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c"><td>back4 + B</td><td><select class="chord" data-i="0"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c"><td>back4 + X</td><td><select class="chord" data-i="1"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c"><td>back4 + Y</td><td><select class="chord" data-i="2"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad left</td><td><select class="chordD" data-i="0"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad up</td><td><select class="chordD" data-i="1"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad right</td><td><select class="chordD" data-i="2"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad down</td><td><select class="chordD" data-i="3"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr class="scFam hide" data-fam="3"><td>Mode changed from the panel: PlayStation</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="3"></select></td></tr>
+          <tr class="scFam hide" data-fam="4"><td>Mode changed from the panel: Xbox</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="4"></select></td></tr>
+          <tr class="scFam hide" data-fam="5"><td>Mode changed from the panel: Switch</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="5"></select></td></tr>
+          <tr><td>back4 + RB / back4 + LB</td><td>Next / previous profile (emulated modes only)</td><td class="scMelCol">
+            <div class="scProf"><span class="scProfName" data-i="0">Profile 1</span><select class="scMel" data-ev="0"></select></div>
+            <div class="scProf"><span class="scProfName" data-i="1">Profile 2</span><select class="scMel" data-ev="1"></select></div>
+            <div class="scProf"><span class="scProfName" data-i="2">Profile 3</span><select class="scMel" data-ev="2"></select></div></td></tr>
+          <tr><td>Controller connects (no shortcut)</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="7"></select></td></tr>
+        </tbody>
+      </table>
+      <p id="dpadOld" class="note hide">This puck's firmware predates the D-pad chords: update it to configure them.</p>
+      <p class="note">The line under each mode gives its host, "panel" or "no panel", and keyboard/mouse. In a mode with no panel this page cannot connect: come back with all four back paddles + A. Mode changes are saved at once; the melody of a mode is the one of its family (PlayStation, Xbox, Switch, other), so shortcuts of the same family share it.</p>
+      <div class="row hide" id="scSndRow" style="margin:6px 0 12px;flex-wrap:wrap;gap:8px">
+        <button id="scSndSave" class="primary">Save to device</button>
+        <span class="note" id="scSndProb" style="margin:0;color:var(--warn)"></span>
+        <span class="note" id="scSndMsg" style="margin:0"></span>
+      </div>
+    </div>
     <div class="sc-cols">
       <div id="scList"></div>
       <div class="figs" id="scFigs" style="grid-template-columns:1fr;align-content:start"></div>
@@ -236,47 +276,6 @@
       <button id="scSave" class="primary">Save as PNG</button>
       <span class="note" id="scMsg" style="margin:0"></span>
     </div>
-  </div>
-
-  <div class="card" id="playerCard">
-    <h2>Haptic player</h2>
-    <p class="note" style="margin-top:0">Plays tones through the controller's actuators over WebHID (output report 0x83). Works with an OpenPuck in Steam mode, an official Valve puck, or a controller on a USB cable. Chrome or Edge. Test panel: which side drives which actuator is not confirmed yet. Gain above 0 dB is blocked.</p>
-    <p class="note hide" id="plNoHid" style="color:var(--warn)">WebHID is not available in this browser. Use Chrome or Edge.</p>
-    <div class="row" style="margin:10px 0">
-      <button id="plConnect" class="primary">Connect controller</button>
-      <button id="plDisconnect" disabled>Disconnect</button>
-      <span class="note" id="plStatus" style="margin:0;flex:1 1 200px">Not connected.</span>
-    </div>
-    <div class="row"><label>Controller</label><select id="plIface" disabled></select></div>
-    <p class="note" id="plIfaceNote" style="margin:0 0 10px"></p>
-    <div class="row"><label>Sides</label>
-      <span id="plSides" style="display:flex;gap:14px;flex-wrap:wrap">
-        <label style="flex:none"><input type="checkbox" value="0" checked> 0 (trackpad L?)</label>
-        <label style="flex:none"><input type="checkbox" value="1"> 1 (trackpad R?)</label>
-        <label style="flex:none"><input type="checkbox" value="2"> 2 (both?)</label>
-        <label style="flex:none"><input type="checkbox" value="3"> 3 (grip?)</label>
-        <label style="flex:none"><input type="checkbox" value="4"> 4 (grip?)</label>
-      </span></div>
-    <div class="row"><label>Frequency (Hz)</label><input id="plFreq" class="mtxt" type="number" min="1" max="12000" value="440" style="flex:0 0 120px"></div>
-    <div class="row"><label>Gain (dB)</label><input id="plGain" type="range" min="-60" max="0" value="-12"><span class="val" id="plGainV">-12</span></div>
-    <div class="row"><label>Duration (ms)</label><input id="plDur" class="mtxt" type="number" min="0" max="32767" value="1000" style="flex:0 0 120px">
-      <label style="flex:none"><input type="checkbox" id="plUntil"> Max (32767 ms)</label></div>
-    <div class="row"><label>LFO frequency</label><input id="plLfoF" class="mtxt" type="number" min="0" max="65535" value="0" style="flex:0 0 120px"></div>
-    <div class="row"><label>LFO depth</label><input id="plLfoD" class="mtxt" type="number" min="0" max="255" value="0" style="flex:0 0 120px"></div>
-    <div class="row" style="flex-wrap:wrap;gap:8px">
-      <button id="plPlay" class="primary">Play tone</button>
-      <button id="plStopOff">Stop: off tone</button>
-      <button id="plStopZero">Stop: zero tone</button>
-      <button id="plStopRumble">Stop: rumble off</button>
-      <button id="plStopAll">Stop all</button>
-    </div>
-    <h3 style="margin:14px 0 0">Sweep</h3>
-    <div class="row"><label>From MIDI note</label><input id="plSwFrom" class="mtxt" type="number" min="0" max="127" value="24" style="flex:0 0 120px">
-      <label style="flex:0 0 110px">To MIDI note</label><input id="plSwTo" class="mtxt" type="number" min="0" max="127" value="96" style="flex:0 0 120px"></div>
-    <div class="row"><label>Ms per step</label><input id="plSwMs" class="mtxt" type="number" min="20" max="10000" value="400" style="flex:0 0 120px">
-      <button id="plSwGo">Start sweep</button><button id="plSwStop">Stop</button>
-      <span class="note" id="plSwNow" style="margin:0"></span></div>
-    <p class="note" id="plLast" style="margin-bottom:0;font-family:monospace">Last report: none</p>
   </div>
 
   <div id="panel" class="hide">
@@ -314,30 +313,6 @@
         <button id="persistMode">off</button>
         <span class="note" style="flex:1">Off (default): every restart / fresh reconnect boots into Steam mode. On: remembers the last mode you selected.</span>
       </div>
-    </div>
-
-    <div class="card" data-sub="status/modes">
-      <h2>Back4 chords (face + D-pad)</h2>
-      <p class="note" style="margin-top:0">Hold all four back paddles (L4+R4+L5+R5) plus a face button or D-pad direction to switch mode without the WebUI. In modes marked "no panel" this page cannot connect; come back with back4 + A. <strong>A is always Steam</strong> — that is the way back out of any mode. B / X / Y and all four D-pad directions are configurable below (defaults: B=Lizard, X=Xbox, Y=Switch Pro).</p>
-      <div class="chord-cols">
-        <div>
-          <div class="colhead">Face buttons</div>
-          <div class="row"><label>back4 + B</label><select class="chord" data-i="0"></select></div>
-          <div class="row"><label>back4 + X</label><select class="chord" data-i="1"></select></div>
-          <div class="row"><label>back4 + Y</label><select class="chord" data-i="2"></select></div>
-        </div>
-        <!-- D-pad chords (firmware >= v18). Unlike the face selects these offer the game/clean modes too: those
-             modes have no WebUSB interface, so a chord is the only way IN, and back4+A is always the way out.
-             Older firmware has no D-pad chords at all -> the whole column hides (see #dpadChords in applyBlob). -->
-        <div id="dpadChords" class="hide">
-          <div class="colhead">D-pad</div>
-          <div class="row"><label>back4 + Left</label><select class="chordD" data-i="0"></select></div>
-          <div class="row"><label>back4 + Up</label><select class="chordD" data-i="1"></select></div>
-          <div class="row"><label>back4 + Right</label><select class="chordD" data-i="2"></select></div>
-          <div class="row"><label>back4 + Down</label><select class="chordD" data-i="3"></select></div>
-        </div>
-      </div>
-      <p id="dpadOld" class="note hide">This puck's firmware predates the D-pad chords — update it to configure them.</p>
     </div>
 
     <div class="card wide" data-sub="status/status">
@@ -452,13 +427,6 @@
       <p id="rumbleOld" class="note hide">This puck's firmware predates the rumble-shaping settings — update it to configure them.</p>
     </div>
 
-    <div class="card hide" id="sndSetCard" data-sub="mapping/settings">
-      <h2>Confirmations</h2>
-      <div class="row"><label>Confirm with</label><select id="sndConfirm"></select></div>
-      <div class="row"><label>Volume</label><input type="range" id="sndVol" min="-60" max="0" step="1"><span class="val" id="sndVolV"></span></div>
-      <p class="note">Sets how a profile switch is confirmed: vibration (as many pulses as the profile number) or the profile's melody. Melodies of mode changes and of a controller connecting play only when this includes sound. 0 dB is the loudest. Changes are saved at once; assign the melodies in the Sounds tab.</p>
-    </div>
-
     <div class="card wide" data-sub="mapping/mapping">
       <h2>Button mapping</h2>
       <p class="note" style="margin-top:0">Separate mappings per emulated controller type — each only offers targets that exist on that controller. The type matching the current mode is highlighted. Steam &amp; Lizard are native puck modes (Steam does its own remapping) and aren't configured here.</p>
@@ -542,13 +510,40 @@
 
     <div class="card hide" id="sndCard" data-sub="mapping/sounds">
       <h2>Melodies</h2>
-      <p class="note" style="margin-top:0">The puck plays a melody through the controller's actuator, up to 32 notes per melody. Melody names are kept in this browser only.</p>
+      <p class="note" style="margin-top:0">The puck plays a melody through the controller's actuator, up to 32 notes per melody and voice. Melody names are kept in this browser only.</p>
+      <div class="row" style="margin:0 0 4px;flex-wrap:wrap;gap:8px">
+        <button id="plConnect">Connect controller</button>
+        <button id="plDisconnect" disabled>Disconnect</button>
+        <select id="plIface" disabled style="flex:0 1 220px"></select>
+        <span class="note" id="plStatus" style="margin:0;flex:1 1 200px">Not connected.</span>
+      </div>
+      <p class="note hide" id="plNoHid" style="margin:0 0 4px;color:var(--warn)">WebHID is not available in this browser. Use Chrome or Edge.</p>
+      <p class="note" id="plIfaceNote" style="margin:0 0 4px"></p>
+      <p class="note" style="margin:0 0 10px">Play on controller works with an OpenPuck in Steam mode, an official Valve puck or a controller on a cable (Chrome or Edge).</p>
       <div class="slot-tabs" id="sndTabs"></div>
       <div class="row" style="margin-top:0"><label>Name</label><input id="sndName" class="mtxt" type="text" maxlength="24"><span class="note" id="sndUsed" style="margin:0;flex:1 1 200px"></span></div>
-      <div class="timeline" id="sndTimeline"></div>
+      <p class="note hide" id="sndV1Warn" style="margin:6px 0 0;color:var(--warn)">This firmware stores one voice (Left trackpad). Update the puck for 4 voices.</p>
+      <div class="row" style="margin:8px 0 0;flex-wrap:wrap;gap:8px"><label style="flex:none">Voice</label><span id="sndLanes" style="display:flex;gap:8px;flex-wrap:wrap"></span><button id="sndClearAll">Clear all voices</button></div>
+      <div class="row" style="margin:8px 0 4px;flex-wrap:wrap;gap:8px">
+        <button id="sndLive">Play on controller</button>
+        <button id="sndLiveStop" disabled>Stop</button>
+        <button id="sndPrev" style="min-width:calc(18ch + 2.4em)">Preview in browser</button>
+        <label style="flex:none">BPM</label>
+        <input id="prBpm" class="mtxt" type="number" min="20" max="400" step="1" value="120" style="flex:0 0 70px">
+        <label style="flex:none">Snap</label>
+        <select id="prSnap" style="flex:0 0 100px"><option value="0">Off</option><option value="n4">1/4</option><option value="n8">1/8</option><option value="n16" selected>1/16</option><option value="n32">1/32</option><option value="10">10 ms</option><option value="50">50 ms</option><option value="100">100 ms</option></select>
+        <button id="prZoomOut">Zoom -</button><button id="prZoomIn">Zoom +</button><button id="prFit">Fit</button>
+        <label style="flex:none"><input type="checkbox" id="prFold"> Fold</label>
+        <button id="prClearSel" disabled>Clear selection</button>
+        <button id="prCrop" disabled title="Keeps the selection from its start (or the melody from its start), at most 32 entries">Crop to 32</button>
+      </div>
+      <canvas id="prCanvas" tabindex="0" style="display:block;width:100%;height:360px;border:1px solid #313a4f;border-radius:3px;background:#0e1017"></canvas>
+      <input type="range" id="prScroll" min="0" max="0" value="0" step="1" style="width:100%">
+      <p class="note" style="margin:2px 0 6px">Click adds a note (the length of the last one), dragging on empty space draws one, drag a note to move it, drag its right end to resize. Double-click, right-click or Delete removes. Click a key to hear it. Drag on the ruler to select a time range; Crop to 32 keeps it from its start up to 32 entries (marked on the ruler). Fold shows only the rows in use. Ctrl + wheel zooms time, wheel scrolls pitch, Alt + wheel zooms pitch, Shift + wheel scrolls time. Drop a MIDI file here to import it.</p>
       <div class="row mmeta"><span id="sndCount"></span><span id="sndTotal"></span></div>
-      <p class="note" id="sndLow" style="margin:0 0 10px;color:var(--warn)"></p>
+      <details class="rel-notes" id="sndNotesBox" style="margin:0 0 10px"><summary id="sndNotesSum">Note list</summary>
       <table class="steps" id="sndNotes"></table>
+      </details>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
         <button id="sndAddNote">Add note</button>
         <button id="sndAddRest">Add rest</button>
@@ -558,28 +553,17 @@
         <button id="midiBtn">Import MIDI file...</button>
         <input type="file" id="midiFile" accept=".mid,.midi,audio/midi" style="display:none">
       </div>
-      <div class="row hide" id="midiRow" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
-        <label>MIDI track</label><select id="midiTrack"></select><button id="midiGo">Import</button>
+      <div class="hide" id="midiRow" style="margin:0 0 10px">
+        <div id="midiLanes"></div>
+        <button id="midiGo">Import</button>
       </div>
       <p class="note" id="midiNote" style="margin:0 0 10px"></p>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
-        <button id="sndPrev">Preview in browser</button>
-        <button id="sndPlayPuck">Play on puck</button>
         <button id="sndPlayStored">Play saved melody on puck</button>
         <button id="sndSave" class="primary">Save to device</button>
         <span class="note" id="sndMsg" style="margin:0"></span>
       </div>
-      <p class="note">Play on puck sends the notes shown here and needs a linked controller at the current volume (Settings). Hz 0 is a rest; notes run 1-4000 Hz and 30-5000 ms.</p>
-    </div>
-
-    <div class="card hide" id="sndEvCard" data-sub="mapping/sounds">
-      <h2>Events</h2>
-      <p class="note" style="margin-top:0">Which melody plays on each event. Other modes are Steam, Lizard, DirectInput and SInput. Save to device applies the melodies and this assignment together.</p>
-      <div id="sndEvents"></div>
-      <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
-        <button id="sndEvSave" class="primary">Save to device</button>
-        <span class="note" id="sndEvMsg" style="margin:0"></span>
-      </div>
+      <p class="note">Play saved melody on puck plays what is stored in the puck, at the Volume set in Mapping &gt; Shortcuts, and needs a linked controller. The four voices are the Left trackpad, Right trackpad, Left grip and Right grip (LT, RT, LG, RG); editing, import, Octave and Clear act on the selected voice. Hz 0 is a rest; notes run 1-4000 Hz and 30-5000 ms. Every voice must have 32 entries or fewer to be saved.</p>
     </div>
 
     <div class="card" id="lizardCard" style="display:none" data-sub="mapping/settings">
@@ -627,6 +611,42 @@
         <span class="note" id="assignMsg" style="margin:0"></span>
       </div>
     </div>
+
+    <div class="card wide" id="plTestCard" data-sub="status/debug">
+      <h2>Haptic test panel</h2>
+      <p class="note" style="margin-top:0">Sends tones (output report 0x83). The controller connection is shared with Mapping > Sounds: connect or disconnect here or there. Gain above 0 dB is blocked.</p>
+      <div class="row" style="margin:10px 0"><button id="plConnect2">Connect controller</button><button id="plDisconnect2" disabled>Disconnect</button>
+        <span class="note" id="plStatus2" style="margin:0;flex:1 1 200px">Not connected.</span></div>
+    <div class="row"><label>Sides</label>
+      <span id="plSides" style="display:flex;gap:14px;flex-wrap:wrap">
+        <label style="flex:none"><input type="checkbox" value="0" checked> 0 Left trackpad</label>
+        <label style="flex:none"><input type="checkbox" value="1"> 1 Right trackpad</label>
+        <label style="flex:none"><input type="checkbox" value="2"> 2 Both trackpads</label>
+        <label style="flex:none"><input type="checkbox" value="3"> 3 Left grip</label>
+        <label style="flex:none"><input type="checkbox" value="4"> 4 Right grip</label>
+      </span></div>
+    <div class="row"><label>Frequency (Hz)</label><input id="plFreq" class="mtxt" type="number" min="1" max="12000" value="440" style="flex:0 0 120px"></div>
+    <div class="row"><label>Gain (dB)</label><input id="plGain" type="range" min="-60" max="0" value="-12"><span class="val" id="plGainV">-12</span></div>
+    <div class="row"><label>Duration (ms)</label><input id="plDur" class="mtxt" type="number" min="0" max="32767" value="1000" style="flex:0 0 120px">
+      <label style="flex:none"><input type="checkbox" id="plUntil"> Max (32767 ms)</label></div>
+    <div class="row"><label>LFO frequency</label><input id="plLfoF" class="mtxt" type="number" min="0" max="65535" value="0" style="flex:0 0 120px"></div>
+    <div class="row"><label>LFO depth</label><input id="plLfoD" class="mtxt" type="number" min="0" max="255" value="0" style="flex:0 0 120px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <button id="plPlay" class="primary">Play tone</button>
+      <button id="plStopOff">Stop: off tone</button>
+      <button id="plStopZero">Stop: zero tone</button>
+      <button id="plStopRumble">Stop: rumble off</button>
+      <button id="plStopAll">Stop all</button>
+    </div>
+    <h3 style="margin:14px 0 0">Sweep</h3>
+    <div class="row"><label>From MIDI note</label><input id="plSwFrom" class="mtxt" type="number" min="0" max="127" value="24" style="flex:0 0 120px">
+      <label style="flex:0 0 110px">To MIDI note</label><input id="plSwTo" class="mtxt" type="number" min="0" max="127" value="96" style="flex:0 0 120px"></div>
+    <div class="row"><label>Ms per step</label><input id="plSwMs" class="mtxt" type="number" min="20" max="10000" value="400" style="flex:0 0 120px">
+      <button id="plSwGo">Start sweep</button><button id="plSwStop">Stop</button>
+      <span class="note" id="plSwNow" style="margin:0"></span></div>
+    <p class="note" id="plLast" style="margin-bottom:0;font-family:monospace">Last report: none</p>
+    </div>
+
 
     <div class="card wide" data-sub="status/debug">
       <h2>Hang log</h2>
@@ -1073,10 +1093,10 @@ for(const sel of document.querySelectorAll("select.chordD")){
 }
 // one-line description (host · panel · keyboard/mouse) under every chord list, for the selected mode
 function chordDescSync(sel){
-  const row=sel.closest(".row"); let d=row.nextElementSibling;
-  if(!d||!d.classList.contains("chordDesc")){ d=document.createElement("div"); d.className="note chordDesc"; row.after(d); }
+  let dsc=sel.parentNode.querySelector(".chordDesc");
+  if(!dsc){ dsc=document.createElement("div"); dsc.className="note chordDesc"; sel.after(dsc); }
   const v=+sel.value, t=v===CHORD_NONE?"Does nothing":modeDesc(v);
-  d.textContent=t; sel.title=t;
+  dsc.textContent=t; sel.title=t;
 }
 for(const sel of document.querySelectorAll("select.chord, select.chordD")){
   chordDescSync(sel); sel.addEventListener("change",()=>chordDescSync(sel));
@@ -1607,6 +1627,7 @@ function onGone(){
   checkUpdateNotice(); // no device = no notice
   $("#connState").textContent="reconnecting…"; $("#connState").className="pill dn";
   $("#panel").classList.add("hide"); $("#connNote").classList.remove("hide");
+  sndLiveHalt(true); // the panel (and its Stop button) is gone
   log("device disconnected (mode-switch / watchdog reboot) — auto-reconnecting when it returns");
   // The puck re-enumerates after a reboot; retry without the picker. The "connect" event also triggers this,
   // but poll a few times in case the event is missed.
@@ -1971,8 +1992,6 @@ function applyBlob(p){
     else if(p[0]<26 && has) sel.querySelector('option[value="'+CHORD_NONE+'"]').remove();
   }
   for(const sel of document.querySelectorAll("select.chord")){ if(document.activeElement!==sel) sel.value=chord[+sel.dataset.i]; }
-  $("#dpadChords").classList.toggle("hide", !dpadCap);
-  $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
   for(const sel of document.querySelectorAll("select.chord, select.chordD")) chordDescSync(sel);
   bindsOnBlob(p);
@@ -2116,7 +2135,7 @@ async function panelSnapshot(){
     macroNames:Array.from({length:BIND_MACROS},(_,i)=>macroNames[i]||""),
     profileNames:Array.from({length:BIND_PROFILES},(_,i)=>profileNames[i]||"")};
   if(p[0]>=25){
-    const sraw=await soundsReadRaw();
+    const sraw=await soundsReadRaw(p[0]>=27?SND_CHUNKS2:SND_CHUNKS);
     if(sraw&&sndParse(sraw)) o.sounds={blob:hexEnc(sraw),names:Array.from({length:SND_MELODIES},(_,i)=>soundNames[i]||"")};
   }
   if(p[0]>=24){
@@ -2154,12 +2173,14 @@ async function panelRestore(pn){
   }
   let note="", soundsDone=false;
   if(pn.sounds&&typeof pn.sounds==="object"){
-    const sraw=new Uint8Array(hexDec(pn.sounds.blob||""));
+    const sraw=new Uint8Array(hexDec(pn.sounds.blob||"")), snd=sndParse(sraw);
     if(p[0]<25) note="Sounds were skipped: this puck's firmware is too old.";
-    else if(!sndParse(sraw)) note="Sounds in the file were not valid and were skipped.";
-    else if(!await soundsWrite([...sraw])) note="The puck rejected the sounds.";
+    else if(!snd) note="Sounds in the file were not valid and were skipped.";
+    else if(!await soundsWrite(sndBuild(snd,p[0]>=27?2:1))) note="The puck rejected the sounds."; // v1 or v2 file, written in what the puck speaks
     else {
       soundsDone=true;
+      if(snd.ver===2&&p[0]<27&&snd.mel.some(m=>m[1].length||m[2].length||m[3].length))
+        note="Sounds were restored without the Right trackpad, Left grip and Right grip voices: this puck's firmware stores one voice (Left trackpad).";
       if(Array.isArray(pn.sounds.names)){
         soundNames=pn.sounds.names.slice(0,SND_MELODIES).map(x=>typeof x==="string"?x.slice(0,24):"");
         try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){}
@@ -2167,7 +2188,7 @@ async function panelRestore(pn){
     }
     if(note) log("import: "+note);
   }
-  sounds=null; soundsLastTry=0;
+  sndLiveHalt(true); sounds=null; soundsLastTry=0;
   log("paddle binds, profile, host setting, macro and profile names"+(soundsDone?", melody names and sounds":"")+" restored");
   return note;
 }
@@ -3251,7 +3272,7 @@ $("#relRefresh").onclick=()=>loadReleases(true);
 // scUpdate (outside the tabs while no puck is connected). Selection lives in the URL hash and in localStorage.
 const TAB_DEFS=[
   ["status","Status",[["status","Status"],["modes","Modes"],["debug","Debug"],["log","Log"],["fw","Firmware update"]]],
-  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["sounds","Sounds"],["player","Player"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
+  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["sounds","Sounds"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
 const TAB_STORE="opk_tab", TAB_DEFAULT="status/status";
 // the ReversePuck dongle only has the paired-pucks card, the log and the firmware flasher
 const DONGLE_TABS=["status/log","status/fw","mapping/pairing"];
@@ -3422,10 +3443,10 @@ $("#swGyroMap").addEventListener("change", ()=>setField(38, +$("#swGyroMap").val
 $("#rfSurvey").onclick=()=>manualSurveyRf();
 $("#rfBuilder").onclick=()=>manualJournalBuilderRf();
 for(const sel of document.querySelectorAll("select.chord")){
-  sel.addEventListener("change", ()=>setField(CHORD_FIELD[+sel.dataset.i], +sel.value));
+  sel.addEventListener("change", ()=>{ setField(CHORD_FIELD[+sel.dataset.i], +sel.value); scEditSync(); });
 }
 for(const sel of document.querySelectorAll("select.chordD")){
-  sel.addEventListener("change", ()=>setField(CHORD_DPAD_FIELD[+sel.dataset.i], +sel.value));
+  sel.addEventListener("change", ()=>{ setField(CHORD_DPAD_FIELD[+sel.dataset.i], +sel.value); scEditSync(); });
 }
 // USB mode card: modes with the config panel first, console / no-panel modes in their own group
 {
@@ -3875,7 +3896,7 @@ function profRender(){
     for(let n=0;n<BIND_PROFILES;n++) if(n!==a){ const o=document.createElement("option"); o.value=n; o.textContent=profName(n); sel.appendChild(o); }
   }
   $("#profCopy").disabled=a<0; $("#profReset").disabled=a<0;
-  sndEventsRender();
+  scEditSync();
 }
 function profCopy(){
   if(!binds) return;
@@ -4479,23 +4500,33 @@ function bindsOnBlob(p){
   liveLoop();
 })();
 
-// ===================== Melodies (sounds blob v1, status blob 25+) =====================
+// ===================== Melodies (sounds blob v1 on status 25-26, v2 with four voices on 27+) =====================
 // Wire format and ops: docs/PROTOCOL.md §10.5. Hidden below status protocol 25: older firmware drops 0x2D..0x31
 // silently, so they must never be sent blind. Transfers use bindsXfer (one pipe reader, paused during updates).
-const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_AUDIBLE_MIN=130, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
+const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_CHUNKS2=44, SND_FREQ_MAX=4000, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_PAYLOAD2=4138, SND_NONE=0xFF;
+// four voices (blob v2, status protocol 27 and up): index = voice, value = the side it plays on
+// On a v1 puck (soundsVer 1) only the Left trackpad voice exists and the puck plays it on both trackpads; the
+// other voices are not stored, so they are neither played nor previewed.
+const sndPlayLanes=()=>soundsVer===2?[0,1,2,3]:[0];
+const sndLaneSides=v=>soundsVer===2?[SND_SIDES[v]]:[0,1];
+const SND_LANES=4, SND_SIDES=[0,1,3,4], SND_LANE_ABBR=["LT","RT","LG","RG"], SND_LANE_NAMES=["Left trackpad","Right trackpad","Left grip","Right grip"];
 const SND_EVENTS=["Profile 1","Profile 2","Profile 3","Mode: PlayStation","Mode: Xbox","Mode: Switch",
   "Mode: other","Controller connected"];
 const SND_CONFIRM=[[1,"Vibration"],[2,"Sound"],[3,"Both"],[0,"Off"]];
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const NOTE_LO=36, NOTE_HI=107; // C2 (65 Hz) .. B7 (3951 Hz), all under the 4000 Hz limit
+const NOTE_LO=24, NOTE_HI=107; // C1 (33 Hz) .. B7 (3951 Hz), all under the 4000 Hz limit
 var sounds=null, soundsDev=null, soundsCap=null, soundsLastTry=0, soundsSaving=false, soundsSaveTimer=0;
 // soundsBase = the blob as last read from or written to the puck; soundsPending = a save asked for while one runs
 // ("all" or "fields"); sndUnsaved = melody or event edits not yet on the puck
-var soundsBase=null, soundsPending=null, sndUnsaved=false;
-let curMel=0, soundNames=[], midiData=null;
+var soundsBase=null, soundsPending=null, sndUnsaved=false, soundsVer=1; // soundsVer: blob version the puck speaks (1 below protocol 27)
+let curMel=0, curLane=0, soundNames=[], midiData=null;
 try{ const n=JSON.parse(localStorage.getItem("openpuck.soundNames")||"[]"); if(Array.isArray(n)) soundNames=n; }catch(e){}
 function soundName(m){ const n=soundNames[m]; return (typeof n==="string"&&n.trim())?n.trim():"Melody "+(m+1); }
 function soundSetName(m,v){ soundNames[m]=v; try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){} }
+// tempo per melody tab: this browser only, never in the puck blob (the roll's beat grid and the BPM stretch use it)
+let melBpm=[]; try{ const b=JSON.parse(localStorage.getItem("openpuck.melBpm")||"[]"); if(Array.isArray(b)) melBpm=b; }catch(e){}
+const bpmOf=m=>melBpm[m]>=20&&melBpm[m]<=400?melBpm[m]:120;
+function bpmSet(m,v){ melBpm[m]=v; try{ localStorage.setItem("openpuck.melBpm",JSON.stringify(melBpm)); }catch(e){} }
 const noteHz=m=>Math.round(440*Math.pow(2,(m-69)/12));
 function noteOf(freq){
   if(!freq) return "rest";
@@ -4504,34 +4535,42 @@ function noteOf(freq){
 }
 const noteLabel=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
 function sndEmpty(){
-  return {confirm:1,gain:-6,ev:[0,1,2,3,4,5,6,7],mel:Array.from({length:SND_MELODIES},()=>[])};
+  return {confirm:1,gain:-6,ev:[0,1,2,3,4,5,6,7],mel:Array.from({length:SND_MELODIES},()=>Array.from({length:SND_LANES},()=>[]))};
 }
 function sndParse(d){
-  if(d.length!==4+SND_PAYLOAD+2||d[0]!==0xB8||d[1]!==1) return null;
+  if(d[0]!==0xB8||(d[1]!==1&&d[1]!==2)) return null;
+  const ver=d[1], pay=ver===2?SND_PAYLOAD2:SND_PAYLOAD;
+  if(d.length!==4+pay+2) return null;
   const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);
-  if(dv.getUint16(2,true)!==SND_PAYLOAD) return null;
-  let sum=0; for(let i=4;i<4+SND_PAYLOAD;i++) sum=(sum+d[i])&0xFFFF;
-  if(sum!==dv.getUint16(4+SND_PAYLOAD,true)) return null;
-  const s=sndEmpty(); s.confirm=d[4]; s.gain=(d[5]<<24)>>24;
+  if(dv.getUint16(2,true)!==pay) return null;
+  let sum=0; for(let i=4;i<4+pay;i++) sum=(sum+d[i])&0xFFFF;
+  if(sum!==dv.getUint16(4+pay,true)) return null;
+  const s=sndEmpty(); s.confirm=d[4]; s.gain=(d[5]<<24)>>24; s.ver=ver;
   for(let e=0;e<8;e++) s.ev[e]=d[6+e];
-  for(let m=0,o=14;m<SND_MELODIES;m++,o+=129){
+  const lanes=ver===2?SND_LANES:1;
+  for(let m=0,o=14;m<SND_MELODIES;m++) for(let v=0;v<lanes;v++,o+=129){
     const n=d[o]; if(n>SND_NOTES) return null;
-    for(let k=0;k<n;k++) s.mel[m].push({freq:dv.getUint16(o+1+k*4,true),ms:dv.getUint16(o+3+k*4,true)});
+    for(let k=0;k<n;k++) s.mel[m][v].push({freq:dv.getUint16(o+1+k*4,true),ms:dv.getUint16(o+3+k*4,true)});
   }
+  // a v1 melody plays on both trackpads (the firmware mirrors it): voice 1 is a copy, the grips are empty
+  if(ver===1) for(const mel of s.mel) mel[1]=mel[0].map(n=>({...n}));
   return s;
 }
-function sndBuild(s){
+// ver 1 = one voice (the Left trackpad one), ver 2 = four voices; default: what the connected puck speaks
+function sndBuild(s,ver){
+  ver=ver||soundsVer; const lanes=ver===2?SND_LANES:1;
   const pl=[s.confirm,s.gain&255,...s.ev];
-  for(const mel of s.mel){
-    pl.push(mel.length);
-    for(let k=0;k<SND_NOTES;k++){ const n=mel[k]||{freq:0,ms:0}; pl.push(n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8); }
+  for(const mel of s.mel) for(let v=0;v<lanes;v++){
+    const lane=mel[v];
+    pl.push(lane.length);
+    for(let k=0;k<SND_NOTES;k++){ const n=lane[k]||{freq:0,ms:0}; pl.push(n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8); }
   }
   let sum=0; for(const v of pl) sum=(sum+v)&0xFFFF;
-  return [0xB8,1,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
+  return [0xB8,ver,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
 }
-async function soundsReadRaw(){
+async function soundsReadRaw(chunks=soundsVer===2?SND_CHUNKS2:SND_CHUNKS){
   const buf=[];
-  for(let idx=0;idx<SND_CHUNKS;idx++){
+  for(let idx=0;idx<chunks;idx++){
     let f=null;
     for(let t=0;t<3 && !f;t++){ await send([0x2D,idx]); f=await readFrame(0xB5,3,256); if(f && f[0]!==idx) f=null; }
     if(!f) return null;
@@ -4564,9 +4603,11 @@ async function soundsWrite(blob){
 async function soundsSave(fieldsOnly){
   if(!sounds || !dev || dfuBusy) return;
   if(soundsSaving){ soundsPending=(soundsPending==="all"||!fieldsOnly)?"all":"fields"; return; }
-  soundsSaving=true; sndMsg("saving…");
   const snap=JSON.parse(JSON.stringify(fieldsOnly&&soundsBase?soundsBase:sounds));
   if(fieldsOnly){ snap.confirm=sounds.confirm; snap.gain=sounds.gain; }
+  // sndBuild pads every melody to SND_NOTES entries, so a longer or out-of-limit one must never reach it
+  const bad=sndProblem(snap); if(bad){ sndMsg("not saved: "+bad); return; }
+  soundsSaving=true; sndMsg("saving…");
   const ok=await bindsXfer(()=>soundsWrite(sndBuild(snap)));
   soundsSaving=false;
   if(ok){ soundsBase=snap; if(!fieldsOnly) sndUnsaved=false; }
@@ -4582,8 +4623,17 @@ async function soundsSave(fieldsOnly){
   }
   else sndMsg(ok===null?"not saved: the puck is busy, try again":"device rejected the sounds");
 }
+function sndProblem(s){
+  const lanes=soundsVer===2?SND_LANES:1; // a v1 puck only stores the Left trackpad voice
+  for(let m=0;m<SND_MELODIES;m++) for(let v=0;v<lanes;v++){
+    const mel=s.mel[m][v], who=soundName(m)+(lanes>1?" ("+SND_LANE_ABBR[v]+")":"");
+    if(mel.length>SND_NOTES) return who+" has "+mel.length+" entries, the limit is "+SND_NOTES;
+    if(mel.some(n=>n.ms<SND_MS_MIN||n.ms>SND_MS_MAX||n.freq<0||n.freq>SND_FREQ_MAX)) return who+" has values out of limits";
+  }
+  return "";
+}
 function soundsCommit(){ clearTimeout(soundsSaveTimer); soundsSaveTimer=setTimeout(()=>soundsSave(true),400); }
-function sndMsg(m){ if(/fail|reject|not saved/.test(m)) diagNote("sounds: "+m); for(const id of ["sndMsg","sndEvMsg"]) $("#"+id).textContent=m; }
+function sndMsg(m){ if(/fail|reject|not saved/.test(m)) diagNote("sounds: "+m); for(const id of ["sndMsg","scSndMsg"]) $("#"+id).textContent=m; }
 function sndDirty(){ sndUnsaved=true; sndMsg("unsaved"); }
 // 0x30 plays a stored melody, 0x31 the notes given (not stored); both are acked with 0xB6, ok 0 = nothing played
 async function soundsPlay(op,bytes){
@@ -4592,51 +4642,37 @@ async function soundsPlay(op,bytes){
 }
 function soundsOnBlob(p){
   const cap=(p[0]>=25 && !isDongle);
-  if(soundsDev!==dev){ sounds=null; soundsBase=null; sndUnsaved=false; soundsDev=dev; soundsLastTry=0; }
+  soundsVer=p[0]>=27?2:1;
+  $("#sndV1Warn").classList.toggle("hide",!(cap&&soundsVer===1));
+  if(soundsDev!==dev){ sndLiveHalt(true); sounds=null; soundsBase=null; sndUnsaved=false; soundsDev=dev; soundsLastTry=0; }
   if(cap!==soundsCap){
     soundsCap=cap;
-    for(const id of ["sndCard","sndEvCard","sndSetCard"]) $("#"+id).classList.toggle("hide",!cap);
+    $("#sndCard").classList.toggle("hide",!cap);
     $("#sndOldCard").classList.toggle("hide",cap);
-    if(!cap) sounds=null;
+    if(!cap){ sndLiveHalt(true); sounds=null; }
   }
   if(cap && !sounds && Date.now()-soundsLastTry>1500 && !soundsSaving && !dfuBusy) soundsRead();
 }
 
 // ---- editor ----
-const sndNotes=()=>sounds.mel[curMel];
+const sndNotes=()=>sounds.mel[curMel][curLane];
 function sndNoteName(n){ const k=noteOf(n.freq); return k==="rest"?"Rest":k==="custom"?"":noteLabel(+k); }
 function sndEventName(e){ return e<3?profName(e):SND_EVENTS[e]; }
 function sndRender(){
   if(!sounds) return;
   [...$("#sndTabs").children].forEach((t,m)=>{ t.classList.toggle("active",m===curMel);
-    t.textContent=soundName(m)+(sounds.mel[m].length?" ("+sounds.mel[m].length+")":""); });
+    const n=sounds.mel[m].reduce((a,l)=>a+l.length,0); t.textContent=soundName(m)+(n?" ("+n+")":""); });
+  [...$("#sndLanes").children].forEach((b,v)=>{ const n=sounds.mel[curMel][v].length; b.textContent=SND_LANE_ABBR[v]+(n?" "+n:""); b.classList.toggle("primary",v===curLane);
+    const lost=soundsVer===1&&v>0; b.style.opacity=lost?"0.55":""; b.title=SND_LANE_NAMES[v]+" (side "+SND_SIDES[v]+")"+(lost?": not saved, this firmware stores one voice":""); });
   const nameEl=$("#sndName"); if(document.activeElement!==nameEl) nameEl.value=soundNames[curMel]||"";
+  const bpmEl=$("#prBpm"); if(document.activeElement!==bpmEl) bpmEl.value=bpmOf(curMel);
   nameEl.placeholder="Melody "+(curMel+1);
   const used=[]; sounds.ev.forEach((m,e)=>{ if(m===curMel) used.push(sndEventName(e)); });
   $("#sndUsed").textContent=used.length?"Plays on: "+used.join(", "):"Not assigned to any event.";
   sndRowsRender();
   const cs=$("#sndConfirm"); if(document.activeElement!==cs) cs.value=sounds.confirm;
   setSlider("sndVol",sounds.gain);
-  sndEventsRender();
-}
-function sndEventsRender(){
-  if(!sounds) return;
-  const evs=$("#sndEvents");
-  if(!evs.children.length) SND_EVENTS.forEach((n,e)=>{
-    const row=document.createElement("div"); row.className="row";
-    const lab=document.createElement("label"); row.appendChild(lab);
-    const sel=document.createElement("select");
-    const none=document.createElement("option"); none.value=SND_NONE; none.textContent="None"; sel.appendChild(none);
-    for(let m=0;m<SND_MELODIES;m++){ const o=document.createElement("option"); o.value=m; sel.appendChild(o); }
-    sel.onchange=()=>{ sounds.ev[e]=+sel.value; sndDirty(); sndRender(); };
-    row.appendChild(sel); evs.appendChild(row);
-  });
-  [...evs.children].forEach((row,e)=>{
-    row.firstChild.textContent=sndEventName(e);
-    const sel=row.lastChild;
-    for(let m=0;m<SND_MELODIES;m++) sel.options[m+1].textContent=(m+1)+": "+soundName(m);
-    if(document.activeElement!==sel) sel.value=sounds.ev[e];
-  });
+  scEditSync();
 }
 function sndRowSync(k){
   const n=sndNotes()[k], tr=$("#snote"+k); if(!tr) return;
@@ -4646,16 +4682,16 @@ function sndRowSync(k){
 }
 function sndTotals(){
   const st=sndNotes(); let total=0; for(const n of st) total+=n.ms;
-  $("#sndCount").textContent=st.length+" / "+SND_NOTES+" notes";
+  const over=st.length>SND_NOTES, cnt=$("#sndCount");
+  const prob=sndProblem(sounds);
+  cnt.textContent=st.length+" / "+SND_NOTES+" notes"+(over?": too long to save, press Crop to 32":prob?": Save is disabled, "+prob:"");
+  cnt.style.color=prob?"var(--warn)":"";
   $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
-  let low=0; st.forEach((n,k)=>{ const is=n.freq>0&&n.freq<SND_AUDIBLE_MIN; if(is) low++;
-    const tr=$("#snote"+k); if(tr) tr.style.color=is?"var(--warn)":""; });
-  $("#sndLow").textContent=low?low+(low>1?" notes":" note")+" below "+SND_AUDIBLE_MIN+" Hz may be inaudible on the controller.":"";
-  const tl=$("#sndTimeline"); tl.textContent="";
-  st.forEach(n=>{
-    const seg=document.createElement("div"); seg.className="tl "+(n.freq?"press":"wait"); seg.style.flexGrow=n.ms;
-    seg.title=n.freq?sndNoteName(n)+" "+n.freq+" Hz, "+n.ms+" ms":"Rest "+n.ms+" ms"; seg.textContent=n.freq?sndNoteName(n):""; tl.appendChild(seg);
-  });
+  $("#sndNotesSum").textContent="Note list ("+st.length+")";
+  for(const id of ["sndSave","scSndSave"]) $("#"+id).disabled=!!prob;
+  $("#scSndProb").textContent=prob?"Cannot save: "+prob:"";
+  sndLiveUi();
+  prRefresh();
 }
 function sndRowsRender(){
   const tbl=$("#sndNotes"); tbl.textContent="";
@@ -4688,31 +4724,36 @@ function sndRowsRender(){
   if(!st.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="note"; td.textContent="No notes. Add a note or import a MIDI file."; tr.appendChild(td); tbl.appendChild(tr); }
   const full=st.length>=SND_NOTES;
   $("#sndAddNote").disabled=full; $("#sndAddRest").disabled=full; $("#sndClear").disabled=!st.length;
-  $("#sndPrev").disabled=!st.length; $("#sndPlayPuck").disabled=!st.length;
+  $("#sndPrev").disabled=!st.length;
   $("#sndOctUp").disabled=!st.some(n=>n.freq); $("#sndOctDown").disabled=!st.some(n=>n.freq);
   sndTotals();
 }
 // browser preview: the same notes through Web Audio (a plain square tone, not what the actuator sounds like)
-let sndCtx=null, sndPrevTimer=0, sndPrevOsc=[];
+let sndCtx=null, sndPrevTimer=0, sndPrevOsc=[], sndPrevT0=0;
 function sndPreviewStop(){
   clearTimeout(sndPrevTimer); for(const o of sndPrevOsc){ try{ o.stop(); }catch(e){} } sndPrevOsc=[];
   $("#sndPrev").textContent="Preview in browser";
 }
 function sndPreview(){
   if(sndPrevOsc.length){ sndPreviewStop(); return; }
-  const st=sndNotes(); if(!st.length) return;
+  const lanes=sndPlayLanes().map(v=>sounds.mel[curMel][v]).filter(l=>l.length); if(!lanes.length) return;
+  sndLiveHalt(true);
   try{
     sndCtx=sndCtx||new (window.AudioContext||window.webkitAudioContext)();
     sndCtx.resume();
-    const g=sndCtx.createGain(); g.gain.value=0.12; g.connect(sndCtx.destination);
-    let t=sndCtx.currentTime+0.05;
-    for(const n of st){
-      const d=n.ms/1000;
-      if(n.freq){ const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=n.freq; o.connect(g); o.start(t); o.stop(t+d); sndPrevOsc.push(o); }
-      t+=d;
+    const g=sndCtx.createGain(); g.gain.value=0.12/Math.sqrt(lanes.length); g.connect(sndCtx.destination);
+    const t0=sndCtx.currentTime+0.05; let tEnd=t0;
+    for(const st of lanes){ // one oscillator per note, every voice from the same start
+      let t=t0;
+      for(const n of st){
+        const d=n.ms/1000;
+        if(n.freq){ const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=n.freq; o.connect(g); o.start(t); o.stop(t+d); sndPrevOsc.push(o); }
+        t+=d;
+      }
+      tEnd=Math.max(tEnd,t);
     }
-    $("#sndPrev").textContent="Stop preview";
-    sndPrevTimer=setTimeout(sndPreviewStop,(t-sndCtx.currentTime)*1000+100);
+    $("#sndPrev").textContent="Stop preview"; sndPrevT0=performance.now()+50; prAnim();
+    sndPrevTimer=setTimeout(sndPreviewStop,(tEnd-sndCtx.currentTime)*1000+100);
   }catch(e){ sndMsg("preview failed: "+e.message); }
 }
 // moves every note of the melody by whole octaves (note names stay exact); rests stay; refuses to leave 1..SND_FREQ_MAX
@@ -4740,9 +4781,9 @@ function midiParse(buf){
   while(o+8<=d.length && tracks.length<ntr){
     const id=tag(o), end=Math.min(o+8+dv.getUint32(o+4),d.length); o+=8;
     if(id!=="MTrk"){ o=end; continue; }
-    const tr={name:"",notes:[],drums:false}, open={}; let t=0, run=0;
+    const tr={name:"",notes:[]}, open={}; let t=0, run=0;
     const vlq=()=>{ let v=0,b; do{ if(o>=end) throw new Error("the MIDI file is truncated"); b=d[o++]; v=v*128+(b&127); }while(b&128); return v; };
-    const off=(ch,p)=>{ const a=open[ch*128+p]; if(a&&a.length) tr.notes.push({s:a.shift(),e:t,p}); };
+    const off=(ch,p)=>{ const a=open[ch*128+p]; if(a&&a.length) tr.notes.push({s:a.shift(),e:t,p,ch}); };
     while(o<end){
       t+=vlq();
       let st=d[o];
@@ -4756,11 +4797,11 @@ function midiParse(buf){
       if(st===0xF0||st===0xF7){ o+=vlq(); run=0; continue; }
       run=st; const hi=st&0xF0, ch=st&15, a=d[o], v=d[o+1]; o+=(hi===0xC0||hi===0xD0)?1:2;
       if(o>end) throw new Error("the MIDI file is truncated");
-      if(hi===0x90 && v>0){ (open[ch*128+a]=open[ch*128+a]||[]).push(t); if(ch===9) tr.drums=true; }
+      if(hi===0x90 && v>0){ (open[ch*128+a]=open[ch*128+a]||[]).push(t); }
       else if(hi===0x80 || hi===0x90) off(ch,a);
     }
     // notes still held when the track ends stop with it
-    for(const k in open) for(const s of open[k]) tr.notes.push({s,e:t,p:k%128});
+    for(const k in open) for(const s of open[k]) tr.notes.push({s,e:t,p:k%128,ch:Math.floor(k/128)});
     tracks.push(tr); o=end;
   }
   if(!tracks.length) throw new Error("no tracks in this MIDI file");
@@ -4774,7 +4815,7 @@ function midiMs(m){
   return tick=>{ let i=tm.length-1; while(i>0&&tm[i].t>tick) i--; return cum[i]+(tick-tm[i].t)*tm[i].us/m.div/1000; };
 }
 // One line from a track: at every moment the highest sounding note wins, gaps become rests, leading silence is
-// dropped. Returns every entry; the caller cuts it to what fits.
+// dropped. Returns every entry (the melody editor and the saving code enforce the 32-entry limit).
 function midiLine(m,track){
   const ms=midiMs(m), ns=track.notes.filter(n=>n.e>n.s).map((n,i)=>({...n,id:i})).sort((a,b)=>a.s-b.s||a.id-b.id);
   const bounds=[...new Set(ns.flatMap(n=>[n.s,n.e]))].sort((a,b)=>a-b), segs=[];
@@ -4795,66 +4836,497 @@ function midiLine(m,track){
     if(raw<SND_MS_MIN){ merged++; if(notes.length) notes[notes.length-1].ms+=raw; else carry+=raw; continue; }
     notes.push({p:s.id>=0?s.p:-1,ms:raw+carry}); carry=0;
   }
-  // The actuator does not play low notes audibly: the whole melody moves up by full octaves (MIDI note +12 each,
-  // so the note names stay right) until its lowest note reaches SND_AUDIBLE_MIN, as far as the top note allows.
-  const ps=notes.filter(n=>n.p>=0).map(n=>n.p); let shift=0, limited=false;
-  if(ps.length){
-    const lo=Math.min(...ps), hi=Math.max(...ps); let need=0;
-    while(noteHz(lo+12*need)<SND_AUDIBLE_MIN && need<10) need++;
-    while(shift<need && noteHz(hi+12*(shift+1))<=SND_FREQ_MAX) shift++;
-    limited=shift<need;
-  }
   for(const n of notes){
     n.freq=0;
-    if(n.p>=0){ n.freq=noteHz(n.p+12*shift); if(n.freq>SND_FREQ_MAX){ n.freq=SND_FREQ_MAX; clipped++; } else if(n.freq<1) n.freq=1; }
+    if(n.p>=0){ n.freq=noteHz(n.p); if(n.freq>SND_FREQ_MAX){ n.freq=SND_FREQ_MAX; clipped++; } else if(n.freq<1) n.freq=1; }
     delete n.p;
     if(n.ms>SND_MS_MAX){ n.ms=SND_MS_MAX; clipped++; }
   }
-  return {notes,clipped,merged,shift,limited};
+  return {notes,clipped,merged};
 }
-function midiTrackLabel(tr,i){
-  return "Track "+(i+1)+(tr.name?" - "+tr.name:"")+" ("+tr.notes.length+" notes"+(tr.drums?", drums":"")+")";
+// What a MIDI file offers: every non-empty track, and for a track with several channels one entry per channel
+// ("Track 2, ch 3"; channel 10 = drums). avg = average pitch, used to order the default assignment.
+function midiSources(m){
+  const srcs=[], name=tr=>tr.name?" - "+tr.name:"";
+  m.tracks.forEach((tr,i)=>{
+    if(!tr.notes.length) return;
+    const chs=[...new Set(tr.notes.map(n=>n.ch))].sort((a,b)=>a-b), dr=tr.notes.every(n=>n.ch===9);
+    srcs.push({track:i,ch:null,notes:tr.notes,drums:dr,label:"Track "+(i+1)+name(tr)+" ("+tr.notes.length+" notes"+(dr?", drums":"")+")"});
+    if(chs.length>1) for(const c of chs){
+      const ns=tr.notes.filter(n=>n.ch===c);
+      srcs.push({track:i,ch:c,notes:ns,drums:c===9,label:"Track "+(i+1)+", ch "+(c+1)+name(tr)+" ("+ns.length+" notes"+(c===9?", drums":"")+")"});
+    }
+  });
+  for(const x of srcs) x.avg=x.notes.reduce((a,n)=>a+n.p,0)/x.notes.length;
+  return srcs;
+}
+// default choice per voice (LT, RT, LG, RG): "keep", "empty" or "s<index>". Drums are never picked. When one track
+// holds everything its channels are used, otherwise whole tracks; high average pitch first. One source: LT only.
+function midiDefaults(srcs){
+  const whole=srcs.filter(x=>x.ch===null), chans=srcs.filter(x=>x.ch!==null);
+  const pick=(whole.length===1&&chans.length?chans:whole).filter(x=>!x.drums).sort((a,b)=>b.avg-a.avg).slice(0,SND_LANES);
+  const out=Array(SND_LANES).fill("keep");
+  // a one-voice puck stores only LT, so the other voices are not filled by default there
+  if(pick.length===1||(soundsVer===1&&pick.length)) out[0]="s"+srcs.indexOf(pick[0]);
+  else if(pick.length>1) for(let v=0;v<SND_LANES;v++) out[v]=pick[v]?"s"+srcs.indexOf(pick[v]):"empty";
+  return out;
+}
+function midiLaneLine(v){
+  const val=$("#midiLane"+v).value; if(val[0]!=="s") return null;
+  const src=midiData.srcs[+val.slice(1)];
+  return src.line||(src.line=midiLine(midiData.m,{notes:src.notes}));
+}
+function midiLaneNote(v){
+  const el=$("#midiCnt"+v), val=$("#midiLane"+v).value; el.style.color="";
+  if(val==="keep"){ el.textContent=""; return; }
+  if(val==="empty"){ el.textContent="0 entries"; return; }
+  const n=midiLaneLine(v).notes.length;
+  el.textContent=n?n+" entries"+(n>SND_NOTES?" (over "+SND_NOTES+", use Crop to "+SND_NOTES+")":""):"no playable notes";
+  if(n>SND_NOTES) el.style.color="var(--warn)";
 }
 function midiLoad(file){
   const note=$("#midiNote"); $("#midiRow").classList.add("hide"); midiData=null; note.textContent="";
   if(!file) return;
   file.arrayBuffer().then(buf=>{
-    const m=midiParse(buf), sel=$("#midiTrack"); sel.textContent="";
-    let best=-1;
-    m.tracks.forEach((tr,i)=>{ if(!tr.notes.length) return;
-      const o=document.createElement("option"); o.value=i; o.textContent=midiTrackLabel(tr,i); sel.appendChild(o);
-      if(!tr.drums&&(best<0||tr.notes.length>m.tracks[best].notes.length)) best=i; });
-    if(!sel.options.length) throw new Error("no notes in this MIDI file");
-    if(best>=0) sel.value=best;
-    midiData={m,name:file.name.replace(/\.[^.]*$/,"")};
+    const m=midiParse(buf), srcs=midiSources(m);
+    if(!srcs.length) throw new Error("no notes in this MIDI file");
+    midiData={m,srcs,name:file.name.replace(/\.[^.]*$/,"")};
+    const box=$("#midiLanes"); box.textContent="";
+    const def=midiDefaults(srcs);
+    for(let v=0;v<SND_LANES;v++){
+      const row=document.createElement("div"); row.className="row"; row.style.margin="4px 0";
+      const lab=document.createElement("label"); lab.textContent=SND_LANE_NAMES[v]+" ("+SND_LANE_ABBR[v]+")"; row.appendChild(lab);
+      const sel=document.createElement("select"); sel.id="midiLane"+v; sel.style.flex="1 1 260px";
+      const add=(val,txt)=>{ const o=document.createElement("option"); o.value=val; o.textContent=txt; sel.appendChild(o); };
+      add("keep","Keep current"); add("empty","Empty");
+      srcs.forEach((x,i)=>add("s"+i,x.label));
+      sel.value=def[v]; sel.onchange=()=>midiLaneNote(v); row.appendChild(sel);
+      const cnt=document.createElement("span"); cnt.className="note"; cnt.id="midiCnt"+v; cnt.style.cssText="margin:0;flex:0 1 260px"; row.appendChild(cnt);
+      box.appendChild(row); midiLaneNote(v);
+    }
     $("#midiRow").classList.remove("hide");
-    note.textContent="Pick the track with the melody, then press Import. Chords keep their highest note.";
+    note.textContent="Pick a source for each voice, then press Import. Chords keep their highest note.";
   }).catch(e=>{ $("#midiRow").classList.add("hide"); sndMsg("MIDI import failed: "+e.message); });
 }
 function midiImport(){
   if(!midiData||!sounds) return;
-  const {m,name}=midiData, line=midiLine(m,m.tracks[+$("#midiTrack").value]);
-  if(!line.notes.length){ $("#midiNote").textContent="This track has no playable notes."; return; }
-  if(sndNotes().length && !confirm("Replace the notes of "+soundName(curMel)+" with this track?")) return;
-  const kept=line.notes.slice(0,SND_NOTES);
-  sounds.mel[curMel]=kept;
+  const {m,name}=midiData, plan=[], empty=[];
+  for(let v=0;v<SND_LANES;v++){
+    const val=$("#midiLane"+v).value; if(val==="keep") continue;
+    const line=midiLaneLine(v);
+    if(line&&!line.notes.length){ empty.push(SND_LANE_ABBR[v]); continue; }
+    plan.push({v,line,notes:line?line.notes:[]});
+  }
+  if(!plan.length){ $("#midiNote").textContent=empty.length?"Nothing to import: the chosen source has no playable notes ("+empty.join(", ")+").":"Nothing to import: every voice is set to Keep current."; return; }
+  const repl=plan.filter(x=>sounds.mel[curMel][x.v].length);
+  if(repl.length && !confirm("Replace the notes of "+soundName(curMel)+" in: "+repl.map(x=>SND_LANE_NAMES[x.v]).join(", ")+"?")) return;
+  sndLiveHalt(true);
+  for(const x of plan) sounds.mel[curMel][x.v]=x.notes;
   if(!soundNames[curMel]) soundSetName(curMel,name.slice(0,24));
-  const parts=["Imported "+kept.length+" of "+line.notes.length+" notes (rests count as notes)."];
-  if(line.notes.length>SND_NOTES) parts.push("Cut to the first "+SND_NOTES+": a melody holds at most "+SND_NOTES+" notes.");
-  if(line.clipped) parts.push(line.clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
-  if(line.merged) parts.push(line.merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
-  if(line.shift) parts.push("Moved up "+line.shift+(line.shift>1?" octaves":" octave")+" so low notes are audible.");
-  if(line.limited) parts.push("Some notes stay below "+SND_AUDIBLE_MIN+" Hz: moving higher would pass "+SND_FREQ_MAX+" Hz.");
+  const t0=m.tempos.length?m.tempos.reduce((a,b)=>b.t<a.t?b:a):null;
+  bpmSet(curMel,t0?Math.max(20,Math.min(400,Math.round(60000000/t0.us))):120);
+  const clipped=plan.reduce((a,x)=>a+(x.line?x.line.clipped:0),0), merged=plan.reduce((a,x)=>a+(x.line?x.line.merged:0),0);
+  const parts=["Imported: "+plan.map(x=>SND_LANE_ABBR[x.v]+" "+x.notes.length).join(", ")+" entries (rests count as entries) at "+bpmOf(curMel)+" BPM. Saving needs "+SND_NOTES+" or fewer per voice."];
+  if(clipped) parts.push(clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
+  if(merged) parts.push(merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
+  if(empty.length) parts.push("Kept "+empty.join(", ")+": the chosen source has no playable notes.");
   $("#midiNote").textContent=parts.join(" ");
   $("#midiRow").classList.add("hide"); midiData=null;
+  pr.range=null; pr.selS=-1; pr.fitNow=true;
   sndDirty(); sndRender();
+}
+// ---- piano roll ----
+// The melody is one mono sequence {freq,ms} (freq 0 = rest). The roll shows it as notes {s,e,freq} in ms, edits
+// them, and converts back after every edit (prEntries): sorted by start, gaps become rests, no overlaps.
+const PR_LO=24, PR_HI=107, PR_KW=46, PR_RH=22, PR_GRIP=8, PR_FOLD="openpuck.prFold";
+const pr={cv:null, x0:0, pxms:0.2, pTop:84, rowH:14, w:0, h:0, notes:[], selS:-1, range:null, drag:null, ph:-1, fitNow:true, fold:false, fl:null, lastLen:200, addedAt:0, others:[]};
+const prRow=f=>Math.max(PR_LO,Math.min(PR_HI,Math.round(69+12*Math.log2(f/440))));
+const prBlack=r=>[1,3,6,8,10].includes(r%12);
+function prNotesOf(list){
+  const out=[]; let t=0;
+  for(const n of list){ if(n.freq) out.push({s:t,e:t+n.ms,freq:n.freq}); t+=n.ms; }
+  return out;
+}
+const prNotes=()=>prNotesOf(sndNotes());
+// the other voices: drawn dimmed, never hit-tested
+const prOthers=()=>sounds.mel[curMel].map((l,v)=>v===curLane?[]:prNotesOf(l));
+// length of the longest voice
+const prSpan=()=>Math.max(0,...sounds.mel[curMel].map(l=>l.reduce((a,n)=>a+n.ms,0)));
+function prTotal(){ let t=0; for(const n of sndNotes()) t+=n.ms; return t; }
+// notes (already free of overlaps) -> melody entries; a gap under SND_MS_MIN is closed, long rests are split
+// trail = the trailing rest the melody already had before the edit (kept after the new last note); no notes = empty
+function prEntries(notes,trail){
+  const ns=notes.filter(n=>n.e-n.s>=SND_MS_MIN).map(n=>({...n})).sort((a,b)=>a.s-b.s), out=[]; let cur=0;
+  const rest=g=>{ while(g>0){ let c=Math.min(g,SND_MS_MAX); if(g>SND_MS_MAX && g-SND_MS_MAX<SND_MS_MIN) c=g-SND_MS_MIN; out.push({freq:0,ms:c}); g-=c; } };
+  for(const n of ns){
+    const gap=n.s-cur;
+    if(gap>=SND_MS_MIN) rest(gap);
+    else if(gap>0){ const p=out[out.length-1]; if(p&&p.ms+gap<=SND_MS_MAX) p.ms+=gap; else n.s=cur; }
+    out.push({freq:n.freq,ms:Math.min(SND_MS_MAX,n.e-n.s)}); cur=n.e;
+  }
+  if(out.length&&trail>=SND_MS_MIN) rest(trail);
+  return out;
+}
+// puts n among the notes: the part of every other note under n is cut away (pieces under SND_MS_MIN vanish)
+function prPlace(notes,n){
+  const out=[];
+  for(const o of notes){
+    if(o===n || o.e<=n.s || o.s>=n.e){ out.push(o); continue; }
+    const c={...o};
+    if(c.s<n.s) c.e=n.s; else c.s=n.e;
+    if(c.e-c.s>=SND_MS_MIN) out.push(c);
+  }
+  return out;
+}
+function prCommit(notes){
+  const st=sndNotes(), old=prNotes(), entries=prEntries(notes,old.length?prTotal()-old[old.length-1].e:0); st.length=0; st.push(...entries);
+  sndDirty(); sndRender();
+}
+const prXof=ms=>PR_KW+(ms-pr.x0)*pr.pxms, prMsOf=x=>pr.x0+(x-PR_KW)/pr.pxms;
+// Fold mode: pr.fl lists the pitch rows in use (high to low) and only those are drawn, one after the other.
+function prFoldList(){
+  if(pr.drag) return pr.drag.rows||null; // frozen during a drag so the rows do not jump
+  if(!pr.fold) return null;
+  const l=[...new Set([...pr.notes,...pr.others.flat()].map(n=>prRow(n.freq)))].sort((a,b)=>b-a);
+  return l.length?l:null;
+}
+const prYof=r=>pr.fl?(pr.fl.indexOf(r)<0?-9999:PR_RH+pr.fl.indexOf(r)*pr.rowH):PR_RH+(pr.pTop-r)*pr.rowH;
+const prRowAt=y=>pr.fl?pr.fl[Math.max(0,Math.min(pr.fl.length-1,Math.floor((y-PR_RH)/pr.rowH)))]:Math.ceil(pr.pTop-(y-PR_RH)/pr.rowH);
+const prClampRow=r=>Math.max(PR_LO,Math.min(PR_HI,r));
+// snap step in ms: "n4".."n32" are note values at the melody's BPM (1/4 = one beat), the rest are plain ms
+function prGrid(){ const v=$("#prSnap").value; return v[0]==="n"?240000/bpmOf(curMel)/+v.slice(1):+v; }
+const prBeatSnap=()=>$("#prSnap").value[0]==="n";
+function prSnap(ms,floor){ const g=prGrid(); return Math.max(0,g?Math.round((floor?Math.floor(ms/g):Math.round(ms/g))*g):Math.round(ms)); }
+// BPM change: every entry is stretched by oldBPM/newBPM; refused (BPM kept) when an entry would leave the limits
+function prBpmChange(){
+  if(!sounds) return;
+  const old=bpmOf(curMel), nb=Math.max(20,Math.min(400,Math.round(+$("#prBpm").value)||old));
+  $("#prBpm").value=nb; if(nb===old) return;
+  const lanes=sounds.mel[curMel], ms=lanes.map(l=>l.map(n=>Math.round(n.ms*old/nb)));
+  if(ms.some(l=>l.some(v=>v<SND_MS_MIN||v>SND_MS_MAX))){ $("#prBpm").value=old; sndMsg("BPM not changed: an entry would leave "+SND_MS_MIN+"-"+SND_MS_MAX+" ms"); return; }
+  sndLiveHalt(true); lanes.forEach((l,v)=>l.forEach((n,i)=>{ n.ms=ms[v][i]; })); bpmSet(curMel,nb);
+  pr.range=null; pr.selS=-1; pr.fitNow=true; sndDirty(); sndRender();
+}
+function prVisRows(){ return Math.max(1,Math.floor((pr.h-PR_RH)/pr.rowH)); }
+function prClampV(){
+  const vis=prVisRows();
+  pr.pTop=vis>=PR_HI-PR_LO+1?PR_HI:Math.min(PR_HI,Math.max(PR_LO+vis-1,pr.pTop));
+}
+function prFit(){
+  const rows=[...pr.notes,...pr.others.flat()].map(n=>prRow(n.freq));
+  const lo=Math.max(PR_LO,(rows.length?Math.min(...rows):60)-3), hi=Math.min(PR_HI,(rows.length?Math.max(...rows):72)+3);
+  pr.rowH=Math.max(16,Math.min(24,Math.floor((pr.h-PR_RH)/(hi-lo+1))));
+  pr.pTop=hi+Math.max(0,Math.floor((prVisRows()-(hi-lo+1))/2)); prClampV();
+  pr.pxms=Math.max(0.01,Math.min(3,(pr.w-PR_KW-12)/Math.max(prSpan(),1000))); pr.x0=0;
+}
+function prZoom(f,cx){
+  const x=cx==null?(pr.w+PR_KW)/2:cx, ms=prMsOf(x);
+  pr.pxms=Math.max(0.01,Math.min(3,pr.pxms*f)); pr.x0=Math.max(0,ms-(x-PR_KW)/pr.pxms);
+  prSync(); prDraw();
+}
+function prSync(){
+  const sc=$("#prScroll"), vis=(pr.w-PR_KW)/pr.pxms;
+  sc.max=Math.max(0,Math.round(Math.max(prSpan(),4000)+1000-vis)); pr.x0=Math.min(pr.x0,+sc.max); sc.value=Math.round(pr.x0);
+}
+function prRefresh(){
+  if(!pr.cv) return;
+  pr.notes=prNotes(); pr.others=prOthers();
+  $("#prClearSel").disabled=!pr.range; $("#prCrop").disabled=!pr.range&&!sounds.mel[curMel].some(l=>l.length>SND_NOTES);
+  prSync(); prDraw();
+}
+function prDraw(){
+  const cv=pr.cv; if(!cv) return;
+  const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return;
+  const dpr=window.devicePixelRatio||1, W=Math.round(r.width), H=Math.round(r.height);
+  if(cv.width!==W*dpr||cv.height!==H*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
+  pr.w=W; pr.h=H;
+  if(pr.fitNow){ pr.fitNow=false; prFit(); prSync(); }
+  pr.fl=prFoldList();
+  if(pr.fl) pr.rowH=Math.max(8,Math.min(22,Math.floor((H-PR_RH)/pr.fl.length)));
+  prClampV();
+  const g=cv.getContext("2d"), cs=getComputedStyle(document.documentElement);
+  const fg=cs.getPropertyValue("--fg").trim(), mut=cs.getPropertyValue("--mut").trim(), acc=cs.getPropertyValue("--acc2").trim(),
+    bad=cs.getPropertyValue("--bad").trim();
+  g.setTransform(dpr,0,0,dpr,0,0); g.font="10px sans-serif"; g.textBaseline="middle";
+  g.fillStyle="#0e1017"; g.fillRect(0,0,W,H);
+  const vis=prVisRows()+1, shown=[];
+  if(pr.fl) pr.fl.forEach(row=>shown.push(row));
+  else for(let i=0;i<vis;i++){ const row=pr.pTop-i; if(row<PR_LO) break; shown.push(row); }
+  for(const row of shown){
+    const y=prYof(row);
+    if(prBlack(row)){ g.fillStyle="#131722"; g.fillRect(PR_KW,y,W-PR_KW,pr.rowH); }
+    g.fillStyle=row%12===0?"#313a4f":"#1b2030"; g.fillRect(PR_KW,y+pr.rowH-1,W-PR_KW,1);
+  }
+  // ruler and grid: beat lines, stronger bar lines (4 beats), the snap's own lines; bar numbers under a beat snap
+  g.fillStyle="#151925"; g.fillRect(PR_KW,0,W-PR_KW,PR_RH);
+  g.textAlign="left";
+  const beat=60000/bpmOf(curMel), bar=beat*4, gr=prGrid(), tA=prMsOf(PR_KW), tB=prMsOf(W);
+  const vline=(ms,col)=>{ g.fillStyle=col; g.fillRect(Math.round(prXof(ms)),PR_RH,1,H-PR_RH); };
+  if(gr&&gr*pr.pxms>=6) for(let k=Math.ceil(tA/gr);k*gr<=tB;k++) vline(k*gr,"#171c2a");
+  if(beat*pr.pxms>=6) for(let k=Math.ceil(tA/beat);k*beat<=tB;k++) vline(k*beat,k%4===0?"#3f4b69":"#252d42");
+  else if(bar*pr.pxms>=6) for(let k=Math.ceil(tA/bar);k*bar<=tB;k++) vline(k*bar,"#3f4b69");
+  if(prBeatSnap()){
+    let every=1; while(bar*every*pr.pxms<44) every*=2;
+    for(let k=Math.ceil(tA/bar);k*bar<=tB;k++){
+      const x=Math.round(prXof(k*bar)); g.fillStyle=mut; g.fillRect(x,PR_RH-5,1,5);
+      if(k%every===0) g.fillText(String(k+1),x+3,PR_RH/2);
+    }
+  }else{
+    const steps=[10,20,50,100,200,500,1000,2000,5000,10000], step=steps.find(s=>s*pr.pxms>=70)||20000;
+    for(let t=Math.ceil(tA/step)*step; prXof(t)<W; t+=step){
+      const x=Math.round(prXof(t)); g.fillStyle=mut; g.fillRect(x,PR_RH-5,1,5); g.fillText((t/1000)+" s",x+3,PR_RH/2);
+    }
+  }
+  if(pr.range){
+    const x1=prXof(pr.range.a), x2=prXof(pr.range.b);
+    g.fillStyle=fg; g.globalAlpha=0.12; g.fillRect(x1,0,x2-x1,H); g.globalAlpha=1;
+    g.fillStyle=fg; g.fillRect(x1,0,1,H); g.fillRect(x2-1,0,1,H);
+    const c=prCropList();
+    if(c.capped){ const xm=Math.round(prXof(c.end)); if(xm>=PR_KW&&xm<=W){ g.fillStyle=acc; g.fillRect(xm-1,0,2,H); } }
+  }
+  // notes
+  g.save(); g.beginPath(); g.rect(PR_KW,PR_RH,W-PR_KW,H-PR_RH); g.clip();
+  g.strokeStyle=acc; g.lineWidth=1; g.globalAlpha=0.45;
+  for(const o of pr.others) for(const n of o){
+    const x1=prXof(n.s), x2=prXof(n.e), y=prYof(prRow(n.freq));
+    if(x2>=PR_KW&&x1<=W) g.strokeRect(Math.round(x1)+0.5,y+1.5,Math.max(2,x2-x1-2),pr.rowH-3);
+  }
+  g.globalAlpha=1;
+  for(const n of pr.notes){
+    const x1=prXof(n.s), x2=prXof(n.e), y=prYof(prRow(n.freq)), sel=n.s===pr.selS;
+    if(x2<PR_KW||x1>W) continue;
+    g.fillStyle=sel?fg:acc; g.fillRect(x1,y+1,Math.max(2,x2-x1-1),pr.rowH-2);
+    if(sel){ g.strokeStyle=acc; g.lineWidth=2; g.strokeRect(x1+1,y+2,Math.max(1,x2-x1-3),pr.rowH-4); }
+    if(x2-x1>30&&pr.rowH>=10){ g.fillStyle="#06121f"; g.fillText(sndNoteName(n)||n.freq+" Hz",x1+4,y+pr.rowH/2); }
+  }
+  g.restore();
+  // keyboard strip
+  g.fillStyle="#151925"; g.fillRect(0,0,PR_KW,PR_RH);
+  for(const row of shown){
+    const y=prYof(row);
+    g.fillStyle=prBlack(row)?"#2a3042":"#cfd6e2"; g.fillRect(0,y,PR_KW,pr.rowH-1);
+    if(row%12===0||pr.rowH>=12||pr.fl){ g.fillStyle=prBlack(row)?"#cfd6e2":"#1b1f2b"; g.fillText(noteLabel(row)+(row%12===0?" -":""),4,y+pr.rowH/2); }
+  }
+  if(pr.ph>=0){ const x=prXof(pr.ph); if(x>=PR_KW&&x<=W){ g.fillStyle=bad; g.fillRect(Math.round(x),0,2,H); } }
+}
+function prHit(x,y){
+  for(let i=pr.notes.length-1;i>=0;i--){
+    const n=pr.notes[i], x1=prXof(n.s), x2=prXof(n.e), y1=prYof(prRow(n.freq));
+    // the grip is the right 8 px of the note, the right half of a note narrower than 16 px
+    if(x>=x1-4&&x<=x2&&y>=y1&&y<y1+pr.rowH) return {n,edge:x>x2-(x2-x1<PR_GRIP*2?(x2-x1)/2:PR_GRIP)};
+  }
+  return null;
+}
+function prDelete(n){ const keep=pr.notes.filter(o=>o.s!==n.s); pr.selS=-1; prCommit(keep); }
+function sndBeep(freq,ms){
+  try{
+    sndCtx=sndCtx||new (window.AudioContext||window.webkitAudioContext)(); sndCtx.resume();
+    const g=sndCtx.createGain(); g.gain.value=0.12; g.connect(sndCtx.destination);
+    const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=freq; o.connect(g);
+    o.start(); o.stop(sndCtx.currentTime+ms/1000);
+  }catch(e){ sndMsg("sound failed: "+e.message); }
+}
+// a click on the keyboard strip: 300 ms of that note on the controller when connected, in the browser otherwise
+function prKeyPlay(row){
+  if(!sounds||lv.w||lv.timer) return;
+  const freq=noteHz(row);
+  if(pl.cur) plSendTones(sndLaneSides(curLane),Math.min(0,sounds.gain),freq,300,0,0); else sndBeep(freq,300);
+}
+// What Crop to 32 keeps, for all voices: from the selection start (else the melody start) up to the selection end,
+// cut where the first voice would pass SND_NOTES entries; pieces under SND_MS_MIN are dropped.
+// end = where the kept range ends (finite when a voice limited it).
+function prCropList(){
+  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, mel=sounds.mel[curMel];
+  const cut=(lane,lim)=>{
+    const out=[], hi=[]; let t=0;
+    for(const n of lane){
+      const lo=Math.max(t,a), h=Math.min(t+n.ms,lim);
+      if(h-lo>=SND_MS_MIN){ out.push({freq:n.freq,ms:h-lo}); hi.push(h); }
+      t+=n.ms;
+    }
+    return {out,hi};
+  };
+  let lim=b, capped=false;
+  for(const lane of mel){ const c=cut(lane,b); if(c.out.length>SND_NOTES){ lim=Math.min(lim,c.hi[SND_NOTES-1]); capped=true; } }
+  return {lanes:mel.map(l=>cut(l,lim).out.slice(0,SND_NOTES)),end:lim,capped};
+}
+function prCrop(){
+  if(!sounds) return;
+  sndLiveHalt(true);
+  const {lanes}=prCropList(); let n=0, total=0;
+  lanes.forEach((out,v)=>{ n=Math.max(n,out.length); total=Math.max(total,out.reduce((a,x)=>a+x.ms,0)); const st=sounds.mel[curMel][v]; st.length=0; st.push(...out); });
+  pr.range=null; pr.selS=-1; pr.fitNow=true; sndDirty(); sndRender();
+  sndMsg("Kept "+n+" entries ("+(total/1000).toFixed(2)+" s)");
+}
+function prInit(){
+  const cv=pr.cv=$("#prCanvas");
+  const pt=e=>{ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
+  cv.addEventListener("mousedown",e=>{
+    if(!sounds||e.button!==0) return;
+    cv.focus(); const {x,y}=pt(e);
+    pr.fl=prFoldList();
+    if(x<PR_KW){ if(y>=PR_RH) prKeyPlay(prRowAt(y)); return; }
+    if(y<PR_RH){ const a=prSnap(prMsOf(x)); pr.drag={type:"range",a}; pr.range={a,b:a}; prDraw(); e.preventDefault(); return; }
+    const h=prHit(x,y);
+    if(h){
+      pr.selS=h.n.s; pr.lastLen=h.n.e-h.n.s;
+      pr.drag={type:h.edge?"resize":"move",ms0:prMsOf(x),row0:prRowAt(y),rows:pr.fl,orig:{...h.n},base:pr.notes.filter(o=>o!==h.n),moved:false};
+    }else{
+      // press and drag draws a note, a plain click adds one with the length of the last note used
+      pr.drag={type:"draw",s:prSnap(prMsOf(x),true),row:prClampRow(prRowAt(y)),x0:x,rows:pr.fl,base:pr.notes,moved:false};
+    }
+    prDraw(); e.preventDefault();
+  });
+  window.addEventListener("mousemove",e=>{
+    const d=pr.drag, {x,y}=pt(e);
+    if(!d){
+      if(e.target===cv){
+        const h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null;
+        cv.style.cursor=x<PR_KW?(y>=PR_RH?"pointer":"default"):y<PR_RH?"col-resize":h?(h.edge?"ew-resize":"move"):"crosshair";
+      }
+      return;
+    }
+    if(d.type==="range"){ d.b=prSnap(prMsOf(x)); pr.range={a:Math.min(d.a,d.b),b:Math.max(d.a,d.b)}; prDraw(); return; }
+    let n;
+    if(d.type==="draw"){
+      if(!d.moved&&Math.abs(x-d.x0)<3) return;
+      d.moved=true; d.len=Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,prSnap(prMsOf(x))-d.s));
+      n={s:d.s,e:d.s+d.len,freq:noteHz(d.row)};
+    }else{
+      d.moved=true;
+      const dms=prMsOf(x)-d.ms0, o=d.orig;
+      if(d.type==="move"){
+        const s=prSnap(o.s+dms); let freq=o.freq;
+        if(d.rows){ const row=prRowAt(y); if(row!==d.row0) freq=noteHz(row); }
+        else{ const dr=prRowAt(y)-d.row0; if(dr) freq=noteHz(prClampRow(prRow(o.freq)+dr)); }
+        n={s,e:s+(o.e-o.s),freq};
+      }else{
+        d.len=Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,prSnap(o.e+dms)-o.s));
+        n={s:o.s,e:o.s+d.len,freq:o.freq};
+      }
+    }
+    pr.selS=n.s; pr.notes=prPlace([...d.base,n],n); prDraw();
+  });
+  window.addEventListener("mouseup",()=>{
+    const d=pr.drag; if(!d) return;
+    if(d.type==="range"){ pr.drag=null; if(pr.range&&pr.range.b-pr.range.a<SND_MS_MIN) pr.range=null; prRefresh(); return; }
+    if(d.type==="draw"&&!d.moved){
+      pr.drag=null;
+      const n={s:d.s,e:d.s+Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,pr.lastLen)),freq:noteHz(d.row)};
+      pr.selS=n.s; pr.addedAt=performance.now(); prCommit(prPlace([...d.base,n],n)); return;
+    }
+    pr.drag=null;
+    if(d.moved){ if(d.len) pr.lastLen=d.len; prCommit(pr.notes); } else prDraw();
+  });
+  cv.addEventListener("contextmenu",e=>{
+    e.preventDefault(); if(!sounds) return;
+    const {x,y}=pt(e), h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null; if(h) prDelete(h.n);
+  });
+  cv.addEventListener("dblclick",e=>{
+    if(!sounds||performance.now()-pr.addedAt<600) return; // the second click of a double-click on empty space
+    const {x,y}=pt(e), h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null; if(h) prDelete(h.n);
+  });
+  cv.addEventListener("keydown",e=>{
+    if((e.key==="Delete"||e.key==="Backspace") && pr.selS>=0 && sounds){
+      e.preventDefault(); const keep=pr.notes.filter(n=>n.s!==pr.selS); pr.selS=-1; prCommit(keep);
+    }else if(e.key==="Escape"){ pr.selS=-1; pr.range=null; prRefresh(); }
+  });
+  cv.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const {x}=pt(e);
+    if(e.ctrlKey) prZoom(e.deltaY<0?1.25:0.8,x);
+    else if(e.shiftKey){ pr.x0=Math.max(0,pr.x0+e.deltaY/pr.pxms); prSync(); prDraw(); }
+    else if(e.altKey){ pr.rowH=Math.max(6,Math.min(30,pr.rowH+(e.deltaY<0?2:-2))); prDraw(); }
+    else { pr.pTop+=e.deltaY>0?-2:2; prDraw(); }
+  },{passive:false});
+  cv.addEventListener("dragover",e=>{ e.preventDefault(); cv.style.outline="2px solid var(--acc2)"; });
+  cv.addEventListener("dragleave",()=>{ cv.style.outline=""; });
+  cv.addEventListener("drop",e=>{ e.preventDefault(); cv.style.outline=""; if(e.dataTransfer.files[0]) midiLoad(e.dataTransfer.files[0]); });
+  $("#prScroll").oninput=()=>{ pr.x0=+$("#prScroll").value; prDraw(); };
+  $("#prZoomIn").onclick=()=>prZoom(1.5); $("#prZoomOut").onclick=()=>prZoom(1/1.5);
+  $("#prFit").onclick=()=>{ pr.fitNow=true; prDraw(); };
+  $("#prClearSel").onclick=()=>{ pr.range=null; prRefresh(); };
+  $("#prCrop").onclick=prCrop;
+  $("#prBpm").onchange=prBpmChange; $("#prSnap").onchange=()=>prDraw();
+  try{ pr.fold=sessionStorage.getItem(PR_FOLD)==="1"; }catch(e){}
+  $("#prFold").checked=pr.fold;
+  $("#prFold").onchange=()=>{
+    pr.fold=$("#prFold").checked; try{ sessionStorage.setItem(PR_FOLD,pr.fold?"1":"0"); }catch(e){}
+    pr.fitNow=true; prDraw();
+  };
+  new ResizeObserver(()=>prDraw()).observe(cv);
+}
+// playhead animation: follows the live playback or the browser preview
+function prAnim(){
+  let ph=-1;
+  if(lv.w||lv.timer) ph=lv.base+Math.max(0,performance.now()-lv.t0);
+  else if(sndPrevOsc.length) ph=Math.max(0,performance.now()-sndPrevT0);
+  if(ph!==pr.ph||ph>=0){ pr.ph=ph; prDraw(); }
+  if(ph>=0) requestAnimationFrame(prAnim);
+}
+// live playback on the controller (WebHID): every voice plays its notes as 0x83 tones on its own side
+// (SND_SIDES: 0 and 1 trackpads, 3 and 4 grips); a rest or the end of a voice is an off tone on that side only.
+// Timed from a Worker so a background tab keeps time.
+const lv={w:null, timer:0, url:"", t0:0, base:0, evs:[], next:0, gain:0};
+function sndLiveUi(){
+  const has=!!(sounds&&pl.cur&&sndPlayLanes().some(v=>sounds.mel[curMel][v].length));
+  $("#sndLive").disabled=!has||!!(lv.w||lv.timer);
+  $("#sndLiveStop").disabled=!(lv.w||lv.timer);
+}
+function sndLiveHalt(silence){
+  const running=!!(lv.w||lv.timer);
+  if(lv.w){ lv.w.terminate(); lv.w=null; }
+  if(lv.timer){ clearInterval(lv.timer); lv.timer=0; }
+  if(lv.url){ URL.revokeObjectURL(lv.url); lv.url=""; }
+  if(silence&&running&&pl.cur) plOff(SND_SIDES);
+  pr.ph=-1; prDraw(); sndLiveUi();
+}
+function sndLiveTick(){
+  const pos=performance.now()-lv.t0, due=[];
+  while(lv.next<lv.evs.length && lv.evs[lv.next].t<=pos) due.push(lv.evs[lv.next++]);
+  if(!due.length) return;
+  // per side only the current event is sent; events the tick missed are skipped
+  const cur={}; for(const ev of due) cur[ev.lane]=ev;
+  for(const lane in cur){
+    const ev=cur[lane];
+    if(ev.end||!ev.freq) plOff(ev.sides);
+    else{
+      const rem=pos-ev.t<15?ev.ms:Math.max(1,Math.round(ev.t+ev.ms-pos));
+      plSendTones(ev.sides,lv.gain,Math.max(1,Math.min(12000,ev.freq)),Math.min(32767,rem),0,0);
+    }
+  }
+  if(lv.next>=lv.evs.length) sndLiveHalt(false);
+}
+function sndLiveStart(){
+  if(!sounds||!pl.cur) return;
+  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, evs=[];
+  sndPlayLanes().forEach(v=>{
+    const mine=[], sides=sndLaneSides(v); let t=0;
+    for(const n of sounds.mel[curMel][v]){ const lo=Math.max(t,a), hi=Math.min(t+n.ms,b); if(hi>lo) mine.push({t:lo-a,lane:v,sides,freq:n.freq,ms:hi-lo}); t+=n.ms; }
+    if(mine.length){ const e=mine[mine.length-1]; mine.push({t:e.t+e.ms,lane:v,sides,end:true}); evs.push(...mine); }
+  });
+  if(!evs.length) return;
+  evs.sort((x,y)=>x.t-y.t);
+  sndLiveHalt(false); sndPreviewStop();
+  lv.evs=evs; lv.next=0; lv.base=a; lv.t0=performance.now()+30; lv.gain=Math.min(0,sounds.gain);
+  try{
+    lv.url=URL.createObjectURL(new Blob(["setInterval(function(){postMessage(1)},5)"],{type:"text/javascript"}));
+    lv.w=new Worker(lv.url); lv.w.onmessage=sndLiveTick;
+  }catch(err){ lv.timer=setInterval(sndLiveTick,5); }
+  sndLiveUi(); prAnim();
 }
 (function soundsInit(){
   const tabs=$("#sndTabs");
   for(let m=0;m<SND_MELODIES;m++){ const t=document.createElement("span"); t.className="slot-tab";
-    t.onclick=()=>{ sndPreviewStop(); curMel=m; if(sounds) sndRender(); }; tabs.appendChild(t); }
+    t.onclick=()=>{ sndPreviewStop(); sndLiveHalt(true); curMel=m; pr.range=null; pr.selS=-1; pr.fitNow=true; if(sounds) sndRender(); }; tabs.appendChild(t); }
+  prInit();
+  SND_LANE_ABBR.forEach((a,v)=>{
+    const b=document.createElement("button"); b.textContent=a; b.title=SND_LANE_NAMES[v]+" (side "+SND_SIDES[v]+")";
+    b.onclick=()=>{ if(curLane===v) return; curLane=v; pr.selS=-1; if(sounds) sndRender(); };
+    $("#sndLanes").appendChild(b);
+  });
   for(const [v,n] of SND_CONFIRM){ const o=document.createElement("option"); o.value=v; o.textContent=n; $("#sndConfirm").appendChild(o); }
-  $("#sndConfirm").onchange=()=>{ if(!sounds) return; sounds.confirm=+$("#sndConfirm").value; soundsCommit(); };
+  $("#sndConfirm").onchange=()=>{ if(!sounds) return; sounds.confirm=+$("#sndConfirm").value; soundsCommit(); scEditSync(); };
   $("#sndVol").oninput=()=>{ $("#sndVolV").textContent=fmtSlider("sndVol",$("#sndVol").value); };
   $("#sndVol").onchange=()=>{ if(!sounds) return; sounds.gain=+$("#sndVol").value; soundsCommit(); };
   $("#sndName").oninput=()=>{ soundSetName(curMel,$("#sndName").value.slice(0,24)); if(sounds) sndRender(); };
@@ -4862,11 +5334,14 @@ function midiImport(){
   $("#sndAddRest").onclick=()=>sndAdd(0);
   $("#sndOctUp").onclick=()=>sndOctave(1);
   $("#sndOctDown").onclick=()=>sndOctave(-1);
-  $("#sndClear").onclick=()=>{ if(!sounds) return; sndNotes().length=0; sndDirty(); sndRender(); };
+  $("#sndClear").onclick=()=>{ if(!sounds) return; sndLiveHalt(true); sndNotes().length=0; pr.range=null; pr.selS=-1; sndDirty(); sndRender(); };
+  $("#sndClearAll").onclick=()=>{ if(!sounds||!sounds.mel[curMel].some(v=>v.length)) return;
+    if(!confirm("Clear all four voices of "+soundName(curMel)+"?")) return;
+    sndLiveHalt(true); sounds.mel[curMel].forEach(v=>{ v.length=0; }); pr.range=null; pr.selS=-1; sndDirty(); sndRender(); };
   $("#sndPrev").onclick=sndPreview;
-  $("#sndPlayPuck").onclick=()=>{ const st=sndNotes(); soundsPlay(0x31,[st.length,...st.flatMap(n=>[n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8])]); };
   $("#sndPlayStored").onclick=()=>soundsPlay(0x30,[curMel]);
-  for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };
+  for(const id of ["sndSave","scSndSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };
+  for(const sel of document.querySelectorAll(".scMel")) sel.onchange=()=>{ if(!sounds) return; sounds.ev[+sel.dataset.ev]=+sel.value; sndDirty(); sndRender(); };
   $("#midiBtn").onclick=()=>$("#midiFile").click();
   $("#midiFile").onchange=()=>{ midiLoad($("#midiFile").files[0]); $("#midiFile").value=""; };
   $("#midiGo").onclick=midiImport;
@@ -4878,25 +5353,31 @@ var scReady=false;
 const SC_SHORT=["Steam","Xbox 360","Switch HORI","Lizard","Switch Pro","PS5","DS4 gyro","PS5 clean","DS4 clean","PS3","Xbox OG","DirectInput","SInput","PS5 console"];
 const SC_BACK4=0x60180; // L4 R4 L5 R5
 let scKey="", scFigs=[];
+// the melody event of a mode: the family the firmware picks (soundsModeEvent): 3 PlayStation, 4 Xbox, 5 Switch, 6 other
+const scFamEv=m=>[5,6,7,8,9,13].includes(m)?3:[1,10].includes(m)?4:[2,4].includes(m)?5:6;
 function scChord(){
   const p=dev&&lastP;
-  return {live:!!p,
+  return {live:!!p, edit:!!(p&&!isDongle),
+    mel:(p&&!isDongle&&soundsCap&&sounds)?{ev:sounds.ev.slice(),names:Array.from({length:SND_MELODIES},(_,i)=>soundName(i))}:null,
     btn:(p&&p.length>25)?[p[23],p[24],p[25]]:[3,1,4],
     dpad:(p&&p[0]>=18&&p.length>183)?[p[180],p[181],p[182],p[183]]:[9,8,7,2]};
 }
 // rows: k = what to press, tb = highlighted buttons, x = result
-function scGroups(c){
-  const M=m=>modeFull(m), ro=(k,tb,x)=>({k,tb,x});
+function scGroups(c,png){
+  // m = the melody of the row, only when the puck's sounds are loaded
+  const me=ev=>c.mel?(c.mel.ev[ev]===SND_NONE?"None":(c.mel.ev[ev]+1)+": "+c.mel.names[c.mel.ev[ev]]):undefined;
+  const M=m=>modeFull(m), ro=(k,tb,x,m)=>({k,tb,x,m});
   // a chord set to None does nothing, so it is left out
-  const mc=(k,tb,m)=>m===CHORD_NONE?null:ro(k,tb,M(m));
+  const mc=(k,tb,m)=>m===CHORD_NONE?null:ro(k,tb,M(m),me(scFamEv(m)));
+  const prof=c.mel?[0,1,2].map(i=>(i+1)+": "+me(i).replace(/^\d+: /,"")).join(", "):undefined;
   return [
     {t:"Switch USB mode",sub:"Hold all four back paddles (L4 R4 L5 R5), then press",rows:[
-      ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode."),
+      ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode.",me(6)),
       mc("back4 + B",SC_BACK4|0x2,c.btn[0]),mc("back4 + X",SC_BACK4|0x4,c.btn[1]),mc("back4 + Y",SC_BACK4|0x8,c.btn[2]),
       mc("back4 + D-pad left",SC_BACK4|0x1000,c.dpad[0]),mc("back4 + D-pad up",SC_BACK4|0x2000,c.dpad[1]),
       mc("back4 + D-pad right",SC_BACK4|0x800,c.dpad[2]),mc("back4 + D-pad down",SC_BACK4|0x400,c.dpad[3])].filter(Boolean)},
     {t:"Profiles",sub:"Hold all four back paddles, then press. The pad buzzes N times for profile N. Emulated modes only.",rows:[
-      ro("back4 + RB",SC_BACK4|0x200,"Next profile"),ro("back4 + LB",SC_BACK4|0x80000,"Previous profile")]},
+      ro("back4 + RB",SC_BACK4|0x200,"Next profile",prof),ro("back4 + LB",SC_BACK4|0x80000,"Previous profile",prof)]},
     {t:"Power and slots",rows:[
       ro("Steam + Y, hold 2 s",0x10000|0x8,"Turn the controller off. Works in every mode."),
       ro("RB + A + Steam, controller off",0x200|0x1|0x10000,"Turn on and connect as slot 1"),
@@ -4904,21 +5385,62 @@ function scGroups(c){
     {t:"Lizard (always) mode",sub:"Defaults, editable in Lizard / desktop mapping",rows:[
       ro("Steam + L5",0x10000|0x40000,"Volume down"),ro("Steam + R5",0x10000|0x100,"Volume up"),
       ro("Steam + L4",0x10000|0x20000,"Ctrl+Alt+Delete"),ro("Steam + X",0x10000|0x4,"Win+Ctrl+O (on-screen keyboard)"),
-      ro("LB, RB",0x80000|0x200,"Held as Ctrl and Alt, so RB + View is Alt+Tab")]}];
+      ro("LB, RB",0x80000|0x200,"Held as Ctrl and Alt, so RB + View is Alt+Tab")]},
+    ...(png&&c.mel?[{t:"Controller connects",rows:[ro("(no shortcut)",0,"A controller connects",me(7))]}]:[])];
+}
+// The editable table: melody selects follow the mode each chord is set to (the family's event), None hides it
+function scEditSync(){
+  const edit=!!(dev&&lastP&&!isDongle);
+  $("#scEdit").classList.toggle("hide",!edit);
+  if(!edit) return;
+  const dcap=lastP[0]>=18&&lastP.length>183;
+  for(const tr of document.querySelectorAll("#scTable tr.scDpad")) tr.classList.toggle("hide",!dcap);
+  $("#dpadOld").classList.toggle("hide",dcap);
+  const snd=!!(soundsCap&&sounds);
+  for(const el of document.querySelectorAll("#scTable .scMelCol, #scSnd, #scSndRow")) el.classList.toggle("hide",!snd);
+  if(!snd){ for(const tr of document.querySelectorAll("#scTable tr.scFam")) tr.classList.add("hide"); return; }
+  for(const el of document.querySelectorAll("#scTable .scProfName")) el.textContent=profName(+el.dataset.i);
+  const dim=sounds.confirm===0||sounds.confirm===1, byEv={};
+  const fill=(sel,ev)=>{
+    sel.dataset.ev=ev;
+    if(!sel.options.length){
+      const o=document.createElement("option"); o.value=SND_NONE; o.textContent="None"; sel.appendChild(o);
+      for(let m=0;m<SND_MELODIES;m++){ const q=document.createElement("option"); q.value=m; sel.appendChild(q); }
+    }
+    for(let m=0;m<SND_MELODIES;m++) sel.options[m+1].textContent=(m+1)+": "+soundName(m);
+    if(document.activeElement!==sel) sel.value=sounds.ev[ev];
+  };
+  for(const tr of document.querySelectorAll("#scTable tr[data-dyn]")){
+    const sel=tr.querySelector(".scMel"), dash=tr.querySelector(".scDash"), cs=tr.querySelector("select.chord, select.chordD");
+    const ev=tr.dataset.dyn==="a"?6:(+cs.value===CHORD_NONE?null:scFamEv(+cs.value));
+    sel.classList.toggle("hide",ev===null); if(dash) dash.classList.toggle("hide",ev!==null);
+    tr.dataset.ev=ev===null?"":ev;
+    if(ev!==null){ fill(sel,ev); (byEv[ev]=byEv[ev]||[]).push(tr); }
+  }
+  for(const sel of document.querySelectorAll("#scTable .scMel")){ if(!sel.closest("tr[data-dyn]")) fill(sel,+sel.dataset.ev); } // profile, connect and family rows
+  // a family no chord points at can still play after a mode change from the panel: it gets its own row
+  for(const tr of document.querySelectorAll("#scTable tr.scFam")) tr.classList.toggle("hide",!!byEv[tr.dataset.fam]);
+  for(const tr of document.querySelectorAll("#scTable tr[data-dyn]")){
+    const note=tr.querySelector(".scShared"), others=(byEv[tr.dataset.ev]||[]).filter(x=>x!==tr).map(x=>x.cells[0].textContent);
+    note.textContent=others.length?"shared with "+others.join(", "):"";
+  }
+  for(const sel of document.querySelectorAll("#scTable .scMel")){
+    sel.style.opacity=dim?"0.55":""; sel.title=dim?"Melodies play only when Confirm with includes Sound":"";
+  }
 }
 function scHl(tb){ for(const f of scFigs) figHighlight(f,0,tb); }
 function scUpdate(){
   const card=$("#shortcutsCard"), c=scChord();
   if(dev){ const h=$("#sub-mapping-shortcuts"); if(h && card.parentNode!==h) h.appendChild(card); }
   else { const h=$("#cloneHome"); if(h.nextElementSibling!==card) h.after(card); }
-  plPlace();
+  scEditSync();
   const key=JSON.stringify(c);
   if(key===scKey) return;
   scKey=key;
-  $("#scNote").textContent=c.live?"Mode chords are this puck's current assignments (set in Back4 chords). The rest is fixed in the firmware.":
-    "Showing the firmware defaults for the mode chords. Connect a puck to see its own assignments. The rest is fixed in the firmware.";
+  $("#scNote").textContent=c.edit?"The table is this puck's current setup. Modes, Confirm with and Volume are saved when you change them; melodies need Save to device. The fixed shortcuts are listed below the table.":
+    "Showing the firmware defaults for the mode chords. Connect a puck to see and change its own. The rest is fixed in the firmware.";
   const list=$("#scList"); list.textContent="";
-  for(const g of scGroups(c)){
+  for(const g of scGroups(c).slice(c.edit?2:0)){
     const d=document.createElement("div"); d.className="sc-group";
     const h=document.createElement("h3"); h.textContent=g.t; d.appendChild(h);
     if(g.sub){ const sp=document.createElement("p"); sp.className="sub2"; sp.textContent=g.sub; d.appendChild(sp); }
@@ -4996,17 +5518,20 @@ function scDraw(ctx,imgs,col,dark,c,W){
     ctx.font=font(700,15); ctx.fillStyle=col.fg; ctx.textAlign="center";
     ctx.fillText(k,bx+((p.bb[0]+p.bb[2])/2-bv[0])*S2,by+((p.bb[1]+p.bb[3])/2-bv[1])*S2); ctx.fillStyle=col.acc; }
   // other shortcuts as text, right of the back view
-  const tx=bx+bv[2]*S2+36, kw=250, xw=W-40-(tx+kw);
+  const tx=bx+bv[2]*S2+36, kw=250, mw=c.mel?190:0, xw=W-40-(tx+kw)-mw;
   let y=by+4;
-  for(const g of scGroups(c).slice(1)){
-    ctx.textAlign="left"; ctx.fillStyle=col.fg; ctx.font=font(700,18); ctx.fillText(g.t,tx,y+10); y+=26;
+  for(const g of (c.mel?scGroups(c,true):scGroups(c).slice(1))){
+    ctx.textAlign="left"; ctx.fillStyle=col.fg; ctx.font=font(700,18); ctx.fillText(g.t,tx,y+10);
+    if(c.mel){ ctx.fillStyle=col.mut; ctx.font=font(400,13); ctx.fillText("Melody",tx+kw+xw+8,y+10); }
+    y+=26;
     if(g.sub){ ctx.fillStyle=col.mut; ctx.font=font(400,13); for(const l of scWrap(ctx,g.sub,W-40-tx)){ ctx.fillText(l,tx,y+8); y+=18; } }
     ctx.font=font(400,15);
     for(const r of g.rows){
-      const ls=scWrap(ctx,r.x,xw), ks=scWrap(ctx,r.k,kw-12), n=Math.max(ls.length,ks.length);
+      const ls=scWrap(ctx,r.x,xw), ks=scWrap(ctx,r.k,kw-12), ms=r.m?scWrap(ctx,r.m,mw-12):[], n=Math.max(ls.length,ks.length,ms.length);
       ctx.strokeStyle=col.line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(tx,y); ctx.lineTo(W-40,y); ctx.stroke();
       ctx.font=font(700,14,true); ctx.fillStyle=col.fg; ks.forEach((l,i)=>ctx.fillText(l,tx,y+12+i*19));
       ctx.font=font(400,15); ctx.fillStyle=col.fg; ls.forEach((l,i)=>ctx.fillText(l,tx+kw,y+12+i*19));
+      ms.forEach((l,i)=>ctx.fillText(l,tx+kw+xw+8,y+12+i*19));
       y+=n*19+8;
     }
     y+=12;
@@ -5039,20 +5564,14 @@ async function scSave(){
   scReady=true; scUpdate();
 })();
 
-// ===================== Haptic player (WebHID test panel) =====================
+// ===================== Controller connection (WebHID), live playback and test panel =====================
 // Independent from the WebUSB connection: a puck in Steam mode, an official Valve puck (28DE:1304) and a wired
 // controller (28DE:1302) are all plain HID devices. The puck exposes one vendor interface per slot; the one that
 // delivers input reports is the slot with a live controller. Tones are OUTPUT report 0x83 HAPTIC_LFO_TONE:
 // [side u8][gain_db i8][freq u16][dur_ms u16][lfo_freq u16][lfo_depth u8], rumble is 0x80 with a 9-byte payload.
 const PL_FILTERS=[{vendorId:0x28DE,productId:0x1304,usagePage:0xFF00},{vendorId:0x28DE,productId:0x1302,usagePage:0xFF00}];
 const pl={ifaces:[], cur:null, queue:Promise.resolve(), sweep:0, lenTone:9, lenRumble:9};
-// the card sits in the Player tab while a puck is connected over WebUSB, on the landing page (after Shortcuts) otherwise
-function plPlace(){
-  const card=$("#playerCard"); if(!card) return;
-  if(dev){ const h=$("#sub-mapping-player"); if(h && card.parentNode!==h) h.appendChild(card); }
-  else { const sc=$("#shortcutsCard"); if(sc.nextElementSibling!==card) sc.after(card); }
-}
-function plSetStatus(t){ $("#plStatus").textContent=t; }
+function plSetStatus(t){ $("#plStatus").textContent=t; $("#plStatus2").textContent=t; }
 const plHex=a=>[...a].map(x=>x.toString(16).padStart(2,"0")).join(" ");
 // byte length of an output report (without the id), from the report descriptor; null if not listed
 function plOutLen(d,id){
@@ -5069,6 +5588,8 @@ function plOutLen(d,id){
 function plStatusLine(){
   const c=pl.cur;
   for(const id of ["plPlay","plStopOff","plStopZero","plStopRumble","plStopAll","plSwGo"]) $("#"+id).disabled=!c;
+  if(!c) sndLiveHalt(false);
+  sndLiveUi();
   if(!c){ plSetStatus("Not connected."); return; }
   plSetStatus("Connected: 28DE:"+c.dev.productId.toString(16).toUpperCase().padStart(4,"0")+", interface "+(c.idx+1)+
     ", output length 0x83: "+pl.lenTone+" B, 0x80: "+pl.lenRumble+" B");
@@ -5088,7 +5609,7 @@ async function plUse(entry){
   pl.lenTone=plOutLen(entry.dev,0x83)||9;
   pl.lenRumble=plOutLen(entry.dev,0x80)||9;
   plStatusLine();
-  $("#plDisconnect").disabled=false;
+  $("#plDisconnect").disabled=false; $("#plDisconnect2").disabled=false;
 }
 async function plConnect(){
   const picked=await navigator.hid.requestDevice({filters:PL_FILTERS});
@@ -5117,11 +5638,12 @@ async function plConnect(){
 }
 async function plDisconnect(){
   pl.sweep++;
+  sndLiveHalt(false);
   if(pl.cur) await plStopAll();
   for(const e of pl.ifaces){ try{ if(e.dev.opened) await e.dev.close(); }catch(err){} }
   pl.cur=null; pl.ifaces=[];
   $("#plIface").textContent=""; $("#plIface").disabled=true; $("#plIfaceNote").textContent="";
-  $("#plDisconnect").disabled=true; $("#plSwNow").textContent="";
+  $("#plDisconnect").disabled=true; $("#plDisconnect2").disabled=true; $("#plSwNow").textContent="";
   plStatusLine();
 }
 // every send goes through one promise chain so reports never overlap
@@ -5132,7 +5654,7 @@ function plSend(id,payload,c=pl.cur){
   const run=async()=>{
     if(!c.dev.opened){ log("Player: device not open, report skipped"); return; }
     $("#plLast").textContent="Last report: "+id.toString(16).toUpperCase()+"  "+plHex(data);
-    log("Player: send 0x"+id.toString(16)+" "+plHex(data));
+    if(!(lv.w||lv.timer)) log("Player: send 0x"+id.toString(16)+" "+plHex(data)); // not per report while a melody plays
     try{ await c.dev.sendReport(id,data); }catch(e){ log("Player: send failed: "+e.message); }
   };
   pl.queue=pl.queue.then(run,run);
@@ -5168,13 +5690,14 @@ async function plSweep(){
 }
 (function plInit(){
   plStatusLine();
-  if(!navigator.hid){ $("#plNoHid").classList.remove("hide"); $("#plConnect").disabled=true; return; }
-  $("#plConnect").onclick=async()=>{
-    $("#plConnect").disabled=true;
+  if(!navigator.hid){ $("#plNoHid").classList.remove("hide"); $("#plConnect").disabled=true; $("#plConnect2").disabled=true; return; }
+  for(const id of ["plConnect","plConnect2"]) $("#"+id).onclick=async()=>{
+    $("#plConnect").disabled=true; $("#plConnect2").disabled=true;
     try{ await plConnect(); }catch(e){ log("Player: "+e.message); }
-    finally{ $("#plConnect").disabled=false; }
+    finally{ $("#plConnect").disabled=false; $("#plConnect2").disabled=false; }
   };
-  $("#plDisconnect").onclick=plDisconnect;
+  $("#plDisconnect").onclick=plDisconnect; $("#plDisconnect2").onclick=plDisconnect;
+  $("#sndLive").onclick=sndLiveStart; $("#sndLiveStop").onclick=()=>sndLiveHalt(true);
   $("#plIface").onchange=async e=>{
     try{ await plUse(pl.ifaces[+e.target.value]); }catch(err){ log("Player: "+err.message); }
   };
@@ -5188,13 +5711,14 @@ async function plSweep(){
   $("#plSwStop").onclick=()=>{ pl.sweep++; $("#plSwNow").textContent=""; plStopAll(); };
   navigator.hid.addEventListener("disconnect",e=>{
     if(pl.cur && pl.ifaces.some(x=>x.dev===e.device)){
+      // the device is gone, so nothing can be sent; notes end by themselves because dur = note length
       pl.sweep++; pl.cur=null; pl.ifaces=[]; plStatusLine();
-      $("#plDisconnect").disabled=true; $("#plIface").textContent=""; $("#plIface").disabled=true;
+      $("#plDisconnect").disabled=true; $("#plDisconnect2").disabled=true; $("#plIface").textContent=""; $("#plIface").disabled=true;
       $("#plIfaceNote").textContent=""; $("#plSwNow").textContent=""; plSetStatus("Disconnected."); log("Player: device disconnected");
     }
   });
   // best effort: silence the actuators when the page goes away
-  window.addEventListener("pagehide",()=>{ if(pl.cur){ pl.sweep++; plStopAll(); } });
+  window.addEventListener("pagehide",()=>{ if(pl.cur){ pl.sweep++; sndLiveHalt(false); plStopAll(); } });
 })();
 
 // ===================== Copy diagnostics =====================

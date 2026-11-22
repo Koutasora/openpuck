@@ -6,4 +6,5 @@ Statusy: PLANOWANY, W TOKU, ZAMKNIĘTY. W danej chwili najwyżej jeden etap ma s
 |----|-------|--------|------|
 | 01 | plan-i-szkielet | ZAMKNIĘTY | 01-plan-i-szkielet.md |
 | 02 | przypisania-i-strona | ZAMKNIĘTY | 02-przypisania-i-strona.md |
-| 03 | midi-na-zywo | W TOKU | 03-midi-na-zywo.md |
+| 03 | midi-na-zywo | ZAMKNIĘTY | 03-midi-na-zywo.md |
+| 04 | nacisk-analogowy | PLANOWANY |  |

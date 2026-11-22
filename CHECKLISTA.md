@@ -58,7 +58,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [x] Melodia po zmianie trybu (back4 + przycisk) osobno dla rodzin PlayStation, Xbox, Switch i other
 - [x] Melodia przy połączeniu pada, najwyżej raz na 20 s (szybkie wyłączenie i włączenie pada nie gra jej drugi raz)
 - [x] Import pliku MIDI i odsłuch zaimportowanej melodii
-- [x] Import MIDI z niskimi nutami: melodia przesunięta w górę i słyszalna; Octave up/down
+- [x] Octave up/down przesuwa melodię o oktawę (import MIDI sam już nie przesuwa oktaw, patrz sekcja 9)
 - [x] Szybka melodia (import MIDI z krótkimi nutami) gra płynnie, pad nie gubi połączenia ani ustawień
 - [x] Zaznaczanie tekstu na stronie nie znika (strona nie przebudowuje kart w trakcie)
 - [x] Przycisk Copy w polu Version kopiuje wersję
@@ -76,9 +76,51 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 ### 8. Poprawki strony po wydaniu 1.0.0
 - [ ] Status -> Status: karta Version ma tylko trzy pola i notkę; przyciski Copy version i Capture 3 s and copy są na górze Status -> Log, nad listą zdarzeń, i działają (schowek); z dongle'em Log też otwiera się bez błędów
 - [ ] Status -> Debug: karta Factory erase z opisem, potwierdzenia jak dawniej; górny pasek bez Factory erase i mieści się w jednej linii
-- [ ] Status -> Modes, Back4 chords: na listach sama nazwa trybu (także None), pod listą opis wybranego trybu (host, panel, keyboard/mouse), pełny opis w podpowiedzi
+- [ ] Mapping -> Shortcuts, tabela: na listach trybów (back4 + B / X / Y i D-pad) sama nazwa trybu (także None), pod listą opis wybranego trybu (host, panel, keyboard/mouse), pełny opis w podpowiedzi
+- [ ] Rodzina trybów, na którą nie wskazuje żaden skrót (np. Xbox), ma osobny wiersz "Mode changed from the panel: Xbox" z listą melodii; wiersze Profile 1-3 pokazują nazwy profili użytkownika
 - [ ] Mapping -> Live view: drążki w procentach (np. "2%, 3%"), triggery w procentach, surowe wartości w podpowiedzi; Copy diagnostics i Capture mają surowe liczby
 - [ ] Notka "First connect uses the Chrome/Edge device picker..." widoczna tylko bez połączenia, po połączeniu znika, po odłączeniu wraca
-- [ ] Mapping -> Sounds, Events: listy melodii węższe, etykieta i lista w jednym wierszu
+- [ ] Mapping -> Shortcuts: listy melodii mieszczą się w kolumnie Melody, etykieta i lista w jednym wierszu
 - [ ] Rolka myszy zmienia ustawienie w klikniętej (aktywnej) liście, jeden krok na ząbek, bez zawijania; bez kliknięcia lista nie reaguje i rolka przewija stronę
 - [ ] Status -> Modes: kafelki trybów USB równej wielkości w równych kolumnach (4 przy pełnej szerokości, mniej w wąskim oknie), bez poziomego przewijania
+
+### 9. Sounds: piano roll i granie na żywo (etap 03)
+Punkty §9-11 bez osobnego testu ręcznego odhaczone na podstawie testów automatycznych (`tests/sounds-web`, `tests/sounds`) i testu użytkownika z 2026-11-22.
+- [x] Mapping -> Sounds: piano roll pokazuje melodię; klik w puste pole dodaje nutę, przeciągnięcie przesuwa w czasie i wysokości, prawa krawędź zmienia długość, Delete usuwa; tabela pod spodem zmienia się razem z nim i odwrotnie
+- [x] Przyciąganie Off / 10 / 50 / 100 ms działa; nuta nałożona na inną przycina ją, żadne nuty się nie nakładają
+- [x] Przeciągnięcie po linijce czasu zaznacza zakres; Clear selection czyści; Crop to 32 zostawia zakres od jego początku, najwyżej 32 wpisy (cienka kreska na rolce pokazuje, gdzie kończy się 32. wpis), bez zaznaczenia pierwsze 32 wpisy
+- [x] Zoom (przyciski i Ctrl + kółko), przewijanie (kółko, Shift + kółko, suwak pod rolką), Fit
+- [x] Przeciągnięcie pliku .mid na piano roll otwiera wybór ścieżki; Import wstawia wszystkie wpisy (także ponad 32), bez przesunięcia o oktawy
+- [x] Melodia ponad 32 wpisów: licznik na żółto z podpowiedzią, Save to device nieaktywny; po Crop wraca
+- [x] Connect controller (WebHID): OpenPuck w trybie Steam połączony przez WebUSB (puck Valve i pad na kablu bez OpenPucka nie są obsługiwane); interfejs z padem wybierany sam; Play on controller gra melodię na gładzikach, Stop ją kończy, czerwona kreska idzie za dźwiękiem
+- [x] Play on controller z zaznaczonym zakresem gra tylko zakres; Disconnect i zamknięcie karty wyciszają pad
+- [x] Status -> Debug: Haptic test panel gra ton na każdym side (0 lewy gładzik, 1 prawy, 2 oba, 3 lewy uchwyt, 4 prawy uchwyt), Stop all wycisza
+- [x] Zakładki Player już nie ma
+- [x] Przyciski Play on controller, Stop i Preview in browser są nad piano rollem; Fold pokazuje tylko używane wiersze (przeciągnięcie pionowo przeskakuje między nimi), wybór zostaje do końca sesji
+- [x] Piano roll: przeciągnięcie po pustym miejscu rysuje nutę, zwykły klik dodaje nutę o długości ostatnio użytej, prawy klik i podwójny klik usuwają nutę, kursor zmienia się (krzyżyk, przesuwanie, zmiana długości)
+- [x] Klik w klawisz po lewej gra nutę 300 ms (na padzie po połączeniu, inaczej w przeglądarce), nie podczas odtwarzania
+- [x] Piano roll: pole BPM (20-400) ustawia się z tempa importowanego pliku MIDI (bez tempa 120), zmiana BPM rozciąga całą melodię proporcjonalnie, a gdy któraś nuta wyszłaby poza 30-5000 ms, zmiana jest odrzucona; BPM jest pamiętany osobno dla każdej melodii tylko w przeglądarce
+- [x] Przyciąganie 1/4, 1/8, 1/16 (domyślnie), 1/32 wg BPM; linie taktu i uderzeń na rolce, numery taktów na linijce przy przyciąganiu do uderzeń
+
+### 10. Sounds: cztery głosy (etap 03, wymaga firmware z protokołem statusu 27)
+- [x] Nad piano rollem cztery przyciski LT / RT / LG / RG (lewy gładzik, prawy gładzik, lewy uchwyt, prawy uchwyt) z liczbą wpisów; aktywny w kolorze akcentu, nuty pozostałych torów są przyciemnione, obrysowane i nie da się ich chwycić
+- [x] Edycja, tabela, licznik "N / 32", Octave up/down i Clear dotyczą aktywnego toru; Fold pokazuje wiersze wszystkich torów
+- [x] Crop to 32 tnie wszystkie tory tym samym zakresem, kończy tam, gdzie pierwszy tor przekroczyłby 32 wpisy (kreska na rolce)
+- [x] Play on controller gra wszystkie niepuste tory naraz, każdy na swoim aktuatorze (LT side 0, RT side 1, LG side 3, RG side 4); pauza w torze wycisza tylko jego aktuator, Stop wycisza wszystkie cztery
+- [x] Klik w klawisz po lewej gra nutę na aktuatorze aktywnego toru
+- [x] Clear all voices (obok przycisków torów) po potwierdzeniu czyści wszystkie cztery tory bieżącej melodii; Anuluj nic nie zmienia
+- [x] Tabela nut zwinięta pod "Note list (N)", klik rozwija i zwija; Preview in browser miksuje wszystkie tory
+- [x] Save to device zapisuje 4 głosy i po ponownym wczytaniu strony wszystkie tory są na miejscu; Play saved melody on puck gra je na pucku; przycisku Play on puck już nie ma
+- [x] Puck ze starszym firmware (protokół 25-26): ostrzeżenie "This firmware stores one voice (Left trackpad)", zapis tylko toru LT, melodia gra na obu gładzikach; Play on controller gra tor LT na obu gładzikach (jak puck), przyciski RT / LG / RG są przyciemnione z podpowiedzią "not saved"
+- [x] Przywrócenie kopii z czterema głosami na puck ze starszym firmware: komunikat, że głosy RT, LG i RG nie zostały przywrócone
+- [x] Kopia zapasowa (Export / Import) z pucka na pucek z innym firmware (v1 i v2) przenosi melodie bez błędu
+- [x] Import MIDI do czterech torów: po wczytaniu pliku (przycisk lub przeciągnięcie) cztery listy (LT / RT / LG / RG) ze źródłami "Track N" i "Track N, ch C" (kanał 10 = drums), domyślnie wg średniej wysokości od najwyższej do LT, RT, LG, RG; perkusja nigdy sama; przy jednym źródle tylko LT, reszta Keep current
+- [x] Obok każdej listy liczba wpisów toru (powyżej 32 na żółto z podpowiedzią Crop to 32); Import zastępuje wskazane tory po jednym potwierdzeniu z ich nazwami, Keep current zostawia tor, Empty go czyści; komunikat podaje liczbę wpisów na tor
+
+### 11. Shortcuts: jedna tabela (zamiast kart Back4 chords, Confirmations i Events)
+- [x] Status -> Modes nie ma już karty Back4 chords, Mapping -> Settings karty Confirmations, Mapping -> Sounds karty Events; wszystko jest w Mapping -> Shortcuts
+- [x] Na górze karty Confirm with (Vibration / Sound / Both / Off) i Volume; zmiana zapisuje się od razu; przy Vibration i Off listy melodii są przyciemnione z podpowiedzią (nadal da się je zmieniać)
+- [x] Tabela: back4 + A (Steam, stałe), back4 + B / X / Y i D-pad (lista trybów jak dawniej, także None, zapis od razu), back4 + RB / LB (melodie Profile 1-3), Controller connects; kolumna Melody ma listę melodii dla każdego wiersza
+- [x] Zmiana trybu skrótu (np. back4 + X na PS5) od razu przenosi jego melodię na rodzinę tego trybu (PlayStation, Xbox, Switch, other); gdy kilka skrótów ma tę samą rodzinę, pod listą jest "shared with ..."; skrót ustawiony na None ma "-" zamiast melodii
+- [x] Save to device pod tabelą zapisuje przypisanie melodii (ten sam zapis co z karty Sounds); przy błędnej melodii przycisk jest nieaktywny i podaje powód
+- [x] Stałe skróty (Power and slots, Lizard) są pod tabelą jako tekst; bez pucka (strona startowa) karta pokazuje sam arkusz jak dawniej; Save as PNG zawiera kolumnę melodii, gdy puck jest połączony
