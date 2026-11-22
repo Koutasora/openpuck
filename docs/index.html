@@ -1871,8 +1871,51 @@ function downloadBackup(obj){
 }
 // let any in-flight poll read settle before we drive the shared endpoints ourselves
 async function waitIdle(){ for(let i=0;i<60 && inflight;i++) await new Promise(r=>setTimeout(r,5)); }
+// Panel settings (back-paddle binds blob, active profile, keyboard/mouse host, macro names) ride in an extra
+// top-level "panel" key: the original panel only reads magic/bonds/config, so it ignores the rest.
+async function panelSnapshot(){
+  const p=lastP;
+  if(!(p && p[0]>=23 && p.length>195 && !isDongle)) return null;
+  const raw=await bindsReadRaw(), b=raw&&bindsParse(raw);
+  if(!b) return null;
+  const o={version:1, binds:hexEnc(raw), activeProfile:b.active,
+    macroNames:Array.from({length:BIND_MACROS},(_,i)=>macroNames[i]||"")};
+  if(p[0]>=24){
+    await send([0x27,0xFF]); const l=await readFrame(0xB0,24,256), lv=l&&parseLive(l);
+    if(lv&&lv.host!==null) o.hostSetting=(lv.host>>2)&3;
+  }
+  return o;
+}
+async function panelRestore(pn){
+  const p=lastP;
+  if(!(p && p[0]>=23 && p.length>195 && !isDongle)){
+    log("import: this puck's firmware is too old for paddle binds — panel settings skipped"); return "Paddle binds, profile and macro names were skipped: this puck's firmware is too old.";
+  }
+  const raw=new Uint8Array(hexDec(pn.binds||"")), b=bindsParse(raw);
+  if(!b){ log("import: paddle binds in the file are not valid — skipped"); return "Paddle binds in the file were not valid and were skipped."; }
+  let ok=true;
+  for(let idx=0,o=0;o<raw.length;idx++,o+=96){
+    const part=[...raw.slice(o,o+96)];
+    await send([0x28,idx,part.length,...part]);
+    if(!await bindsAck(0x28)){ ok=false; break; }
+  }
+  if(ok){ await send([0x29]); ok=await bindsAck(0x29); }
+  if(!ok){ log("import: the puck rejected the paddle binds"); return "The puck rejected the paddle binds (a Key/Mouse action needs newer firmware)."; }
+  await send([0x2A,b.active&3]); await bindsAck(0x2A);
+  if(p[0]>=24 && pn.hostSetting!==undefined){
+    await send([0x2B,pn.hostSetting&3]);
+    for(let t=0;t<3;t++){ const f=await readFrame(0xB3,3,64); if(f&&f[0]===0x2B) break; }
+  }
+  if(Array.isArray(pn.macroNames)){
+    macroNames=pn.macroNames.slice(0,BIND_MACROS).map(x=>typeof x==="string"?x.slice(0,24):"");
+    try{ localStorage.setItem("openpuck.macroNames",JSON.stringify(macroNames)); }catch(e){}
+  }
+  log("paddle binds, profile, host setting and macro names restored");
+  return "";
+}
 async function exportBackup(){
   if(!dev){ log("not connected"); return; }
+  if(dfuBusy){ log("export: a firmware update is running"); return; }
   backupBusy=true; await waitIdle();
   try{
     // grab a fresh config snapshot, then the bond dump
@@ -1883,6 +1926,7 @@ async function exportBackup(){
     for(let t=0; t<8 && !bp; t++) bp=await readFrame(0xA7, 2+4*24);
     if(!bp){ log("export: no bond data (firmware too old for 0x09 export — reflash)"); return; }
     const backup=buildBackup(lastP, bp);
+    try{ const ps=await panelSnapshot(); if(ps) backup.panel=ps; }catch(e){ log("export: panel settings not included — "+e.message); }
     downloadBackup(backup);
     const n=backup.bonds.filter(b=>b.used).length;
     log("exported backup — "+n+" bonded controller slot(s) + all settings");
@@ -1890,6 +1934,7 @@ async function exportBackup(){
 }
 async function importBackup(file){
   if(!dev){ log("not connected"); return; }
+  if(dfuBusy){ log("import: a firmware update is running"); return; }
   let obj; try{ obj=JSON.parse(await file.text()); }
   catch(e){ log("import: not valid JSON"); return; }
   if(obj.magic!=="openpuck-backup" || !obj.bonds || !obj.config){ log("import: unrecognized backup file"); return; }
@@ -1908,7 +1953,7 @@ async function importBackup(file){
   const lizardN=(Array.isArray(c.lizardMap) && lizardCapable())?Math.min(c.lizardMap.length,LZ_MAX):0;
   const baseN=6 + (Array.isArray(c.chordD)?4:0) + (c.swGyroLegacy!==undefined?1:0);
   const padStickN=Array.isArray(c.types)?c.types.slice(0,typeN).filter(t=>Array.isArray(t.padStick)).length*2:0;
-  const total=baseN + typeN*9 + padStickN + lizardN + 4 + 1;
+  const total=baseN + typeN*9 + padStickN + lizardN + 4 + 1 + (obj.panel?1:0);
   let step=0, stage="";
   const tick=()=>modalStage(stage, Math.min(99,Math.floor(step*100/total)));
   try{
@@ -1968,6 +2013,14 @@ async function importBackup(file){
       await readLizard(); // drain the 0xAA echo so the pipe is clean for bond writes
       log("lizard map restored — "+map.length+" bindings");
     }
+    // Panel settings go after the 0x02 replay above (its paddle fields rewrite the active profile's button
+    // actions, which the binds blob then overwrites) and before the 0x0E commit that reboots the puck.
+    let panelNote="";
+    if(obj.panel && typeof obj.panel==="object"){
+      stage="Restoring paddle binds"; tick();
+      panelNote=await panelRestore(obj.panel); step++; tick();
+      binds=null; bindsLastTry=0; // re-read after the restore
+    }
     // write each bond slot with its own small command [0x0D][slot][used][24-byte rec]
     stage="Restoring controller pairings"; tick();
     let n=0;
@@ -1983,7 +2036,7 @@ async function importBackup(file){
     stage="Committing + rebooting"; step++; tick();
     await send([0x0E, (c.mode!==undefined?c.mode:0xFF)&0xff]);
     log("import sent — puck is cloning and rebooting. Reconnect after it returns.");
-    modalDone(true, "Backup restored — the puck is cloning and rebooting. Reconnect after it returns.");
+    modalDone(true, "Backup restored — the puck is cloning and rebooting. Reconnect after it returns."+(panelNote?" "+panelNote:""));
   } catch(e){
     log("import FAILED — "+e.message);
     modalDone(false, e.message+" — the import stopped partway; reconnect and retry.", "Import failed");
@@ -3387,7 +3440,8 @@ async function bindsXfer(fn){
   catch(e){ log("binds err: "+e.message); return null; }
   finally{ inflight=false; }
 }
-async function bindsReadBlob(){
+async function bindsReadBlob(){ const raw=await bindsReadRaw(); return raw?bindsParse(raw):null; }
+async function bindsReadRaw(){
   const buf=[];
   for(let idx=0;idx<BIND_CHUNKS;idx++){
     let f=null;
@@ -3395,7 +3449,7 @@ async function bindsReadBlob(){
     if(!f) return null;
     for(let k=2;k<f.length;k++) buf.push(f[k]);
   }
-  return bindsParse(new Uint8Array(buf));
+  return new Uint8Array(buf);
 }
 async function bindsRead(){
   if(!dev || !bindsCap) return;
