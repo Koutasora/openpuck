@@ -213,7 +213,6 @@
   <button id="debugCdc" title="Reboot ONCE with the CDC serial console enabled (WebUSB goes away for that boot); auto-reverts on the next boot">Debug CDC</button>
   <button id="dfuSerial" title="Reboot into serial DFU (adafruit-nrfutil), then replug">Serial DFU</button>
   <button id="dfuUf2" title="Reboot into the UF2 mass-storage bootloader; drop a .uf2 on the drive">UF2 DFU</button>
-  <button id="factoryErase" class="danger" title="Wipe ALL bonds + settings and reboot to defaults. You must re-pair. Cannot be undone.">Factory erase</button>
   <button id="wipeBoard" class="danger debugonly" title="ERASE THE ENTIRE BOARD: firmware + all settings + bonds. The board reboots app-less and mounts as the UF2 drive on every boot until you re-flash OpenPuck. Debug only. Cannot be undone.">Wipe board</button>
 </div>
 <div class="wrap">
@@ -627,6 +626,11 @@
       </div>
       <p class="note">Dump streams the whole ring (oldest→newest) and then keeps live-updating until you press Stop. <code>cmd</code> is the command/report byte, then the raw bytes.</p>
       <pre id="capOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin-top:10px;max-height:260px;overflow:auto;white-space:pre-wrap"></pre>
+    </div>
+    <div class="card wide" data-sub="status/debug">
+      <h2>Factory erase</h2>
+      <p class="note" style="margin-top:0">Wipes the controller pairing and every saved setting, then reboots the puck to factory defaults. You must re-pair the controller. It cannot be undone; export a backup first (Pairing &amp; backup). The firmware stays.</p>
+      <div class="row" style="margin:0"><button id="factoryErase" class="danger" title="Wipe ALL bonds + settings and reboot to defaults. You must re-pair. Cannot be undone.">Factory erase</button></div>
     </div>
     <div class="card wide" id="logCard" data-sub="status/log">
       <h2>Page log</h2>
@@ -1998,8 +2002,7 @@ function applyDeviceProfile(){
   // reconnect restores them without clobbering the debugonly/lizard inline visibility rules.
   document.body.classList.toggle("dongle", d);
   const paired=$("#pairedCard"); if(paired) paired.style.display = d ? "" : "none";
-  // top-bar buttons: factory-erase is a puck-only op (0x0A); the dongle keeps DFU + (debug) wipe-board
-  const fe=$("#factoryErase"); if(fe) fe.style.display = d ? "none" : "";
+  // factory-erase (0x0A) is puck-only: its card sits in the Debug tab, which the dongle does not have
   // the GitHub "Update from a release" list is puck firmware; a dongle flashes via the local-file drop card
   const rc=$("#relCard"); if(rc) rc.style.display = d ? "none" : "";
   const ua=$("#updAvail"); if(ua && d) ua.classList.add("hide");

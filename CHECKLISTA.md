@@ -70,5 +70,5 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 
 ### 7. Wydanie
 - [x] Repo publiczne (ustawia użytkownik)
-- [ ] Po scaleniu PR: GitHub Pages - Settings -> Pages -> Deploy from a branch, `main`, `/docs`; strona działa pod https://koutasora.github.io/openpuck/
-- [ ] Wydanie 1.0.0: po scaleniu PR tag `1.0.0` na `main`; workflow buduje `.uf2`, tworzy wydanie i gałąź `firmware`, lista wydań na stronie pokazuje wydanie
+- [x] Po scaleniu PR: GitHub Pages - Settings -> Pages -> Deploy from a branch, `main`, `/docs`; strona działa pod https://koutasora.github.io/openpuck/
+- [x] Wydanie 1.0.0: po scaleniu PR tag `1.0.0` na `main`; workflow buduje `.uf2`, tworzy wydanie i gałąź `firmware`, lista wydań na stronie pokazuje wydanie
