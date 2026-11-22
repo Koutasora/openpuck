@@ -29,7 +29,7 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - [x] 11. `docs/index.html`: przełącznik toru LT/RT/LG/RG, nuty do aktywnego toru, inne przygaszone, tabela i licznik N/32 aktywnego toru, import MIDI do aktywnego toru, Crop to 32 tnie zakres we wszystkich torach, odsłuch 4 torów naraz, zapis bloba v2 (protokół >= 27), przy protokole 25-26 zapis tylko toru LT z ostrzeżeniem; "Play on puck" usunięty.
 - [x] 12. Testy: `tests/sounds` (v2, wczytanie v1, 4 głosy), build firmware z RAM/flash przed i po, clang-format 18 i lint, `tests/sounds-web` (tory).
 - [ ] 13. `docs/PROTOCOL.md`, README, CHECKLISTA; test użytkownika: wgranie UF2, zapis i granie 4 głosów z pucka.
-- [ ] 14. `docs/index.html`, `tests/sounds-web/run.js`, CHECKLISTA: import MIDI do 4 torów naraz: lista źródła przy każdym torze (ścieżka, kanał ścieżki z kilkoma kanałami, Keep current, Empty), domyślnie źródła bez perkusji od najwyższej średniej wysokości na LT, RT, LG, RG (jedno źródło: tylko LT), liczba pozycji przy każdym, jeden Import, BPM z pliku.
+- [x] 14. `docs/index.html`, `tests/sounds-web/run.js`, CHECKLISTA: import MIDI do 4 torów naraz: lista źródła przy każdym torze (ścieżka, kanał ścieżki z kilkoma kanałami, Keep current, Empty), domyślnie źródła bez perkusji od najwyższej średniej wysokości na LT, RT, LG, RG (jedno źródło: tylko LT), liczba pozycji przy każdym, jeden Import, BPM z pliku.
 - Sprawdzenie: test Playwright z kroku 7, przegląd managera, test użytkownika na padzie.
 
 ## Decyzje
@@ -57,6 +57,8 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - Firmware: bez kopii SoundsCfg na stosie (4,2 KB przekraczało stos pętli 4 KB); blob sprawdzany w miejscu, potem dekodowany; bufor s_io usunięty (fragmenty serializowane w locie); zapis przyjmuje też blob v1 (starsza strona w pamięci przeglądarki).
 
 - "Zawijanie zakresu nut" znaczyło zwijanie tabeli nut (źle odczytane jako Fold): tabela nut w Sounds zwinięta domyślnie pod nagłówkiem "Note list (N)"; Fold zostaje.
+
+- Import MIDI: źródło bez grywalnych nut zostawia tor bez zmian (komunikat); na pucku z jednym głosem domyślnie wypełniany tylko LT.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

@@ -544,8 +544,9 @@
         <button id="midiBtn">Import MIDI file...</button>
         <input type="file" id="midiFile" accept=".mid,.midi,audio/midi" style="display:none">
       </div>
-      <div class="row hide" id="midiRow" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
-        <label>MIDI track</label><select id="midiTrack"></select><button id="midiGo">Import</button>
+      <div class="hide" id="midiRow" style="margin:0 0 10px">
+        <div id="midiLanes"></div>
+        <button id="midiGo">Import</button>
       </div>
       <p class="note" id="midiNote" style="margin:0 0 10px"></p>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
@@ -4801,9 +4802,9 @@ function midiParse(buf){
   while(o+8<=d.length && tracks.length<ntr){
     const id=tag(o), end=Math.min(o+8+dv.getUint32(o+4),d.length); o+=8;
     if(id!=="MTrk"){ o=end; continue; }
-    const tr={name:"",notes:[],drums:false}, open={}; let t=0, run=0;
+    const tr={name:"",notes:[]}, open={}; let t=0, run=0;
     const vlq=()=>{ let v=0,b; do{ if(o>=end) throw new Error("the MIDI file is truncated"); b=d[o++]; v=v*128+(b&127); }while(b&128); return v; };
-    const off=(ch,p)=>{ const a=open[ch*128+p]; if(a&&a.length) tr.notes.push({s:a.shift(),e:t,p}); };
+    const off=(ch,p)=>{ const a=open[ch*128+p]; if(a&&a.length) tr.notes.push({s:a.shift(),e:t,p,ch}); };
     while(o<end){
       t+=vlq();
       let st=d[o];
@@ -4817,11 +4818,11 @@ function midiParse(buf){
       if(st===0xF0||st===0xF7){ o+=vlq(); run=0; continue; }
       run=st; const hi=st&0xF0, ch=st&15, a=d[o], v=d[o+1]; o+=(hi===0xC0||hi===0xD0)?1:2;
       if(o>end) throw new Error("the MIDI file is truncated");
-      if(hi===0x90 && v>0){ (open[ch*128+a]=open[ch*128+a]||[]).push(t); if(ch===9) tr.drums=true; }
+      if(hi===0x90 && v>0){ (open[ch*128+a]=open[ch*128+a]||[]).push(t); }
       else if(hi===0x80 || hi===0x90) off(ch,a);
     }
     // notes still held when the track ends stop with it
-    for(const k in open) for(const s of open[k]) tr.notes.push({s,e:t,p:k%128});
+    for(const k in open) for(const s of open[k]) tr.notes.push({s,e:t,p:k%128,ch:Math.floor(k/128)});
     tracks.push(tr); o=end;
   }
   if(!tracks.length) throw new Error("no tracks in this MIDI file");
@@ -4864,37 +4865,92 @@ function midiLine(m,track){
   }
   return {notes,clipped,merged};
 }
-function midiTrackLabel(tr,i){
-  return "Track "+(i+1)+(tr.name?" - "+tr.name:"")+" ("+tr.notes.length+" notes"+(tr.drums?", drums":"")+")";
+// What a MIDI file offers: every non-empty track, and for a track with several channels one entry per channel
+// ("Track 2, ch 3"; channel 10 = drums). avg = average pitch, used to order the default assignment.
+function midiSources(m){
+  const srcs=[], name=tr=>tr.name?" - "+tr.name:"";
+  m.tracks.forEach((tr,i)=>{
+    if(!tr.notes.length) return;
+    const chs=[...new Set(tr.notes.map(n=>n.ch))].sort((a,b)=>a-b), dr=tr.notes.every(n=>n.ch===9);
+    srcs.push({track:i,ch:null,notes:tr.notes,drums:dr,label:"Track "+(i+1)+name(tr)+" ("+tr.notes.length+" notes"+(dr?", drums":"")+")"});
+    if(chs.length>1) for(const c of chs){
+      const ns=tr.notes.filter(n=>n.ch===c);
+      srcs.push({track:i,ch:c,notes:ns,drums:c===9,label:"Track "+(i+1)+", ch "+(c+1)+name(tr)+" ("+ns.length+" notes"+(c===9?", drums":"")+")"});
+    }
+  });
+  for(const x of srcs) x.avg=x.notes.reduce((a,n)=>a+n.p,0)/x.notes.length;
+  return srcs;
+}
+// default choice per voice (LT, RT, LG, RG): "keep", "empty" or "s<index>". Drums are never picked. When one track
+// holds everything its channels are used, otherwise whole tracks; high average pitch first. One source: LT only.
+function midiDefaults(srcs){
+  const whole=srcs.filter(x=>x.ch===null), chans=srcs.filter(x=>x.ch!==null);
+  const pick=(whole.length===1&&chans.length?chans:whole).filter(x=>!x.drums).sort((a,b)=>b.avg-a.avg).slice(0,SND_LANES);
+  const out=Array(SND_LANES).fill("keep");
+  // a one-voice puck stores only LT, so the other voices are not filled by default there
+  if(pick.length===1||(soundsVer===1&&pick.length)) out[0]="s"+srcs.indexOf(pick[0]);
+  else if(pick.length>1) for(let v=0;v<SND_LANES;v++) out[v]=pick[v]?"s"+srcs.indexOf(pick[v]):"empty";
+  return out;
+}
+function midiLaneLine(v){
+  const val=$("#midiLane"+v).value; if(val[0]!=="s") return null;
+  const src=midiData.srcs[+val.slice(1)];
+  return src.line||(src.line=midiLine(midiData.m,{notes:src.notes}));
+}
+function midiLaneNote(v){
+  const el=$("#midiCnt"+v), val=$("#midiLane"+v).value; el.style.color="";
+  if(val==="keep"){ el.textContent=""; return; }
+  if(val==="empty"){ el.textContent="0 entries"; return; }
+  const n=midiLaneLine(v).notes.length;
+  el.textContent=n?n+" entries"+(n>SND_NOTES?" (over "+SND_NOTES+", use Crop to "+SND_NOTES+")":""):"no playable notes";
+  if(n>SND_NOTES) el.style.color="var(--warn)";
 }
 function midiLoad(file){
   const note=$("#midiNote"); $("#midiRow").classList.add("hide"); midiData=null; note.textContent="";
   if(!file) return;
   file.arrayBuffer().then(buf=>{
-    const m=midiParse(buf), sel=$("#midiTrack"); sel.textContent="";
-    let best=-1;
-    m.tracks.forEach((tr,i)=>{ if(!tr.notes.length) return;
-      const o=document.createElement("option"); o.value=i; o.textContent=midiTrackLabel(tr,i); sel.appendChild(o);
-      if(!tr.drums&&(best<0||tr.notes.length>m.tracks[best].notes.length)) best=i; });
-    if(!sel.options.length) throw new Error("no notes in this MIDI file");
-    if(best>=0) sel.value=best;
-    midiData={m,name:file.name.replace(/\.[^.]*$/,"")};
+    const m=midiParse(buf), srcs=midiSources(m);
+    if(!srcs.length) throw new Error("no notes in this MIDI file");
+    midiData={m,srcs,name:file.name.replace(/\.[^.]*$/,"")};
+    const box=$("#midiLanes"); box.textContent="";
+    const def=midiDefaults(srcs);
+    for(let v=0;v<SND_LANES;v++){
+      const row=document.createElement("div"); row.className="row"; row.style.margin="4px 0";
+      const lab=document.createElement("label"); lab.textContent=SND_LANE_NAMES[v]+" ("+SND_LANE_ABBR[v]+")"; row.appendChild(lab);
+      const sel=document.createElement("select"); sel.id="midiLane"+v; sel.style.flex="1 1 260px";
+      const add=(val,txt)=>{ const o=document.createElement("option"); o.value=val; o.textContent=txt; sel.appendChild(o); };
+      add("keep","Keep current"); add("empty","Empty");
+      srcs.forEach((x,i)=>add("s"+i,x.label));
+      sel.value=def[v]; sel.onchange=()=>midiLaneNote(v); row.appendChild(sel);
+      const cnt=document.createElement("span"); cnt.className="note"; cnt.id="midiCnt"+v; cnt.style.cssText="margin:0;flex:0 1 260px"; row.appendChild(cnt);
+      box.appendChild(row); midiLaneNote(v);
+    }
     $("#midiRow").classList.remove("hide");
-    note.textContent="Pick the track with the melody, then press Import. Chords keep their highest note.";
+    note.textContent="Pick a source for each voice, then press Import. Chords keep their highest note.";
   }).catch(e=>{ $("#midiRow").classList.add("hide"); sndMsg("MIDI import failed: "+e.message); });
 }
 function midiImport(){
   if(!midiData||!sounds) return;
-  const {m,name}=midiData, line=midiLine(m,m.tracks[+$("#midiTrack").value]);
-  if(!line.notes.length){ $("#midiNote").textContent="This track has no playable notes."; return; }
-  if(sndNotes().length && !confirm("Replace the notes of "+soundName(curMel)+" ("+SND_LANE_NAMES[curLane]+") with this track?")) return;
-  sounds.mel[curMel][curLane]=line.notes;
+  const {m,name}=midiData, plan=[], empty=[];
+  for(let v=0;v<SND_LANES;v++){
+    const val=$("#midiLane"+v).value; if(val==="keep") continue;
+    const line=midiLaneLine(v);
+    if(line&&!line.notes.length){ empty.push(SND_LANE_ABBR[v]); continue; }
+    plan.push({v,line,notes:line?line.notes:[]});
+  }
+  if(!plan.length){ $("#midiNote").textContent=empty.length?"Nothing to import: the chosen source has no playable notes ("+empty.join(", ")+").":"Nothing to import: every voice is set to Keep current."; return; }
+  const repl=plan.filter(x=>sounds.mel[curMel][x.v].length);
+  if(repl.length && !confirm("Replace the notes of "+soundName(curMel)+" in: "+repl.map(x=>SND_LANE_NAMES[x.v]).join(", ")+"?")) return;
+  sndLiveHalt(true);
+  for(const x of plan) sounds.mel[curMel][x.v]=x.notes;
   if(!soundNames[curMel]) soundSetName(curMel,name.slice(0,24));
   const t0=m.tempos.length?m.tempos.reduce((a,b)=>b.t<a.t?b:a):null;
   bpmSet(curMel,t0?Math.max(20,Math.min(400,Math.round(60000000/t0.us))):120);
-  const parts=["Imported "+line.notes.length+" entries (rests count as entries) at "+bpmOf(curMel)+" BPM. Saving needs "+SND_NOTES+" or fewer."];
-  if(line.clipped) parts.push(line.clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
-  if(line.merged) parts.push(line.merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
+  const clipped=plan.reduce((a,x)=>a+(x.line?x.line.clipped:0),0), merged=plan.reduce((a,x)=>a+(x.line?x.line.merged:0),0);
+  const parts=["Imported: "+plan.map(x=>SND_LANE_ABBR[x.v]+" "+x.notes.length).join(", ")+" entries (rests count as entries) at "+bpmOf(curMel)+" BPM. Saving needs "+SND_NOTES+" or fewer per voice."];
+  if(clipped) parts.push(clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
+  if(merged) parts.push(merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
+  if(empty.length) parts.push("Kept "+empty.join(", ")+": the chosen source has no playable notes.");
   $("#midiNote").textContent=parts.join(" ");
   $("#midiRow").classList.add("hide"); midiData=null;
   pr.range=null; pr.selS=-1; pr.fitNow=true;

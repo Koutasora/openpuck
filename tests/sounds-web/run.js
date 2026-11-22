@@ -42,17 +42,35 @@ function smf(us){
   return [0x4D,0x54,0x68,0x64,0,0,0,6,0,0,0,1,0x01,0xE0, 0x4D,0x54,0x72,0x6B,(len>>24)&255,(len>>16)&255,(len>>8)&255,len&255,...tr];
 }
 
+// SMF builder: tracks = [{name, steps:[[{ch,p},...],...]}] ; every step is 96 ticks (100 ms at 120 BPM), all notes of a step start together
+function smfTracks(format,tracks,us){
+  const vlq=v=>{ const b=[v&127]; while(v>>=7) b.unshift((v&127)|128); return b; };
+  us=us||500000;
+  const trk=(t,i)=>{
+    const ev=[];
+    if(i===0) ev.push(0,0xFF,0x51,3,(us>>16)&255,(us>>8)&255,us&255);
+    if(t.name){ ev.push(0,0xFF,0x03,t.name.length,...[...t.name].map(c=>c.charCodeAt(0))); }
+    for(const st of t.steps){
+      st.forEach(n=>ev.push(0,0x90|n.ch,n.p,100));
+      st.forEach((n,k)=>ev.push(k?0:96,0x80|n.ch,n.p,0));
+    }
+    ev.push(0,0xFF,0x2F,0);
+    const l=ev.length; return [0x4D,0x54,0x72,0x6B,(l>>24)&255,(l>>16)&255,(l>>8)&255,l&255,...ev];
+  };
+  return [0x4D,0x54,0x68,0x64,0,0,0,6,0,format,0,tracks.length,0x01,0xE0,...tracks.flatMap(trk)];
+}
+
 (async()=>{
   await new Promise(r=>server.listen(0,"127.0.0.1",r));
   const url="http://127.0.0.1:"+server.address().port+"/index.html";
   const browser=await chromium.launch({headless:true}); // bundled Chromium, not Edge
   const page=await browser.newPage({viewport:{width:1300,height:1500}});
-  const errors=[]; let dialogMode="accept";
+  const errors=[]; let dialogMode="accept", lastDialog="";
   page.on("pageerror",e=>errors.push("pageerror: "+e.message));
   page.on("console",m=>{ if(m.type()==="error") errors.push("console.error: "+m.text()); });
   page.on("response",x=>{ if(x.status()>=400) errors.push("HTTP "+x.status()+" "+x.url()); });
   page.on("requestfailed",x=>errors.push("request failed: "+x.url()));
-  page.on("dialog",d=>dialogMode==="dismiss"?d.dismiss():d.accept());
+  page.on("dialog",d=>{ lastDialog=d.message(); return dialogMode==="dismiss"?d.dismiss():d.accept(); });
   await page.addInitScript(FAKE_HID);
   await page.goto(url); await sleep(500);
   const ev=(f,a)=>page.evaluate(f,a);
@@ -203,7 +221,7 @@ function smf(us){
   check("MIDI import sets the BPM from the file (120)",await ev(()=>bpmOf(curMel)===120&&$("#prBpm").value==="120"));
   const imp=await ev(()=>({n:sounds.mel[curMel][curLane].length,f:sounds.mel[curMel][curLane].slice(0,3).map(n=>n.freq),ms:sounds.mel[curMel][curLane][0].ms,note:$("#midiNote").textContent}));
   check("MIDI drop imports all entries, no cut to 32, no octave shift",imp.n===40&&same(imp.f,[65,82,65])&&imp.ms===100,imp);
-  check("import message names the entries and the save limit",/Imported 40 entries/.test(imp.note)&&/32 or fewer/.test(imp.note),imp.note);
+  check("import message names the entries and the save limit",/Imported: LT 40 entries/.test(imp.note)&&/32 or fewer/.test(imp.note),imp.note);
   const over=await ev(()=>({cnt:$("#sndCount").textContent,col:$("#sndCount").style.color,save:$("#sndSave").disabled,evs:$("#sndEvSave").disabled,add:$("#sndAddNote").disabled}));
   check("counter warns and Save is disabled above 32",/40 \/ 32/.test(over.cnt)&&/Crop to 32/.test(over.cnt)&&/warn/.test(over.col)&&over.save&&over.evs&&over.add,over);
   const guard=await ev(async()=>{ window.__b=0; const o=sndBuild; sndBuild=function(...a){ window.__b++; return o(...a); };
@@ -217,7 +235,8 @@ function smf(us){
     await ev(bytes=>{ const dt=new DataTransfer(); dt.items.add(new File([new Uint8Array(bytes)],"x.mid"));
       pr.cv.dispatchEvent(new DragEvent("drop",{dataTransfer:dt,bubbles:true,cancelable:true})); },Array.from(fs2.readFileSync(path.join(dir,f))));
     await page.waitForSelector("#midiRow:not(.hide)",{timeout:3000});
-    const pitches=await ev(()=>[...new Set(midiData.m.tracks[+$("#midiTrack").value].notes.map(n=>n.p))]);
+    const pitches=await ev(()=>[...new Set(midiData.srcs[+$("#midiLane0").value.slice(1)].notes.map(n=>n.p))]);
+    check("sample "+f+": one source goes to LT, the other voices keep their notes",await ev(()=>$("#midiLane0").value[0]==="s"&&[1,2,3].every(v=>$("#midiLane"+v).value==="keep")));
     const bpmExp=await ev(()=>{ const t=midiData.m.tempos; const t0=t.length?t.reduce((a,b)=>b.t<a.t?b:a):null; return t0?Math.round(60000000/t0.us):120; });
     await page.click("#midiGo");
     const got=await ev(()=>({n:sounds.mel[curMel][curLane].length,f:[...new Set(sounds.mel[curMel][curLane].filter(n=>n.freq).map(n=>n.freq))]}));
@@ -232,6 +251,40 @@ function smf(us){
   await page.waitForSelector("#midiRow:not(.hide)",{timeout:3000}); await page.click("#midiGo");
   check("MIDI import sets 240 BPM from a 250000 us tempo",await ev(()=>bpmOf(curMel)===240&&$("#prBpm").value==="240"&&JSON.parse(localStorage.getItem("openpuck.melBpm"))[curMel]===240));
   await ev(()=>{ bpmSet(curMel,120); sndRender(); });
+  // ---- import into all four voices ----
+  const dropBytes=async bytes=>{
+    await ev(b=>{ const dt=new DataTransfer(); dt.items.add(new File([new Uint8Array(b)],"m.mid",{type:"audio/midi"}));
+      pr.cv.dispatchEvent(new DragEvent("drop",{dataTransfer:dt,bubbles:true,cancelable:true})); },bytes);
+    await page.waitForSelector("#midiRow:not(.hide)",{timeout:3000});
+  };
+  const step=(...ns)=>ns.map(([ch,p])=>({ch,p}));
+  // format 0, one track, channels 1 (high), 2, 3 and drums (channel 10)
+  const f0=smfTracks(0,[{name:"All",steps:[72,74,72,74].map((hi,i)=>step([0,hi],[1,60+i],[2,48+i],[9,36]))}]);
+  await ev(()=>{ for(const l of sounds.mel[curMel]) l.length=0; sndRender(); });
+  await dropBytes(f0);
+  const o0=await ev(()=>({sel:[0,1,2,3].map(v=>$("#midiLane"+v).value),opts:[...$("#midiLane0").options].map(o=>o.textContent),cnt:[0,1,2,3].map(v=>$("#midiCnt"+v).textContent),n:midiData.srcs.length,drumIdx:midiData.srcs.findIndex(x=>x.drums)}));
+  check("format 0 with 3 channels + drums: whole track plus one source per channel, drums marked",o0.n===5&&o0.opts.slice(0,2).join()==="Keep current,Empty"&&/Track 1, ch 1/.test(o0.opts[3])&&/Track 1, ch 10.*drums/.test(o0.opts[6]),o0.opts);
+  check("default: channels by average pitch to LT, RT, LG; RG empty; drums never picked",o0.sel.join()==="s1,s2,s3,empty"&&!o0.sel.includes("s"+o0.drumIdx),o0);
+  check("each voice shows how many entries it would get",o0.cnt.join("|")==="4 entries|4 entries|4 entries|0 entries",o0.cnt);
+  await ev(()=>{ sounds.mel[curMel][3]=[{freq:440,ms:100}]; sounds.mel[curMel][2]=[{freq:330,ms:100}]; sndRender(); });
+  await page.selectOption("#midiLane2","keep");
+  lastDialog=""; await page.click("#midiGo");
+  const i0=await ev(()=>({m:sounds.mel[curMel].map(l=>l.map(n=>n.freq)),note:$("#midiNote").textContent}));
+  check("Import fills LT, RT with the chosen channels, Keep current leaves LG, Empty clears RG",same(i0.m,[[523,587,523,587],[262,277,294,311],[330],[]]),i0.m);
+  check("one confirm names the voices that get replaced; the message lists the entries per voice",/Right grip/.test(lastDialog)&&!/Left grip/.test(lastDialog)&&/Imported: LT 4, RT 4, RG 0 entries/.test(i0.note),[lastDialog,i0.note]);
+  // format 1, two tracks: whole tracks, higher one first
+  const f1=smfTracks(1,[{name:"Low",steps:[48,50,52].map(p=>step([0,p]))},{name:"High",steps:[72,74,76,77,79].map(p=>step([1,p]))}]);
+  await dropBytes(f1);
+  const o1=await ev(()=>({sel:[0,1,2,3].map(v=>$("#midiLane"+v).value),opts:[...$("#midiLane0").options].map(o=>o.textContent),cnt:[0,1,2,3].map(v=>$("#midiCnt"+v).textContent)}));
+  check("format 1 with 2 tracks: whole-track sources, the higher track first, the rest empty",o1.opts.length===4&&/Track 1 - Low/.test(o1.opts[2])&&o1.sel.join()==="s1,s0,empty,empty"&&o1.cnt[0]==="5 entries"&&o1.cnt[1]==="3 entries",o1);
+  await page.click("#midiGo");
+  const i1=await ev(()=>sounds.mel[curMel].map(l=>l.length));
+  check("format 1 import: 5 entries in LT, 3 in RT, LG and RG empty",same(i1,[5,3,0,0]),i1);
+  // more than 32 entries: warn text and colour
+  await dropBytes(smf());
+  const o2=await ev(()=>({t:$("#midiCnt0").textContent,c:$("#midiCnt0").style.color}));
+  check("a source over 32 entries is flagged in the warn colour with the Crop hint",/^40 entries \(over 32, use Crop to 32\)$/.test(o2.t)&&/warn/.test(o2.c),o2);
+  await ev(()=>{ midiData=null; $("#midiRow").classList.add("hide"); });
   // replace confirmation: Cancel keeps the old melody
   await ev(()=>{ sounds.mel[curMel][curLane]=[{freq:440,ms:200}]; sndRender(); });
   await ev(bytes=>{ const dt=new DataTransfer(); dt.items.add(new File([new Uint8Array(bytes)],"t.mid"));
@@ -362,8 +415,9 @@ function smf(us){
     pr.cv.dispatchEvent(new DragEvent("drop",{dataTransfer:dt,bubbles:true,cancelable:true})); },smf());
   await page.waitForSelector("#midiRow:not(.hide)",{timeout:3000}); await page.click("#midiGo");
   const li=await ev(()=>sounds.mel[curMel].map(l=>l.length));
-  check("MIDI import fills the active voice (LG) and no other",same(li,[2,2,40,0]),li);
-  check("Octave and Clear act on the active voice only",await ev(()=>{ sndOctave(1); const a=sounds.mel[curMel][2][0].freq; sndOctave(-1); sndNotes().length=0; sndRender(); return a===131&&sounds.mel[curMel][0].length===2&&sounds.mel[curMel][2].length===0; }));
+  check("a single-source file fills LT only, whatever voice is active (the others keep their notes)",same(li,[40,2,0,0]),li);
+  await lane(0);
+  check("Octave and Clear act on the active voice only",await ev(()=>{ sndOctave(1); const a=sounds.mel[curMel][0][0].freq; sndOctave(-1); sndNotes().length=0; sndRender(); return a===131&&sounds.mel[curMel][1].length===2&&sounds.mel[curMel][0].length===0; }));
   check("Clear all voices empties all four voices after confirm, Cancel keeps them",await ev(()=>{ const m=sounds.mel[curMel]; const fill=()=>m.forEach((v,i)=>{ v.length=0; v.push({freq:440+i,ms:100}); }); const oc=window.confirm;
     fill(); window.confirm=()=>false; $("#sndClearAll").click(); const kept=m.every(v=>v.length===1);
     window.confirm=()=>true; $("#sndClearAll").click(); window.confirm=oc; return kept&&m.every(v=>v.length===0); }));

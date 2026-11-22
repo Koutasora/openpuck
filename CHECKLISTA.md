@@ -112,3 +112,5 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Puck ze starszym firmware (protokół 25-26): ostrzeżenie "This firmware stores one voice (Left trackpad)", zapis tylko toru LT, melodia gra na obu gładzikach; Play on controller gra tor LT na obu gładzikach (jak puck), przyciski RT / LG / RG są przyciemnione z podpowiedzią "not saved"
 - [ ] Przywrócenie kopii z czterema głosami na puck ze starszym firmware: komunikat, że głosy RT, LG i RG nie zostały przywrócone
 - [ ] Kopia zapasowa (Export / Import) z pucka na pucek z innym firmware (v1 i v2) przenosi melodie bez błędu
+- [ ] Import MIDI do czterech torów: po wczytaniu pliku (przycisk lub przeciągnięcie) cztery listy (LT / RT / LG / RG) ze źródłami "Track N" i "Track N, ch C" (kanał 10 = drums), domyślnie wg średniej wysokości od najwyższej do LT, RT, LG, RG; perkusja nigdy sama; przy jednym źródle tylko LT, reszta Keep current
+- [ ] Obok każdej listy liczba wpisów toru (powyżej 32 na żółto z podpowiedzią Crop to 32); Import zastępuje wskazane tory po jednym potwierdzeniu z ich nazwami, Keep current zostawia tor, Empty go czyści; komunikat podaje liczbę wpisów na tor
