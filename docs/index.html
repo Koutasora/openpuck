@@ -1088,7 +1088,7 @@ function setTab(et){
     // analog pressure: only the PS3 mode (DS4 tab) and the Original Xbox mode (Xbox tab) have pressure bytes
     PRESS_MODES.forEach((pm,mode)=>{
       if(pm.et!==et) return;
-      const wrap=document.createElement("div");
+      const wrap=document.createElement("div"); wrap.className="hide"; // shown by applyBlob at protocol >= 28
       const r1=document.createElement("div"); r1.className="row";
       const lab=document.createElement("label"); lab.textContent=pm.name; r1.appendChild(lab);
       const on=document.createElement("button"); on.textContent="off"; r1.appendChild(on); wrap.appendChild(r1);
@@ -2280,7 +2280,7 @@ async function importBackup(file){
   const baseN=6 + (Array.isArray(c.chordD)?4:0) + (c.swGyroLegacy!==undefined?1:0);
   const padStickN=Array.isArray(c.types)?c.types.slice(0,typeN).filter(t=>Array.isArray(t.padStick)).length*2:0;
   const pressOk=Array.isArray(c.pressure) && lastP && lastP[0]>=28;
-  const total=baseN + typeN*9 + padStickN + (pressOk?6:0) + lizardN + 4 + 1 + (obj.panel?1:0);
+  const total=baseN + typeN*9 + padStickN + (pressOk?[0,1].filter(m=>Array.isArray(c.pressure[m])).length*3:0) + lizardN + 4 + 1 + (obj.panel?1:0);
   let step=0, stage="";
   const tick=()=>modalStage(stage, Math.min(99,Math.floor(step*100/total)));
   try{
