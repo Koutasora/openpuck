@@ -116,12 +116,53 @@
   #updFill{height:100%;width:0;background:var(--acc);transition:width .2s}
   #updFill.pulse{background:var(--acc2)}
   #updFill.bad{background:var(--bad)}
+
+  /* ---- back-paddle binds: drawings, macros, live view ---- */
+  .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:0 0 14px}
+  #mapFigs{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+  @media(max-width:760px){#mapFigs{grid-template-columns:1fr}}
+  .figs.one{grid-template-columns:minmax(0,520px)}
+  .scfig{position:relative;width:100%}
+  .scfig img{position:absolute;left:0;bottom:0;width:100%;height:auto;filter:invert(.88)}
+  .scfig svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .scfig .hs{fill:transparent;stroke:none}
+  .scfig .hs.raw{stroke:var(--acc2);stroke-width:3}
+  .scfig .hs.out{fill:var(--acc2);fill-opacity:.55}
+  .scfig .pd{cursor:pointer}
+  .scfig .pd .hs{stroke:var(--acc2);stroke-width:2}
+  .scfig .pd:hover .hs{fill:var(--acc2);fill-opacity:.25}
+  .scfig text{fill:var(--fg);font:600 24px sans-serif;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+  .scfig text.s{font-size:17px}
+  .scfig text.pl{font-size:28px;text-anchor:start}
+  .scfig text.pr{font-size:28px;text-anchor:end}
+  .scfig text.pa{font-weight:400;fill:var(--acc2)}
+  .scfig .dot{fill:var(--fg)}
+  .scfig .bar{fill:var(--acc2)}
+  .scfig .barbg{fill:none;stroke:#36405a}
+  .row.flash{outline:2px solid var(--acc2);outline-offset:3px}
+  .bkind{flex:0 0 96px !important;min-width:96px !important}
+  .cbgroup{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 12px;padding:6px 8px;background:#0e1017;border:1px solid #232a3a;border-radius:3px}
+  .cbgroup label{display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer}
+  .cbgroup input,.stepbtns input{accent-color:var(--acc2)}
+  .steps{width:100%;border-collapse:collapse;margin:8px 0}
+  .steps td{padding:6px 4px;border-top:1px solid #232a3a;vertical-align:middle}
+  .steps tr.cur td{background:#111c2e;outline:1px solid var(--acc2)}
+  .stepbtns{display:flex;flex-wrap:wrap;gap:2px 10px}
+  .stepbtns label{display:flex;align-items:center;gap:3px;font-size:13px;cursor:pointer}
+  .steps input[type=number]{width:76px;background:#0e1017;color:var(--fg);border:1px solid #313a4f;border-radius:3px;padding:5px}
+  .steps button{padding:4px 8px}
+  .steps .acts{white-space:nowrap}
+  .evlog{font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:8px;margin:8px 0 0;min-height:90px;white-space:pre-wrap}
+  .stat .v.sm{font-size:13px;word-break:break-word}
+  .foot{color:var(--mut);font-size:12px;margin:18px 0 0}
+  .foot a{color:var(--acc2)}
 </style>
 </head>
 <body>
 <div class="topbar">
   <span class="brand">OpenPuck <small>SC2 puck · WebUSB</small></span>
   <span id="connState" class="pill dn">disconnected</span>
+  <span id="battTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <button id="connectBtn" class="primary">Connect</button>
   <span id="updAvail" class="pill hide" title="A newer OpenPuck release is available — click to open the Firmware update tab">…</span>
   <span class="spacer"></span>
@@ -328,7 +369,53 @@
     <div class="card wide">
       <h2>Button mapping</h2>
       <p class="note" style="margin-top:0">Separate mappings per emulated controller type — each only offers targets that exist on that controller. The type matching the current mode is highlighted. Steam &amp; Lizard are native puck modes (Steam does its own remapping) and aren't configured here.</p>
+      <div class="row hide" id="bindsBar" style="margin-top:0">
+        <label>Profile</label>
+        <div id="profBtns" style="display:flex;gap:6px"></div>
+        <span class="note" id="bindsMsg" style="margin:0"></span>
+      </div>
+      <div class="figs hide" id="mapFigs"></div>
       <div id="typeCfgs"></div>
+    </div>
+
+    <div class="card hide" id="macroCard">
+      <h2>Macros</h2>
+      <div class="slot-tabs" id="macroTabs"></div>
+      <div class="row" style="margin-top:0"><label>Button names</label><select id="macroType"></select></div>
+      <table class="steps" id="macroSteps"></table>
+      <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
+        <button id="mAdd">Add step</button>
+        <button id="mTest">Test macro</button>
+        <button id="mSave" class="primary">Save to device</button>
+        <span class="note" id="macroMsg" style="margin:0"></span>
+      </div>
+      <div class="figs one" id="macroFig"></div>
+    </div>
+
+    <div class="card hide" id="liveCard">
+      <h2>Live view</h2>
+      <div class="chord-cols">
+        <div>
+          <div class="colhead">Controller sends</div>
+          <div class="figs" id="liveFigs" style="grid-template-columns:1fr"></div>
+          <div class="statgrid">
+            <div class="stat"><div class="k">Raw buttons</div><div class="v sm" id="lvRaw">—</div></div>
+            <div class="stat"><div class="k">After binds</div><div class="v sm" id="lvOut">—</div></div>
+            <div class="stat"><div class="k">Left stick</div><div class="v sm" id="lvLs">—</div></div>
+            <div class="stat"><div class="k">Right stick</div><div class="v sm" id="lvRs">—</div></div>
+            <div class="stat"><div class="k">Triggers L / R</div><div class="v sm" id="lvTr">—</div></div>
+            <div class="stat"><div class="k">Profile</div><div class="v sm" id="lvProf">—</div></div>
+            <div class="stat"><div class="k">Link / slot</div><div class="v sm" id="lvLink">—</div></div>
+            <div class="stat"><div class="k">Battery</div><div class="v sm" id="lvBatt">—</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="colhead">Host receives</div>
+          <div id="hostPads"><p class="note">No gamepad seen by the browser yet — press a button on the controller.</p></div>
+          <div class="colhead" style="margin-top:12px">Keyboard / mouse in this page</div>
+          <div class="evlog" id="hostEvt">—</div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="lizardCard" style="display:none">
@@ -443,6 +530,7 @@
 
     <div id="log"></div>
   </div>
+  <p class="foot">Steam Controller drawings &copy; Valve Corporation, CC BY-NC-SA 4.0 &middot; <a href="img/LICENSE-valve.txt">license and changes</a></p>
 </div>
 
 <!-- blocking modal: covers the whole page while an update is in flight so nothing else can be clicked -->
@@ -684,6 +772,7 @@ function setTab(et){
     rec.sec.style.display = (i===et) ? "" : "none";
     rec.tab.classList.toggle("active", i===et);
   });
+  if(bindsInited) figLabels();
 }
 (function buildTypeCfgs(){
   const host=document.getElementById("typeCfgs");
@@ -1276,7 +1365,7 @@ function onGone(){
   window._flightAuto=false; // re-arm the one-shot flight-trail auto-load for the next reconnect
   window._wedgeEp=false; window._wedgePeak=0; // re-arm the live wedge logger for the next wedge episode
   window._lastBlobTs=0; window._hbLostEp=false; // re-arm the heartbeat watchdog (don't fire on a stale pre-reset timestamp)
-  polling=false; dev=null; tabInited=false; // re-default the config tab to the mode on next connect
+  polling=false; dev=null; tabInited=false; bindsCap=false; binds=null; live=null; $("#battTxt").classList.add("hide"); // re-default the config tab to the mode on next connect
   cloneRender();
   checkUpdateNotice(); // no device = no notice
   $("#connState").textContent="reconnecting…"; $("#connState").className="pill dn";
@@ -1592,6 +1681,7 @@ function applyBlob(p){
   $("#dpadChords").classList.toggle("hide", !dpadCap);
   $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
+  bindsOnBlob(p);
 }
 function fmtSlider(id,v){ return id==="hapBlockS" ? v+" s" : ""+v; }
 function setSlider(id,v){ const el=$("#"+id); if(document.activeElement!==el){ el.value=v; } $("#"+id+"V").textContent=fmtSlider(id,el.value); }
@@ -3102,6 +3192,429 @@ function lzV2InstallHandlers(){
 	if(reset)reset.onclick=lzV2Reset;
 }
 lzV2InstallHandlers();
+
+// ===================== Back-paddle binds, macros, live view (blob v23+) =====================
+// Wire format and ops: docs/PROTOCOL.md §10.2. Everything here stays hidden unless the status blob reports
+// version >= 23 (older firmware drops 0x26..0x2A silently, so they must never be sent blind).
+var bindsInited=false;
+const BIND_PROFILES=3, BIND_BACKS=4, BIND_MACROS=8, BIND_STEPS=16, BIND_CHUNKS=12;
+// Controller type ET_* index = TYPE_DEFS index. Paddle order matches BACK_LABELS: L4 R4 L5 R5.
+// Button codes (the numbers in TYPE_DEFS.labels) -> TB_* bits (gamepad_util.h tritonFromCode). Code 18
+// (Capture) has no TB bit, so it is only a Button action, never part of a combo or macro step.
+const CODE_TB={1:0x1,2:0x2,3:0x4,4:0x8,5:0x80000,6:0x200,7:0x8000,8:0x20,9:0x40,10:0x10,11:0x10000,
+  12:0x2000,13:0x400,14:0x1000,15:0x800,16:0x40000000,17:0x80000000,19:0x8000000,20:0x800000};
+const STEAM_TB={0x1:"A",0x2:"B",0x4:"X",0x8:"Y",0x10:"QAM",0x40:"View",0x4000:"Menu",0x10000:"Steam",
+  0x8000:"L3",0x20:"R3",0x80:"R4",0x100:"R5",0x20000:"L4",0x40000:"L5",0x80000:"LB",0x200:"RB",
+  0x2000:"D-pad Up",0x400:"D-pad Down",0x1000:"D-pad Left",0x800:"D-pad Right",0x8000000:"LT",0x800000:"RT",
+  0x200000:"R-pad touch",0x400000:"R-pad click",0x2000000:"L-pad touch",0x4000000:"L-pad click",
+  0x40000000:"Touchpad",0x80000000:"Mute"};
+// Action kinds. The wire byte is the key; add a kind here (and in actText/bindsRender/bindsDecorateRows) to extend.
+const ACT_KINDS={0:"Button",1:"Combo",2:"Macro"};
+function tbCodes(def){
+  return Object.keys(def.labels).map(Number).filter(c=>CODE_TB[c]).sort((a,b)=>a-b);
+}
+function tbName(bit,et){
+  if(et>=0 && et<TYPE_DEFS.length){
+    for(const c in CODE_TB) if(CODE_TB[c]===bit && TYPE_DEFS[et].labels[c]) return TYPE_DEFS[et].labels[c];
+  }
+  return STEAM_TB[bit]||("0x"+bit.toString(16));
+}
+function maskNames(mask,et,sep){
+  const out=[];
+  for(let b=0;b<32;b++){ const bit=(1<<b)>>>0; if((mask&bit)>>>0) out.push(tbName(bit,et)); }
+  return out.join(sep||" + ");
+}
+function actText(a,et){
+  if(a.k===1) return maskNames(a.mask,et)||"Combo (empty)";
+  if(a.k===2) return "Macro "+(a.arg+1);
+  return (a.arg && TYPE_DEFS[et].labels[a.arg]) || "None";
+}
+
+let binds=null, bindsCap=false, bindsLastTry=0, bindsSaveTimer=0, bindsSaving=false;
+let curMacro=0, macroType=0, macroPlaying=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function emptyBinds(){
+  const b={active:0,act:[],macros:[]};
+  for(let p=0;p<BIND_PROFILES;p++){ b.act.push([]);
+    for(let e=0;e<TYPE_DEFS.length;e++){ b.act[p].push([]);
+      for(let i=0;i<BIND_BACKS;i++) b.act[p][e].push({k:0,arg:0,mask:0}); } }
+  for(let m=0;m<BIND_MACROS;m++) b.macros.push({steps:[]});
+  return b;
+}
+function bindsParse(d){
+  const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);
+  const plen=BIND_PROFILES*TYPE_DEFS.length*BIND_BACKS*6+1+BIND_MACROS*(2+BIND_STEPS*6);
+  if(d.length!==4+plen+2 || d[0]!==0xB1 || d[1]!==1 || dv.getUint16(2,true)!==plen) return null;
+  let sum=0; for(let i=4;i<4+plen;i++) sum=(sum+d[i])&0xFFFF;
+  if(sum!==dv.getUint16(4+plen,true)) return null;
+  const b=emptyBinds(); let o=4; b.active=d[o++];
+  for(let p=0;p<BIND_PROFILES;p++) for(let e=0;e<TYPE_DEFS.length;e++) for(let i=0;i<BIND_BACKS;i++){
+    b.act[p][e][i]={k:d[o],arg:d[o+1],mask:dv.getUint32(o+2,true)}; o+=6; }
+  for(let m=0;m<BIND_MACROS;m++){
+    const cnt=d[o+1]; o+=2;
+    for(let k=0;k<BIND_STEPS;k++){ if(k<cnt) b.macros[m].steps.push({mask:dv.getUint32(o,true),ms:dv.getUint16(o+4,true)}); o+=6; } }
+  return b;
+}
+function bindsBuild(b){
+  const pl=[b.active];
+  const u32=v=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];
+  for(let p=0;p<BIND_PROFILES;p++) for(let e=0;e<TYPE_DEFS.length;e++) for(let i=0;i<BIND_BACKS;i++){
+    const a=b.act[p][e][i]; pl.push(a.k,a.arg,...u32(a.mask>>>0)); }
+  for(let m=0;m<BIND_MACROS;m++){
+    const st=b.macros[m].steps; pl.push(0,st.length);
+    for(let k=0;k<BIND_STEPS;k++){ const s=st[k]||{mask:0,ms:0}; pl.push(...u32(s.mask>>>0),s.ms&255,s.ms>>>8); } }
+  let sum=0; for(const v of pl) sum=(sum+v)&0xFFFF;
+  return [0xB1,1,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
+}
+
+// Run fn on the shared bulk pipe: the status poll must not be in flight (its reply would be eaten by our read).
+async function bindsXfer(fn){
+  for(let i=0;i<200 && dev && (inflight||capturing||backupBusy||flightBusy||lizardBusy||rfBusy);i++) await sleep(10);
+  if(!dev || inflight) return null;
+  inflight=true;
+  try{ return await fn(); }
+  catch(e){ log("binds err: "+e.message); return null; }
+  finally{ inflight=false; }
+}
+async function bindsReadBlob(){
+  const buf=[];
+  for(let idx=0;idx<BIND_CHUNKS;idx++){
+    let f=null;
+    for(let t=0;t<3 && !f;t++){ await send([0x26,idx]); f=await readFrame(0xB2,3,256); if(f && f[0]!==idx) f=null; }
+    if(!f) return null;
+    for(let k=2;k<f.length;k++) buf.push(f[k]);
+  }
+  return bindsParse(new Uint8Array(buf));
+}
+async function bindsRead(){
+  if(!dev || !bindsCap) return;
+  bindsLastTry=Date.now();
+  const b=await bindsXfer(bindsReadBlob);
+  if(b){ binds=b; bindsMsg(""); bindsRender(); } else bindsMsg("read failed");
+}
+async function bindsAck(op){
+  let f=null;
+  for(let t=0;t<3 && !f;t++){ f=await readFrame(0xB3,3,64); if(f && f[0]!==op) f=null; }
+  return !!f && f[1]===1;
+}
+async function bindsSave(){
+  if(!binds || bindsSaving || !dev) return;
+  bindsSaving=true; bindsMsg("saving…");
+  const blob=bindsBuild(binds);
+  const ok=await bindsXfer(async()=>{
+    for(let idx=0,o=0;o<blob.length;idx++,o+=96){
+      const part=blob.slice(o,o+96);
+      await send([0x28,idx,part.length,...part]);
+      if(!await bindsAck(0x28)) return false;
+    }
+    await send([0x29]);
+    return await bindsAck(0x29);
+  });
+  bindsSaving=false;
+  bindsMsg(ok?"saved":"device rejected the blob");
+  const m=$("#bindsMsg").textContent;
+  await bindsRead();
+  bindsMsg(m);
+}
+function bindsCommit(){ clearTimeout(bindsSaveTimer); bindsSaveTimer=setTimeout(bindsSave,300); }
+function bindsMsg(m){ $("#bindsMsg").textContent=m; $("#macroMsg").textContent=m; }
+async function bindsSetProfile(n){
+  const ok=await bindsXfer(async()=>{ await send([0x2A,n]); return await bindsAck(0x2A); });
+  await bindsRead();
+  if(!ok) bindsMsg("profile switch failed");
+}
+
+// ---- figures ----
+// Hotspot geometry is in the viewBox of the drawing (points of Valve's sheet, origin at the cut-out corner).
+const FIG={
+  front:{src:"img/sc-front.svg",w:960,h:660,top:40,hs:[
+    {tb:0x1,s:"c",x:751,y:210,r:27},{tb:0x2,s:"c",x:805,y:158,r:27},{tb:0x4,s:"c",x:699,y:158,r:27},{tb:0x8,s:"c",x:752,y:105,r:27},
+    {tb:0x8000,s:"c",x:343,y:224,r:38},{tb:0x20,s:"c",x:605,y:224,r:38},
+    {tb:0x2000,s:"r",x:173,y:90,w:50,h:44},{tb:0x400,s:"r",x:173,y:183,w:50,h:44},
+    {tb:0x1000,s:"r",x:128,y:133,w:44,h:50},{tb:0x800,s:"r",x:224,y:133,w:44,h:50},
+    {tb:0x40,s:"e",x:314,y:93,rx:30,ry:13},{tb:0x4000,s:"e",x:635,y:93,rx:30,ry:13},
+    {tb:0x10000,s:"c",x:475,y:158,r:30},{tb:0x10,s:"e",x:475,y:395,rx:40,ry:18},
+    {tb:0x6000000,s:"r",x:198,y:288,w:212,h:210,rx:30},{tb:0x600000,s:"r",x:540,y:288,w:212,h:210,rx:30},
+    {tb:0x80000,s:"r",x:152,y:14,w:124,h:26},{tb:0x200,s:"r",x:676,y:14,w:124,h:26},
+    {tb:0x8000000,s:"r",x:152,y:-30,w:124,h:20},{tb:0x800000,s:"r",x:676,y:-30,w:124,h:20}]},
+  back:{src:"img/sc-back.svg",w:930,h:710,top:0}
+};
+// per paddle i (L4 R4 L5 R5): hotspot + legend anchor; the drawing is the underside, so R is on the left
+const BACK_POS=[
+  {tb:0x20000,x:699,y:368,rx:38,ry:53,tx:650,cls:"pr"},{tb:0x80,x:219,y:368,rx:38,ry:53,tx:275,cls:"pl"},
+  {tb:0x40000,x:725,y:484,rx:32,ry:54,tx:650,cls:"pr"},{tb:0x100,x:192,y:484,rx:32,ry:54,tx:275,cls:"pl"}];
+const SVGNS="http://www.w3.org/2000/svg";
+function svgEl(t,a,txt){ const e=document.createElementNS(SVGNS,t); for(const k in a) e.setAttribute(k,a[k]); if(txt!=null) e.textContent=txt; return e; }
+function shape(h,cls){
+  if(h.s==="c") return svgEl("circle",{cx:h.x,cy:h.y,r:h.r,class:cls});
+  if(h.s==="e") return svgEl("ellipse",{cx:h.x,cy:h.y,rx:h.rx,ry:h.ry,class:cls});
+  return svgEl("rect",{x:h.x,y:h.y,width:h.w,height:h.h,rx:h.rx||4,class:cls});
+}
+// opts.labels: legends (mapping figure); opts.live: stick dots / trigger bars (highlights are always there)
+function makeFig(kind,opts){
+  const d=FIG[kind], box=document.createElement("div"); box.className="scfig";
+  const H=d.h+(d.top||0); box.style.aspectRatio=d.w+"/"+H;
+  const img=document.createElement("img"); img.src=d.src; img.alt=""; box.appendChild(img);
+  const svg=svgEl("svg",{viewBox:"0 "+(-(d.top||0))+" "+d.w+" "+H}); box.appendChild(svg);
+  const fig={box,svg,kind,hs:[],txt:{},pd:[]};
+  if(kind==="front"){
+    for(const h of d.hs){ const n=shape(h,"hs"); svg.appendChild(n); fig.hs.push({tb:h.tb,n}); }
+    if(opts.live){
+      fig.dotL=svgEl("circle",{cx:343,cy:224,r:5,class:"dot"}); fig.dotR=svgEl("circle",{cx:605,cy:224,r:5,class:"dot"});
+      fig.barL=svgEl("rect",{x:152,y:-30,width:0,height:20,class:"bar"}); fig.barR=svgEl("rect",{x:676,y:-30,width:0,height:20,class:"bar"});
+      for(const x of [152,676]) svg.appendChild(svgEl("rect",{x,y:-30,width:124,height:20,class:"barbg"}));
+      for(const e of [fig.dotL,fig.dotR,fig.barL,fig.barR]) svg.appendChild(e);
+    }
+    if(opts.labels){
+      const t=(k,x,y)=>{ const e=svgEl("text",{x,y},""); svg.appendChild(e); fig.txt[k]=e; };
+      t("f0",751,210); t("f1",805,158); t("f2",699,158); t("f3",752,105);
+      t("lb",214,27); t("rb",738,27); t("lt",214,-20); t("rt",738,-20);
+    }
+  } else {
+    BACK_POS.forEach((b,i)=>{
+      const g=svgEl("g",{class:opts.labels?"pd":""});
+      const n=svgEl("ellipse",{cx:b.x,cy:b.y,rx:b.rx,ry:b.ry,class:"hs"}); g.appendChild(n);
+      svg.appendChild(g); fig.hs.push({tb:b.tb,n});
+      if(opts.labels){
+        svg.appendChild(svgEl("text",{x:b.tx,y:b.y-14,class:b.cls},BACK_LABELS[i].split(" ")[0]));
+        const ac=svgEl("text",{x:b.tx,y:b.y+18,class:b.cls+" pa"},""); svg.appendChild(ac); fig.pd.push(ac);
+        g.onclick=()=>bindsFocusRow(i);
+        // the legend is wider than the hotspot, so make it clickable too
+        const hit=svgEl("rect",{x:b.cls==="pl"?b.tx:b.tx-230,y:b.y-34,width:230,height:62,fill:"transparent",style:"cursor:pointer"});
+        hit.onclick=()=>bindsFocusRow(i); svg.appendChild(hit);
+      }
+    });
+  }
+  return fig;
+}
+const mapFigs=[], liveFigs=[];
+let macroFig=null;
+function figLabels(){
+  if(!mapFigs.length) return;
+  const et=curTab, def=TYPE_DEFS[et], L=def.labels, f=mapFigs[0], b=mapFigs[1];
+  const face=def.key==="SWITCH"?["B","A","Y","X"]:[L[1],L[2],L[3],L[4]];
+  face.forEach((n,i)=>{ const t=f.txt["f"+i]; t.textContent=n; t.setAttribute("class",n.length>2?"s":""); });
+  f.txt.lb.textContent=L[5]; f.txt.rb.textContent=L[6]; f.txt.lt.textContent=L[19]; f.txt.rt.textContent=L[20];
+  for(let i=0;i<BIND_BACKS;i++) b.pd[i].textContent=binds?actText(binds.act[binds.active][et][i],et):"";
+}
+function figHighlight(fig,raw,out){
+  for(const h of fig.hs){
+    h.n.classList.toggle("raw",((raw&h.tb)>>>0)!==0);
+    h.n.classList.toggle("out",((out&h.tb)>>>0)!==0);
+  }
+}
+function bindsFocusRow(i){
+  const rec=typeEls[curTab], row=rec.back[i].parentNode;
+  row.scrollIntoView({behavior:"smooth",block:"center"});
+  row.classList.add("flash"); setTimeout(()=>row.classList.remove("flash"),1200);
+  rec.kind[i].focus({preventScroll:true});
+}
+
+// ---- mapping rows ----
+function bindsDecorateRows(){
+  typeEls.forEach((rec,et)=>{
+    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[];
+    for(let i=0;i<BIND_BACKS;i++){
+      const sel=rec.back[i], row=sel.parentNode;
+      const kind=document.createElement("select"); kind.className="bkind bind";
+      for(const k in ACT_KINDS){ const o=document.createElement("option"); o.value=k; o.textContent=ACT_KINDS[k]; kind.appendChild(o); }
+      row.insertBefore(kind,sel); sel.classList.add("bind0");
+      const macro=document.createElement("select"); macro.className="bind";
+      for(let m=0;m<BIND_MACROS;m++){ const o=document.createElement("option"); o.value=m; macro.appendChild(o); }
+      row.appendChild(macro);
+      const combo=document.createElement("div"); combo.className="cbgroup bind"; const cbs={};
+      for(const c of tbCodes(def)){
+        const lab=document.createElement("label"), cb=document.createElement("input"); cb.type="checkbox";
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(def.labels[c])); combo.appendChild(lab); cbs[c]=cb;
+        cb.onchange=()=>{ let m=0; for(const k in cbs) if(cbs[k].checked) m|=CODE_TB[k];
+          const a=binds.act[binds.active][et][i]; a.k=1; a.arg=0; a.mask=m>>>0; bindsCommit(); bindsRender(); };
+      }
+      row.appendChild(combo);
+      kind.onchange=()=>{
+        const a=binds.act[binds.active][et][i], k=+kind.value;
+        if(k===0){ a.k=0; a.arg=+sel.value; a.mask=0; } else if(k===1){ a.k=1; a.arg=0; }
+        else { a.k=2; a.arg=+macro.value; a.mask=0; }
+        bindsCommit(); bindsRender();
+      };
+      macro.onchange=()=>{ const a=binds.act[binds.active][et][i]; a.k=2; a.arg=+macro.value; a.mask=0; bindsCommit(); bindsRender(); };
+      // the Button select above writes the active profile directly (field 40+et*9+i); re-read afterwards
+      sel.addEventListener("change",()=>setTimeout(bindsRead,300));
+      rec.kind.push(kind); rec.macro.push(macro); rec.combo.push(combo); rec.cbs.push(cbs);
+    }
+  });
+}
+function macroLabel(m){ return "Macro "+(m+1)+(binds&&binds.macros[m].steps.length?"":" (empty)"); }
+function bindsRender(){
+  if(!bindsInited||!binds) return;
+  typeEls.forEach((rec,et)=>{
+    for(let i=0;i<BIND_BACKS;i++){
+      const a=binds.act[binds.active][et][i];
+      if(document.activeElement!==rec.kind[i]) rec.kind[i].value=a.k;
+      rec.back[i].style.display=(a.k===0)?"":"none";
+      rec.macro[i].style.display=(a.k===2)?"":"none";
+      rec.combo[i].style.display=(a.k===1)?"":"none";
+      for(let m=0;m<BIND_MACROS;m++) rec.macro[i].options[m].textContent=macroLabel(m);
+      if(a.k===2 && document.activeElement!==rec.macro[i]) rec.macro[i].value=a.arg;
+      for(const c in rec.cbs[i]) rec.cbs[i][c].checked=((a.mask&CODE_TB[c])>>>0)!==0;
+    }
+  });
+  [...$("#profBtns").children].forEach((b,n)=>b.classList.toggle("active",n===binds.active));
+  figLabels(); macroRender();
+}
+
+// ---- macros ----
+function macroRender(){
+  const tabs=$("#macroTabs"); if(!tabs.children.length) return;
+  [...tabs.children].forEach((t,m)=>{ t.classList.toggle("active",m===curMacro);
+    t.textContent="Macro "+(m+1)+(binds&&binds.macros[m].steps.length?" ("+binds.macros[m].steps.length+")":""); });
+  const tbl=$("#macroSteps"); tbl.textContent="";
+  if(!binds) return;
+  const steps=binds.macros[curMacro].steps, def=TYPE_DEFS[macroType];
+  steps.forEach((s,k)=>{
+    const tr=document.createElement("tr"); tr.id="mstep"+k;
+    const td0=document.createElement("td"); td0.textContent=(k+1); tr.appendChild(td0);
+    const td1=document.createElement("td"), grp=document.createElement("div"); grp.className="stepbtns";
+    for(const c of tbCodes(def)){
+      const lab=document.createElement("label"), cb=document.createElement("input"); cb.type="checkbox";
+      cb.checked=((s.mask&CODE_TB[c])>>>0)!==0;
+      cb.onchange=()=>{ s.mask=cb.checked?((s.mask|CODE_TB[c])>>>0):((s.mask&~CODE_TB[c])>>>0); };
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(def.labels[c])); grp.appendChild(lab);
+    }
+    td1.appendChild(grp); tr.appendChild(td1);
+    const td2=document.createElement("td"), ms=document.createElement("input"); ms.type="number"; ms.min=1; ms.max=65535; ms.value=s.ms;
+    ms.onchange=()=>{ s.ms=Math.max(1,Math.min(65535,+ms.value||1)); ms.value=s.ms; };
+    td2.appendChild(ms); td2.appendChild(document.createTextNode(" ms")); tr.appendChild(td2);
+    const td3=document.createElement("td"); td3.className="acts";
+    const mk=(txt,fn,dis)=>{ const b=document.createElement("button"); b.textContent=txt; b.disabled=!!dis; b.onclick=fn; td3.appendChild(b); };
+    mk("Up",()=>{ steps.splice(k-1,0,steps.splice(k,1)[0]); macroRender(); },k===0);
+    mk("Down",()=>{ steps.splice(k+1,0,steps.splice(k,1)[0]); macroRender(); },k===steps.length-1);
+    mk("Delete",()=>{ steps.splice(k,1); macroRender(); bindsRender(); });
+    tr.appendChild(td3); tbl.appendChild(tr);
+  });
+  if(!steps.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="note"; td.textContent="No steps — this macro is empty."; tr.appendChild(td); tbl.appendChild(tr); }
+  $("#mAdd").disabled=steps.length>=BIND_STEPS;
+}
+async function macroTest(){
+  if(macroPlaying){ macroPlaying=false; return; }
+  if(!binds) return;
+  const steps=binds.macros[curMacro].steps; if(!steps.length) return;
+  macroPlaying=true; $("#mTest").textContent="Stop";
+  for(let k=0;k<steps.length && macroPlaying;k++){
+    const tr=$("#mstep"+k); if(tr) tr.classList.add("cur");
+    figHighlight(macroFig,0,steps[k].mask);
+    await sleep(steps[k].ms);
+    if(tr) tr.classList.remove("cur");
+  }
+  macroPlaying=false; $("#mTest").textContent="Test macro";
+  figHighlight(macroFig,0,0);
+  for(const tr of $("#macroSteps").querySelectorAll("tr.cur")) tr.classList.remove("cur");
+}
+
+// ---- live view ----
+let live=null, liveVisible=false, hostEv=[];
+function s16(v){ return v>32767?v-65536:v; }
+function parseLive(p){
+  const u32=o=>((p[o]|(p[o+1]<<8)|(p[o+2]<<16)|(p[o+3]<<24))>>>0);
+  return {raw:u32(0),out:u32(4),lt:p[8],rt:p[9],lx:s16(p[10]|(p[11]<<8)),ly:s16(p[12]|(p[13]<<8)),
+    rx:s16(p[14]|(p[15]<<8)),ry:s16(p[16]|(p[17]<<8)),profile:p[18],slot:p[19],et:p[20],link:p[21],batt:p[22],charge:p[23]};
+}
+function battText(l){
+  if(!l||!l.batt) return "";
+  return "Battery "+l.batt+"%"+(l.charge===2?" · charging":l.charge===4?" · charged":"");
+}
+async function livePoll(){
+  if(!dev||!bindsCap||inflight||bindsSaving||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return;
+  inflight=true;
+  try{ await send([0x27,0xFF]); const p=await readFrame(0xB0,24,256); if(p) live=parseLive(p); }
+  catch(e){ log("live err: "+e.message); }
+  finally{ inflight=false; }
+  liveRender();
+}
+function liveRender(){
+  const bt=$("#battTxt"), txt=battText(live);
+  bt.textContent=txt; bt.classList.toggle("hide",!txt||!bindsCap);
+  if(!live||!liveVisible) return;
+  const L=live, et=(L.et<TYPE_DEFS.length)?L.et:-1;
+  $("#lvRaw").textContent=maskNames(L.raw,-1,", ")||"—";
+  $("#lvOut").textContent=maskNames(L.out,et,", ")||"—";
+  $("#lvLs").textContent=L.lx+", "+L.ly; $("#lvRs").textContent=L.rx+", "+L.ry;
+  $("#lvTr").textContent=L.lt+" / "+L.rt;
+  $("#lvProf").textContent=(L.profile+1)+(et>=0?" · "+TYPE_DEFS[et].name:" · Steam");
+  $("#lvLink").textContent=(L.link?"up":"down")+" · slot "+(L.slot+1);
+  $("#lvBatt").textContent=L.batt?(L.batt+"%"+(L.charge===2?" charging":L.charge===4?" charged":"")):"—";
+  for(const f of liveFigs){
+    figHighlight(f,L.raw,L.out);
+    if(f.kind==="front"){
+      const k=24/32768;
+      f.dotL.setAttribute("cx",343+L.lx*k); f.dotL.setAttribute("cy",224-L.ly*k);
+      f.dotR.setAttribute("cx",605+L.rx*k); f.dotR.setAttribute("cy",224-L.ry*k);
+      f.barL.setAttribute("width",124*L.lt/255); f.barR.setAttribute("width",124*L.rt/255);
+    }
+  }
+  hostRender();
+}
+function hostRender(){
+  const pads=(navigator.getGamepads?[...navigator.getGamepads()]:[]).filter(Boolean);
+  const host=$("#hostPads");
+  if(!pads.length){ host.innerHTML='<p class="note">No gamepad seen by the browser yet — press a button on the controller.</p>'; }
+  else host.innerHTML=pads.map(g=>{
+    const btn=g.buttons.map((b,i)=>b.pressed?i:null).filter(v=>v!==null).join(", ")||"—";
+    const ax=g.axes.map(a=>a.toFixed(2)).join("  ");
+    return '<div class="stat" style="margin-bottom:8px"><div class="k">'+escHtml(g.id)+'</div>'
+      +'<div class="v sm">Buttons: '+btn+'</div><div class="v sm">Axes: '+ax+'</div></div>';
+  }).join("");
+  $("#hostEvt").textContent=hostEv.length?hostEv.join("\n"):"—";
+}
+function hostEvent(s){ hostEv.unshift(new Date().toLocaleTimeString()+"  "+s); if(hostEv.length>8) hostEv.length=8; }
+document.addEventListener("keydown",e=>hostEvent("keydown "+e.key+" ("+e.code+")"));
+document.addEventListener("mousedown",e=>hostEvent("mousedown button "+e.button));
+document.addEventListener("wheel",e=>hostEvent("wheel dy="+Math.round(e.deltaY)),{passive:true});
+// ~30 Hz while the Live view card is on screen, 1 Hz otherwise (battery text in the top bar)
+async function liveLoop(){
+  await livePoll();
+  setTimeout(liveLoop,liveVisible?33:1000);
+}
+
+// ---- wiring ----
+function bindsOnBlob(p){
+  const cap=(p[0]>=23 && p.length>195 && !isDongle);
+  if(cap!==bindsCap){
+    bindsCap=cap;
+    for(const id of ["bindsBar","mapFigs","macroCard","liveCard"]) $("#"+id).classList.toggle("hide",!cap);
+    for(const el of document.querySelectorAll(".bind")) el.style.display=cap?"":"none";
+    if(!cap){ binds=null; live=null; liveRender(); for(const t of typeEls) for(const sel of t.back) sel.style.display=""; }
+    else bindsRender();
+  }
+  if(!cap) return;
+  if((!binds || binds.active!==p[195]) && Date.now()-bindsLastTry>1500 && !bindsSaving) bindsRead();
+}
+(function bindsInit(){
+  const pb=$("#profBtns");
+  for(let n=0;n<BIND_PROFILES;n++){ const b=document.createElement("button"); b.textContent=(n+1);
+    b.onclick=()=>bindsSetProfile(n); pb.appendChild(b); }
+  bindsDecorateRows();
+  mapFigs.push(makeFig("front",{labels:true}),makeFig("back",{labels:true}));
+  for(const f of mapFigs){ const w=document.createElement("div"); w.appendChild(f.box); $("#mapFigs").appendChild(w); }
+  liveFigs.push(makeFig("front",{live:true}),makeFig("back",{live:true}));
+  for(const f of liveFigs){ const w=document.createElement("div"); w.appendChild(f.box); $("#liveFigs").appendChild(w); }
+  macroFig=makeFig("front",{live:true}); const mw=document.createElement("div"); mw.appendChild(macroFig.box); $("#macroFig").appendChild(mw);
+  const tabs=$("#macroTabs");
+  for(let m=0;m<BIND_MACROS;m++){ const t=document.createElement("span"); t.className="slot-tab";
+    t.onclick=()=>{ curMacro=m; macroRender(); }; tabs.appendChild(t); }
+  const ms=$("#macroType");
+  TYPE_DEFS.forEach((d,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=d.name; ms.appendChild(o); });
+  ms.onchange=()=>{ macroType=+ms.value; macroRender(); };
+  $("#mAdd").onclick=()=>{ if(!binds) return; const st=binds.macros[curMacro].steps;
+    if(st.length<BIND_STEPS){ st.push({mask:0,ms:100}); macroRender(); bindsRender(); } };
+  $("#mTest").onclick=macroTest;
+  $("#mSave").onclick=()=>{ clearTimeout(bindsSaveTimer); bindsSave(); };
+  for(const el of document.querySelectorAll(".bind")) el.style.display="none";
+  new IntersectionObserver(es=>{ liveVisible=es[es.length-1].isIntersecting; }).observe($("#liveCard"));
+  bindsInited=true;
+  figLabels(); macroRender();
+  liveLoop();
+})();
 </script>
 </body>
 </html>

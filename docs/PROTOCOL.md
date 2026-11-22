@@ -561,7 +561,7 @@ Status blob byte `p[197]` = active profile (0..2). Old fields `5..8` and `40+et*
 button action in the active profile; `g_type[].back` / blob `p[8..11]` always show the button code of the active
 profile (0 for a combo or macro paddle).
 
-Binds blob (`binds.h`, 1087 bytes, read/written in 96-byte chunks, 12 chunks): `[0xB1][version=1][payload length u16 LE]`,
+Binds blob (`binds.h`, 1079 bytes, read/written in 96-byte chunks, 12 chunks): `[0xB1][version=1][payload length u16 LE]`,
 payload, `u16 LE` sum of the payload bytes. Payload: `active`, then actions `[profile 3][type 4: xbox, switch, ds4, ds5][paddle 4: L4 R4 L5 R5]`
 each `{kind, arg, mask u32 LE}` (kind 0 button: `arg` = code 0..20; 1 combo: `mask` = `TB_*` bits; 2 macro: `arg` = macro 0..7),
 then 8 macros `{flags (0), count 0..16, 16 x {mask u32 LE, ms u16 LE}}`. Macros are shared by all profiles; a macro
