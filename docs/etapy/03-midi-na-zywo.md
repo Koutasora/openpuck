@@ -23,6 +23,8 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - [x] 6. `docs/index.html`: licznik N/32, Crop to selection, Save to device zablokowany poza limitami.
 - [x] 7. `tests/sounds-web/`: test Playwright w Chromium z udawanym `navigator.hid`.
 - [x] 8. `docs/PROTOCOL.md`, `README.md`, `CHECKLISTA.md`.
+- [ ] 9. Poprawki po teście użytkownika (`docs/index.html`, `tests/sounds-web/run.js`): przyciski odsłuchu w pasku nad piano rollem; przełącznik Fold (tylko wiersze z nutami); rysowanie przeciągnięciem (klik = długość ostatniej nuty), prawy/podwójny klik usuwa, kursory przesuwania i zmiany długości, szerszy uchwyt, wyższe wiersze; klik w klawisz gra nutę na padzie (bez połączenia w przeglądarce); "Crop to 32" sam przycina do 32 pozycji (od początku zaznaczenia albo melodii), znacznik końca 32. pozycji na zaznaczeniu; pole BPM (z MIDI przy imporcie, inaczej 120): zmiana rozciąga melodię proporcjonalnie, siatka w taktach (1/4-1/32) przy tym BPM, ms zostają jako opcja.
+- BPM przechowywane per zakładka tylko w przeglądarce (jak nazwy melodii), poza blobem pucka: format zapisu bez zmian, puck i tak gra milisekundy.
 - Sprawdzenie: test Playwright z kroku 7, przegląd managera, test użytkownika na padzie.
 
 ## Decyzje
@@ -39,6 +41,8 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - Odsłuch na padzie z głośnością z Settings (ta sama, z którą gra puck); nuta = 0x83 na side 0 i 1 z dur = długość nuty, więc po zerwaniu połączenia nuta i tak kończy się sama (po odłączeniu urządzenia HID nie da się wysłać wyciszenia).
 - Połączenie WebHID dostępne tylko przy pucku OpenPuck połączonym przez WebUSB (Sounds i Debug są w panelu po połączeniu); wystarcza, bo zapis do slotu i tak wymaga OpenPucka. Puck Valve i pad na kablu bez OpenPucka nie są obsługiwane w tym etapie.
 - Raport 0x83 dopełniany zerami do długości z deskryptora urządzenia (domyślnie 9 B): deskryptor pucka Valve i pada na kablu może mieć inną długość niż OpenPuck.
+
+- Uwagi użytkownika po pierwszym teście 2026-11-22: Play za daleko od piano rolla, brak zawijania zakresu nut (wybrany Fold), rysowanie nieintuicyjne (wybrane: rysowanie przeciągnięciem, prawy klik usuwa, czytelne kursory i uchwyty, klik w klawisz gra nutę).
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

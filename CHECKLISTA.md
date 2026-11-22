@@ -86,7 +86,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 ### 9. Sounds: piano roll i granie na żywo (etap 03)
 - [ ] Mapping -> Sounds: piano roll pokazuje melodię; klik w puste pole dodaje nutę, przeciągnięcie przesuwa w czasie i wysokości, prawa krawędź zmienia długość, Delete usuwa; tabela pod spodem zmienia się razem z nim i odwrotnie
 - [ ] Przyciąganie Off / 10 / 50 / 100 ms działa; nuta nałożona na inną przycina ją, żadne nuty się nie nakładają
-- [ ] Przeciągnięcie po linijce czasu zaznacza zakres; Clear selection czyści; Crop to selection zostawia tylko zakres
+- [ ] Przeciągnięcie po linijce czasu zaznacza zakres; Clear selection czyści; Crop to 32 zostawia zakres od jego początku, najwyżej 32 wpisy (cienka kreska na rolce pokazuje, gdzie kończy się 32. wpis), bez zaznaczenia pierwsze 32 wpisy
 - [ ] Zoom (przyciski i Ctrl + kółko), przewijanie (kółko, Shift + kółko, suwak pod rolką), Fit
 - [ ] Przeciągnięcie pliku .mid na piano roll otwiera wybór ścieżki; Import wstawia wszystkie wpisy (także ponad 32), bez przesunięcia o oktawy
 - [ ] Melodia ponad 32 wpisów: licznik na żółto z podpowiedzią, Save to device i Play on puck nieaktywne; po Crop wracają
@@ -94,3 +94,8 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Play on controller z zaznaczonym zakresem gra tylko zakres; Disconnect i zamknięcie karty wyciszają pad
 - [ ] Status -> Debug: Haptic test panel gra ton na każdym side (0 lewy gładzik, 1 prawy, 2 oba, 3 lewy uchwyt, 4 prawy uchwyt), Stop all wycisza
 - [ ] Zakładki Player już nie ma
+- [ ] Przyciski Play on controller, Stop i Preview in browser są nad piano rollem; Fold pokazuje tylko używane wiersze (przeciągnięcie pionowo przeskakuje między nimi), wybór zostaje do końca sesji
+- [ ] Piano roll: przeciągnięcie po pustym miejscu rysuje nutę, zwykły klik dodaje nutę o długości ostatnio użytej, prawy klik i podwójny klik usuwają nutę, kursor zmienia się (krzyżyk, przesuwanie, zmiana długości)
+- [ ] Klik w klawisz po lewej gra nutę 300 ms (na padzie po połączeniu, inaczej w przeglądarce), nie podczas odtwarzania
+- [ ] Piano roll: pole BPM (20-400) ustawia się z tempa importowanego pliku MIDI (bez tempa 120), zmiana BPM rozciąga całą melodię proporcjonalnie, a gdy któraś nuta wyszłaby poza 30-5000 ms, zmiana jest odrzucona; BPM jest pamiętany osobno dla każdej melodii tylko w przeglądarce
+- [ ] Przyciąganie 1/4, 1/8, 1/16 (domyślnie), 1/32 wg BPM; linie taktu i uderzeń na rolce, numery taktów na linijce przy przyciąganiu do uderzeń

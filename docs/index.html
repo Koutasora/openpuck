@@ -514,15 +514,21 @@
       <div class="slot-tabs" id="sndTabs"></div>
       <div class="row" style="margin-top:0"><label>Name</label><input id="sndName" class="mtxt" type="text" maxlength="24"><span class="note" id="sndUsed" style="margin:0;flex:1 1 200px"></span></div>
       <div class="row" style="margin:8px 0 4px;flex-wrap:wrap;gap:8px">
+        <button id="sndLive">Play on controller</button>
+        <button id="sndLiveStop" disabled>Stop</button>
+        <button id="sndPrev">Preview in browser</button>
+        <label style="flex:none">BPM</label>
+        <input id="prBpm" class="mtxt" type="number" min="20" max="400" step="1" value="120" style="flex:0 0 70px">
         <label style="flex:none">Snap</label>
-        <select id="prSnap" style="flex:0 0 90px"><option value="0">Off</option><option value="10">10 ms</option><option value="50" selected>50 ms</option><option value="100">100 ms</option></select>
+        <select id="prSnap" style="flex:0 0 100px"><option value="0">Off</option><option value="n4">1/4</option><option value="n8">1/8</option><option value="n16" selected>1/16</option><option value="n32">1/32</option><option value="10">10 ms</option><option value="50">50 ms</option><option value="100">100 ms</option></select>
         <button id="prZoomOut">Zoom -</button><button id="prZoomIn">Zoom +</button><button id="prFit">Fit</button>
+        <label style="flex:none"><input type="checkbox" id="prFold"> Fold</label>
         <button id="prClearSel" disabled>Clear selection</button>
-        <button id="prCrop" disabled>Crop to selection</button>
+        <button id="prCrop" disabled title="Keeps the selection from its start (or the melody from its start), at most 32 entries">Crop to 32</button>
       </div>
-      <canvas id="prCanvas" tabindex="0" style="display:block;width:100%;height:300px;border:1px solid #313a4f;border-radius:3px;background:#0e1017"></canvas>
+      <canvas id="prCanvas" tabindex="0" style="display:block;width:100%;height:360px;border:1px solid #313a4f;border-radius:3px;background:#0e1017"></canvas>
       <input type="range" id="prScroll" min="0" max="0" value="0" step="1" style="width:100%">
-      <p class="note" style="margin:2px 0 6px">Click to add a note, drag to move, drag the right edge to resize, Delete removes. Drag on the ruler to select a time range. Ctrl + wheel zooms time, wheel scrolls pitch, Alt + wheel zooms pitch, Shift + wheel scrolls time. Drop a MIDI file here to import it.</p>
+      <p class="note" style="margin:2px 0 6px">Click adds a note (the length of the last one), dragging on empty space draws one, drag a note to move it, drag its right end to resize. Double-click, right-click or Delete removes. Click a key to hear it. Drag on the ruler to select a time range; Crop to 32 keeps it from its start up to 32 entries (marked on the ruler). Fold shows only the rows in use. Ctrl + wheel zooms time, wheel scrolls pitch, Alt + wheel zooms pitch, Shift + wheel scrolls time. Drop a MIDI file here to import it.</p>
       <div class="row mmeta"><span id="sndCount"></span><span id="sndTotal"></span></div>
       <table class="steps" id="sndNotes"></table>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
@@ -539,9 +545,6 @@
       </div>
       <p class="note" id="midiNote" style="margin:0 0 10px"></p>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
-        <button id="sndPrev">Preview in browser</button>
-        <button id="sndLive">Play on controller</button>
-        <button id="sndLiveStop" disabled>Stop</button>
         <button id="sndPlayPuck">Play on puck</button>
         <button id="sndPlayStored">Play saved melody on puck</button>
         <button id="sndSave" class="primary">Save to device</button>
@@ -4511,6 +4514,10 @@ let curMel=0, soundNames=[], midiData=null;
 try{ const n=JSON.parse(localStorage.getItem("openpuck.soundNames")||"[]"); if(Array.isArray(n)) soundNames=n; }catch(e){}
 function soundName(m){ const n=soundNames[m]; return (typeof n==="string"&&n.trim())?n.trim():"Melody "+(m+1); }
 function soundSetName(m,v){ soundNames[m]=v; try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){} }
+// tempo per melody tab: this browser only, never in the puck blob (the roll's beat grid and the BPM stretch use it)
+let melBpm=[]; try{ const b=JSON.parse(localStorage.getItem("openpuck.melBpm")||"[]"); if(Array.isArray(b)) melBpm=b; }catch(e){}
+const bpmOf=m=>melBpm[m]>=20&&melBpm[m]<=400?melBpm[m]:120;
+function bpmSet(m,v){ melBpm[m]=v; try{ localStorage.setItem("openpuck.melBpm",JSON.stringify(melBpm)); }catch(e){} }
 const noteHz=m=>Math.round(440*Math.pow(2,(m-69)/12));
 function noteOf(freq){
   if(!freq) return "rest";
@@ -4636,6 +4643,7 @@ function sndRender(){
   [...$("#sndTabs").children].forEach((t,m)=>{ t.classList.toggle("active",m===curMel);
     t.textContent=soundName(m)+(sounds.mel[m].length?" ("+sounds.mel[m].length+")":""); });
   const nameEl=$("#sndName"); if(document.activeElement!==nameEl) nameEl.value=soundNames[curMel]||"";
+  const bpmEl=$("#prBpm"); if(document.activeElement!==bpmEl) bpmEl.value=bpmOf(curMel);
   nameEl.placeholder="Melody "+(curMel+1);
   const used=[]; sounds.ev.forEach((m,e)=>{ if(m===curMel) used.push(sndEventName(e)); });
   $("#sndUsed").textContent=used.length?"Plays on: "+used.join(", "):"Not assigned to any event.";
@@ -4673,7 +4681,7 @@ function sndTotals(){
   const st=sndNotes(); let total=0; for(const n of st) total+=n.ms;
   const over=st.length>SND_NOTES, cnt=$("#sndCount");
   const prob=sndProblem(sounds);
-  cnt.textContent=st.length+" / "+SND_NOTES+" notes"+(over?": too long to save, select a range and press Crop to selection":prob?": Save is disabled, "+prob:"");
+  cnt.textContent=st.length+" / "+SND_NOTES+" notes"+(over?": too long to save, press Crop to 32":prob?": Save is disabled, "+prob:"");
   cnt.style.color=prob?"var(--warn)":"";
   $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
   for(const id of ["sndSave","sndEvSave"]) $("#"+id).disabled=!!prob;
@@ -4854,7 +4862,9 @@ function midiImport(){
   if(sndNotes().length && !confirm("Replace the notes of "+soundName(curMel)+" with this track?")) return;
   sounds.mel[curMel]=line.notes;
   if(!soundNames[curMel]) soundSetName(curMel,name.slice(0,24));
-  const parts=["Imported "+line.notes.length+" entries (rests count as entries). Saving needs "+SND_NOTES+" or fewer."];
+  const t0=m.tempos.length?m.tempos.reduce((a,b)=>b.t<a.t?b:a):null;
+  bpmSet(curMel,t0?Math.max(20,Math.min(400,Math.round(60000000/t0.us))):120);
+  const parts=["Imported "+line.notes.length+" entries (rests count as entries) at "+bpmOf(curMel)+" BPM. Saving needs "+SND_NOTES+" or fewer."];
   if(line.clipped) parts.push(line.clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
   if(line.merged) parts.push(line.merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
   $("#midiNote").textContent=parts.join(" ");
@@ -4865,8 +4875,8 @@ function midiImport(){
 // ---- piano roll ----
 // The melody is one mono sequence {freq,ms} (freq 0 = rest). The roll shows it as notes {s,e,freq} in ms, edits
 // them, and converts back after every edit (prEntries): sorted by start, gaps become rests, no overlaps.
-const PR_LO=24, PR_HI=107, PR_KW=46, PR_RH=22, PR_EDGE=6;
-const pr={cv:null, x0:0, pxms:0.2, pTop:84, rowH:14, w:0, h:0, notes:[], selS:-1, range:null, drag:null, ph:-1, fitNow:true};
+const PR_LO=24, PR_HI=107, PR_KW=46, PR_RH=22, PR_GRIP=8, PR_FOLD="openpuck.prFold";
+const pr={cv:null, x0:0, pxms:0.2, pTop:84, rowH:14, w:0, h:0, notes:[], selS:-1, range:null, drag:null, ph:-1, fitNow:true, fold:false, fl:null, lastLen:200, addedAt:0};
 const prRow=f=>Math.max(PR_LO,Math.min(PR_HI,Math.round(69+12*Math.log2(f/440))));
 const prBlack=r=>[1,3,6,8,10].includes(r%12);
 function prNotes(){
@@ -4905,9 +4915,30 @@ function prCommit(notes){
   sndDirty(); sndRender();
 }
 const prXof=ms=>PR_KW+(ms-pr.x0)*pr.pxms, prMsOf=x=>pr.x0+(x-PR_KW)/pr.pxms;
-const prYof=r=>PR_RH+(pr.pTop-r)*pr.rowH, prRowAt=y=>Math.ceil(pr.pTop-(y-PR_RH)/pr.rowH);
-function prGrid(){ return +$("#prSnap").value; }
-function prSnap(ms,floor){ const g=prGrid(); return Math.max(0,g?(floor?Math.floor(ms/g):Math.round(ms/g))*g:Math.round(ms)); }
+// Fold mode: pr.fl lists the pitch rows in use (high to low) and only those are drawn, one after the other.
+function prFoldList(){
+  if(pr.drag) return pr.drag.rows||null; // frozen during a drag so the rows do not jump
+  if(!pr.fold) return null;
+  const l=[...new Set(pr.notes.map(n=>prRow(n.freq)))].sort((a,b)=>b-a);
+  return l.length?l:null;
+}
+const prYof=r=>pr.fl?(pr.fl.indexOf(r)<0?-9999:PR_RH+pr.fl.indexOf(r)*pr.rowH):PR_RH+(pr.pTop-r)*pr.rowH;
+const prRowAt=y=>pr.fl?pr.fl[Math.max(0,Math.min(pr.fl.length-1,Math.floor((y-PR_RH)/pr.rowH)))]:Math.ceil(pr.pTop-(y-PR_RH)/pr.rowH);
+const prClampRow=r=>Math.max(PR_LO,Math.min(PR_HI,r));
+// snap step in ms: "n4".."n32" are note values at the melody's BPM (1/4 = one beat), the rest are plain ms
+function prGrid(){ const v=$("#prSnap").value; return v[0]==="n"?240000/bpmOf(curMel)/+v.slice(1):+v; }
+const prBeatSnap=()=>$("#prSnap").value[0]==="n";
+function prSnap(ms,floor){ const g=prGrid(); return Math.max(0,g?Math.round((floor?Math.floor(ms/g):Math.round(ms/g))*g):Math.round(ms)); }
+// BPM change: every entry is stretched by oldBPM/newBPM; refused (BPM kept) when an entry would leave the limits
+function prBpmChange(){
+  if(!sounds) return;
+  const old=bpmOf(curMel), nb=Math.max(20,Math.min(400,Math.round(+$("#prBpm").value)||old));
+  $("#prBpm").value=nb; if(nb===old) return;
+  const st=sndNotes(), ms=st.map(n=>Math.round(n.ms*old/nb));
+  if(ms.some(v=>v<SND_MS_MIN||v>SND_MS_MAX)){ $("#prBpm").value=old; sndMsg("BPM not changed: an entry would leave "+SND_MS_MIN+"-"+SND_MS_MAX+" ms"); return; }
+  sndLiveHalt(true); st.forEach((n,i)=>{ n.ms=ms[i]; }); bpmSet(curMel,nb);
+  pr.range=null; pr.selS=-1; pr.fitNow=true; sndDirty(); sndRender();
+}
 function prVisRows(){ return Math.max(1,Math.floor((pr.h-PR_RH)/pr.rowH)); }
 function prClampV(){
   const vis=prVisRows();
@@ -4916,7 +4947,7 @@ function prClampV(){
 function prFit(){
   const rows=pr.notes.map(n=>prRow(n.freq));
   const lo=Math.max(PR_LO,(rows.length?Math.min(...rows):60)-3), hi=Math.min(PR_HI,(rows.length?Math.max(...rows):72)+3);
-  pr.rowH=Math.max(6,Math.min(24,Math.floor((pr.h-PR_RH)/(hi-lo+1))));
+  pr.rowH=Math.max(16,Math.min(24,Math.floor((pr.h-PR_RH)/(hi-lo+1))));
   pr.pTop=hi+Math.max(0,Math.floor((prVisRows()-(hi-lo+1))/2)); prClampV();
   pr.pxms=Math.max(0.01,Math.min(3,(pr.w-PR_KW-12)/Math.max(prTotal(),1000))); pr.x0=0;
 }
@@ -4932,7 +4963,7 @@ function prSync(){
 function prRefresh(){
   if(!pr.cv) return;
   pr.notes=prNotes();
-  $("#prClearSel").disabled=!pr.range; $("#prCrop").disabled=!pr.range;
+  $("#prClearSel").disabled=!pr.range; $("#prCrop").disabled=!pr.range&&sndNotes().length<=SND_NOTES;
   prSync(); prDraw();
 }
 function prDraw(){
@@ -4942,32 +4973,48 @@ function prDraw(){
   if(cv.width!==W*dpr||cv.height!==H*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
   pr.w=W; pr.h=H;
   if(pr.fitNow){ pr.fitNow=false; prFit(); prSync(); }
+  pr.fl=prFoldList();
+  if(pr.fl) pr.rowH=Math.max(8,Math.min(22,Math.floor((H-PR_RH)/pr.fl.length)));
   prClampV();
   const g=cv.getContext("2d"), cs=getComputedStyle(document.documentElement);
   const fg=cs.getPropertyValue("--fg").trim(), mut=cs.getPropertyValue("--mut").trim(), acc=cs.getPropertyValue("--acc2").trim(),
     bad=cs.getPropertyValue("--bad").trim();
   g.setTransform(dpr,0,0,dpr,0,0); g.font="10px sans-serif"; g.textBaseline="middle";
   g.fillStyle="#0e1017"; g.fillRect(0,0,W,H);
-  const vis=prVisRows()+1;
-  for(let i=0;i<vis;i++){
-    const row=pr.pTop-i; if(row<PR_LO) break;
+  const vis=prVisRows()+1, shown=[];
+  if(pr.fl) pr.fl.forEach(row=>shown.push(row));
+  else for(let i=0;i<vis;i++){ const row=pr.pTop-i; if(row<PR_LO) break; shown.push(row); }
+  for(const row of shown){
     const y=prYof(row);
     if(prBlack(row)){ g.fillStyle="#131722"; g.fillRect(PR_KW,y,W-PR_KW,pr.rowH); }
     g.fillStyle=row%12===0?"#313a4f":"#1b2030"; g.fillRect(PR_KW,y+pr.rowH-1,W-PR_KW,1);
   }
-  // ruler and vertical grid
-  const steps=[10,20,50,100,200,500,1000,2000,5000,10000], step=steps.find(s=>s*pr.pxms>=70)||20000;
+  // ruler and grid: beat lines, stronger bar lines (4 beats), the snap's own lines; bar numbers under a beat snap
   g.fillStyle="#151925"; g.fillRect(PR_KW,0,W-PR_KW,PR_RH);
   g.textAlign="left";
-  for(let t=Math.ceil(prMsOf(PR_KW)/step)*step; prXof(t)<W; t+=step){
-    const x=Math.round(prXof(t));
-    g.fillStyle="#1b2030"; g.fillRect(x,PR_RH,1,H-PR_RH);
-    g.fillStyle=mut; g.fillRect(x,PR_RH-5,1,5); g.fillText((t/1000)+" s",x+3,PR_RH/2);
+  const beat=60000/bpmOf(curMel), bar=beat*4, gr=prGrid(), tA=prMsOf(PR_KW), tB=prMsOf(W);
+  const vline=(ms,col)=>{ g.fillStyle=col; g.fillRect(Math.round(prXof(ms)),PR_RH,1,H-PR_RH); };
+  if(gr&&gr*pr.pxms>=6) for(let k=Math.ceil(tA/gr);k*gr<=tB;k++) vline(k*gr,"#171c2a");
+  if(beat*pr.pxms>=6) for(let k=Math.ceil(tA/beat);k*beat<=tB;k++) vline(k*beat,k%4===0?"#3f4b69":"#252d42");
+  else if(bar*pr.pxms>=6) for(let k=Math.ceil(tA/bar);k*bar<=tB;k++) vline(k*bar,"#3f4b69");
+  if(prBeatSnap()){
+    let every=1; while(bar*every*pr.pxms<44) every*=2;
+    for(let k=Math.ceil(tA/bar);k*bar<=tB;k++){
+      const x=Math.round(prXof(k*bar)); g.fillStyle=mut; g.fillRect(x,PR_RH-5,1,5);
+      if(k%every===0) g.fillText(String(k+1),x+3,PR_RH/2);
+    }
+  }else{
+    const steps=[10,20,50,100,200,500,1000,2000,5000,10000], step=steps.find(s=>s*pr.pxms>=70)||20000;
+    for(let t=Math.ceil(tA/step)*step; prXof(t)<W; t+=step){
+      const x=Math.round(prXof(t)); g.fillStyle=mut; g.fillRect(x,PR_RH-5,1,5); g.fillText((t/1000)+" s",x+3,PR_RH/2);
+    }
   }
   if(pr.range){
     const x1=prXof(pr.range.a), x2=prXof(pr.range.b);
     g.fillStyle=fg; g.globalAlpha=0.12; g.fillRect(x1,0,x2-x1,H); g.globalAlpha=1;
     g.fillStyle=fg; g.fillRect(x1,0,1,H); g.fillRect(x2-1,0,1,H);
+    const c=prCropList();
+    if(c.out.length>=SND_NOTES){ const xm=Math.round(prXof(c.end)); if(xm>=PR_KW&&xm<=W){ g.fillStyle=acc; g.fillRect(xm-1,0,2,H); } }
   }
   // notes
   g.save(); g.beginPath(); g.rect(PR_KW,PR_RH,W-PR_KW,H-PR_RH); g.clip();
@@ -4981,72 +5028,123 @@ function prDraw(){
   g.restore();
   // keyboard strip
   g.fillStyle="#151925"; g.fillRect(0,0,PR_KW,PR_RH);
-  for(let i=0;i<vis;i++){
-    const row=pr.pTop-i; if(row<PR_LO) break;
+  for(const row of shown){
     const y=prYof(row);
     g.fillStyle=prBlack(row)?"#2a3042":"#cfd6e2"; g.fillRect(0,y,PR_KW,pr.rowH-1);
-    if(row%12===0||pr.rowH>=12){ g.fillStyle=prBlack(row)?"#cfd6e2":"#1b1f2b"; g.fillText(noteLabel(row)+(row%12===0?" -":""),4,y+pr.rowH/2); }
+    if(row%12===0||pr.rowH>=12||pr.fl){ g.fillStyle=prBlack(row)?"#cfd6e2":"#1b1f2b"; g.fillText(noteLabel(row)+(row%12===0?" -":""),4,y+pr.rowH/2); }
   }
   if(pr.ph>=0){ const x=prXof(pr.ph); if(x>=PR_KW&&x<=W){ g.fillStyle=bad; g.fillRect(Math.round(x),0,2,H); } }
 }
 function prHit(x,y){
   for(let i=pr.notes.length-1;i>=0;i--){
     const n=pr.notes[i], x1=prXof(n.s), x2=prXof(n.e), y1=prYof(prRow(n.freq));
-    if(x>=x1-4&&x<=x2&&y>=y1&&y<y1+pr.rowH) return {n,edge:x>x2-PR_EDGE&&x2-x1>PR_EDGE*2};
+    // the grip is the right 8 px of the note, the right half of a note narrower than 16 px
+    if(x>=x1-4&&x<=x2&&y>=y1&&y<y1+pr.rowH) return {n,edge:x>x2-(x2-x1<PR_GRIP*2?(x2-x1)/2:PR_GRIP)};
   }
   return null;
 }
-function prCrop(){
-  if(!sounds||!pr.range) return;
-  sndLiveHalt(true);
-  const {a,b}=pr.range, out=[]; let t=0;
+function prDelete(n){ const keep=pr.notes.filter(o=>o.s!==n.s); pr.selS=-1; prCommit(keep); }
+function sndBeep(freq,ms){
+  try{
+    sndCtx=sndCtx||new (window.AudioContext||window.webkitAudioContext)(); sndCtx.resume();
+    const g=sndCtx.createGain(); g.gain.value=0.12; g.connect(sndCtx.destination);
+    const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=freq; o.connect(g);
+    o.start(); o.stop(sndCtx.currentTime+ms/1000);
+  }catch(e){ sndMsg("sound failed: "+e.message); }
+}
+// a click on the keyboard strip: 300 ms of that note on the controller when connected, in the browser otherwise
+function prKeyPlay(row){
+  if(!sounds||lv.w||lv.timer) return;
+  const freq=noteHz(row);
+  if(pl.cur) plSendTones([0,1],Math.min(0,sounds.gain),freq,300,0,0); else sndBeep(freq,300);
+}
+// What Crop to 32 keeps: from the selection start (else the melody start) up to the selection end, at most
+// SND_NOTES entries; pieces under SND_MS_MIN are dropped. end = where the last kept entry ends.
+function prCropList(){
+  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, out=[]; let t=0, end=a;
   for(const n of sndNotes()){
+    if(out.length>=SND_NOTES) break;
     const lo=Math.max(t,a), hi=Math.min(t+n.ms,b);
-    if(hi-lo>=SND_MS_MIN) out.push({freq:n.freq,ms:hi-lo});
+    if(hi-lo>=SND_MS_MIN){ out.push({freq:n.freq,ms:hi-lo}); end=hi; }
     t+=n.ms;
   }
-  const st=sndNotes(); st.length=0; st.push(...out);
+  return {out,end};
+}
+function prCrop(){
+  if(!sounds) return;
+  sndLiveHalt(true);
+  const {out}=prCropList(), st=sndNotes(); let total=0; for(const n of out) total+=n.ms;
+  st.length=0; st.push(...out);
   pr.range=null; pr.selS=-1; pr.fitNow=true; sndDirty(); sndRender();
+  sndMsg("Kept "+out.length+" entries ("+(total/1000).toFixed(2)+" s)");
 }
 function prInit(){
   const cv=pr.cv=$("#prCanvas");
   const pt=e=>{ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
   cv.addEventListener("mousedown",e=>{
     if(!sounds||e.button!==0) return;
-    cv.focus(); const {x,y}=pt(e); if(x<PR_KW) return;
+    cv.focus(); const {x,y}=pt(e);
+    pr.fl=prFoldList();
+    if(x<PR_KW){ if(y>=PR_RH) prKeyPlay(prRowAt(y)); return; }
     if(y<PR_RH){ const a=prSnap(prMsOf(x)); pr.drag={type:"range",a}; pr.range={a,b:a}; prDraw(); e.preventDefault(); return; }
     const h=prHit(x,y);
     if(h){
-      pr.selS=h.n.s;
-      pr.drag={type:h.edge?"resize":"move",ms0:prMsOf(x),row0:prRowAt(y),orig:{...h.n},base:pr.notes.filter(o=>o!==h.n),moved:false};
+      pr.selS=h.n.s; pr.lastLen=h.n.e-h.n.s;
+      pr.drag={type:h.edge?"resize":"move",ms0:prMsOf(x),row0:prRowAt(y),rows:pr.fl,orig:{...h.n},base:pr.notes.filter(o=>o!==h.n),moved:false};
     }else{
-      const g=prGrid(), s=prSnap(prMsOf(x),true), len=Math.max(SND_MS_MIN,g||200), n={s,e:s+len,freq:noteHz(Math.max(PR_LO,Math.min(PR_HI,prRowAt(y))))};
-      pr.selS=s; prCommit(prPlace([...pr.notes,n],n)); return;
+      // press and drag draws a note, a plain click adds one with the length of the last note used
+      pr.drag={type:"draw",s:prSnap(prMsOf(x),true),row:prClampRow(prRowAt(y)),x0:x,rows:pr.fl,base:pr.notes,moved:false};
     }
     prDraw(); e.preventDefault();
   });
   window.addEventListener("mousemove",e=>{
     const d=pr.drag, {x,y}=pt(e);
     if(!d){
-      if(e.target===cv){ const h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null; cv.style.cursor=h?(h.edge?"ew-resize":"grab"):(y<PR_RH&&x>=PR_KW?"col-resize":"default"); }
+      if(e.target===cv){
+        const h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null;
+        cv.style.cursor=x<PR_KW?(y>=PR_RH?"pointer":"default"):y<PR_RH?"col-resize":h?(h.edge?"ew-resize":"move"):"crosshair";
+      }
       return;
     }
     if(d.type==="range"){ d.b=prSnap(prMsOf(x)); pr.range={a:Math.min(d.a,d.b),b:Math.max(d.a,d.b)}; prDraw(); return; }
-    d.moved=true;
-    const dms=prMsOf(x)-d.ms0, o=d.orig; let n;
-    if(d.type==="move"){
-      const dr=prRowAt(y)-d.row0, s=prSnap(o.s+dms);
-      n={s,e:s+(o.e-o.s),freq:dr?noteHz(Math.max(PR_LO,Math.min(PR_HI,prRow(o.freq)+dr))):o.freq};
+    let n;
+    if(d.type==="draw"){
+      if(!d.moved&&Math.abs(x-d.x0)<3) return;
+      d.moved=true; d.len=Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,prSnap(prMsOf(x))-d.s));
+      n={s:d.s,e:d.s+d.len,freq:noteHz(d.row)};
     }else{
-      const len=Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,prSnap(o.e+dms)-o.s));
-      n={s:o.s,e:o.s+len,freq:o.freq};
+      d.moved=true;
+      const dms=prMsOf(x)-d.ms0, o=d.orig;
+      if(d.type==="move"){
+        const s=prSnap(o.s+dms); let freq=o.freq;
+        if(d.rows){ const row=prRowAt(y); if(row!==d.row0) freq=noteHz(row); }
+        else{ const dr=prRowAt(y)-d.row0; if(dr) freq=noteHz(prClampRow(prRow(o.freq)+dr)); }
+        n={s,e:s+(o.e-o.s),freq};
+      }else{
+        d.len=Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,prSnap(o.e+dms)-o.s));
+        n={s:o.s,e:o.s+d.len,freq:o.freq};
+      }
     }
     pr.selS=n.s; pr.notes=prPlace([...d.base,n],n); prDraw();
   });
   window.addEventListener("mouseup",()=>{
-    const d=pr.drag; if(!d) return; pr.drag=null;
-    if(d.type==="range"){ if(pr.range&&pr.range.b-pr.range.a<SND_MS_MIN) pr.range=null; prRefresh(); return; }
-    if(d.moved) prCommit(pr.notes); else prDraw();
+    const d=pr.drag; if(!d) return;
+    if(d.type==="range"){ pr.drag=null; if(pr.range&&pr.range.b-pr.range.a<SND_MS_MIN) pr.range=null; prRefresh(); return; }
+    if(d.type==="draw"&&!d.moved){
+      pr.drag=null;
+      const n={s:d.s,e:d.s+Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,pr.lastLen)),freq:noteHz(d.row)};
+      pr.selS=n.s; pr.addedAt=performance.now(); prCommit(prPlace([...d.base,n],n)); return;
+    }
+    pr.drag=null;
+    if(d.moved){ if(d.len) pr.lastLen=d.len; prCommit(pr.notes); } else prDraw();
+  });
+  cv.addEventListener("contextmenu",e=>{
+    e.preventDefault(); if(!sounds) return;
+    const {x,y}=pt(e), h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null; if(h) prDelete(h.n);
+  });
+  cv.addEventListener("dblclick",e=>{
+    if(!sounds||performance.now()-pr.addedAt<600) return; // the second click of a double-click on empty space
+    const {x,y}=pt(e), h=x>=PR_KW&&y>=PR_RH?prHit(x,y):null; if(h) prDelete(h.n);
   });
   cv.addEventListener("keydown",e=>{
     if((e.key==="Delete"||e.key==="Backspace") && pr.selS>=0 && sounds){
@@ -5069,6 +5167,13 @@ function prInit(){
   $("#prFit").onclick=()=>{ pr.fitNow=true; prDraw(); };
   $("#prClearSel").onclick=()=>{ pr.range=null; prRefresh(); };
   $("#prCrop").onclick=prCrop;
+  $("#prBpm").onchange=prBpmChange; $("#prSnap").onchange=()=>prDraw();
+  try{ pr.fold=sessionStorage.getItem(PR_FOLD)==="1"; }catch(e){}
+  $("#prFold").checked=pr.fold;
+  $("#prFold").onchange=()=>{
+    pr.fold=$("#prFold").checked; try{ sessionStorage.setItem(PR_FOLD,pr.fold?"1":"0"); }catch(e){}
+    pr.fitNow=true; prDraw();
+  };
   new ResizeObserver(()=>prDraw()).observe(cv);
 }
 // playhead animation: follows the live playback or the browser preview
