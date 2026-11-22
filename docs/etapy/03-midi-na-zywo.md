@@ -55,5 +55,7 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - Przycisk "Play on puck" (op 0x31) usunięty ze strony: odsłuch na żywo przez WebHID go zastępuje, a 0x31 mieści tylko jeden głos; firmware dalej obsługuje 0x31 (zgodność).
 - Firmware: bez kopii SoundsCfg na stosie (4,2 KB przekraczało stos pętli 4 KB); blob sprawdzany w miejscu, potem dekodowany; bufor s_io usunięty (fragmenty serializowane w locie); zapis przyjmuje też blob v1 (starsza strona w pamięci przeglądarki).
 
+- "Zawijanie zakresu nut" znaczyło zwijanie tabeli nut (źle odczytane jako Fold): tabela nut w Sounds zwinięta domyślnie pod nagłówkiem "Note list (N)"; Fold zostaje.
+
 ## Podsumowanie
 (wypełnia /etap-zamknij)

@@ -532,7 +532,9 @@
       <input type="range" id="prScroll" min="0" max="0" value="0" step="1" style="width:100%">
       <p class="note" style="margin:2px 0 6px">Click adds a note (the length of the last one), dragging on empty space draws one, drag a note to move it, drag its right end to resize. Double-click, right-click or Delete removes. Click a key to hear it. Drag on the ruler to select a time range; Crop to 32 keeps it from its start up to 32 entries (marked on the ruler). Fold shows only the rows in use. Ctrl + wheel zooms time, wheel scrolls pitch, Alt + wheel zooms pitch, Shift + wheel scrolls time. Drop a MIDI file here to import it.</p>
       <div class="row mmeta"><span id="sndCount"></span><span id="sndTotal"></span></div>
+      <details class="rel-notes" id="sndNotesBox" style="margin:0 0 10px"><summary id="sndNotesSum">Note list</summary>
       <table class="steps" id="sndNotes"></table>
+      </details>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
         <button id="sndAddNote">Add note</button>
         <button id="sndAddRest">Add rest</button>
@@ -4706,6 +4708,7 @@ function sndTotals(){
   cnt.textContent=st.length+" / "+SND_NOTES+" notes"+(over?": too long to save, press Crop to 32":prob?": Save is disabled, "+prob:"");
   cnt.style.color=prob?"var(--warn)":"";
   $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
+  $("#sndNotesSum").textContent="Note list ("+st.length+")";
   for(const id of ["sndSave","sndEvSave"]) $("#"+id).disabled=!!prob;
   sndLiveUi();
   prRefresh();
