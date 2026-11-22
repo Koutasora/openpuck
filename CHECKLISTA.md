@@ -72,3 +72,11 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [x] Repo publiczne (ustawia użytkownik)
 - [x] Po scaleniu PR: GitHub Pages - Settings -> Pages -> Deploy from a branch, `main`, `/docs`; strona działa pod https://koutasora.github.io/openpuck/
 - [x] Wydanie 1.0.0: po scaleniu PR tag `1.0.0` na `main`; workflow buduje `.uf2`, tworzy wydanie i gałąź `firmware`, lista wydań na stronie pokazuje wydanie
+
+### 8. Poprawki strony po wydaniu 1.0.0
+- [ ] Status -> Status: karta Version ma tylko trzy pola i notkę; przyciski Copy version i Capture 3 s and copy są na górze Status -> Log, nad listą zdarzeń, i działają (schowek); z dongle'em Log też otwiera się bez błędów
+- [ ] Status -> Debug: karta Factory erase z opisem, potwierdzenia jak dawniej; górny pasek bez Factory erase i mieści się w jednej linii
+- [ ] Status -> Modes, Back4 chords: na listach sama nazwa trybu (także None), pod listą opis wybranego trybu (host, panel, keyboard/mouse), pełny opis w podpowiedzi
+- [ ] Mapping -> Live view: drążki w procentach (np. "2%, 3%"), triggery w procentach, surowe wartości w podpowiedzi; Copy diagnostics i Capture mają surowe liczby
+- [ ] Notka "First connect uses the Chrome/Edge device picker..." widoczna tylko bez połączenia, po połączeniu znika, po odłączeniu wraca
+- [ ] Mapping -> Sounds, Events: listy melodii węższe, etykieta i lista w jednym wierszu
