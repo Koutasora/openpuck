@@ -114,6 +114,7 @@ Test i wydanie
 - Limit melodii zostaje 32 pozycje (nuty i pauzy) po 30-5000 ms, 8 melodii: użytkownik nie potrzebuje dłuższych utworów.
 - Import melodii tylko z MIDI (bez RTTTL, MusicXML, audio): użytkownikowi wystarcza.
 - Kombinacje back4 + B/X/Y i D-pad mogą mieć wartość None (`CHORD_NONE` = 0xFE, bajt spoza trybów i inny niż 0xFF z `cfg.bin`): nic nie robią; opcja na stronie od wersji bloku 26.
+- Własny zestaw melodii w `docs/midi` (PlayStation, Xbox, Switch, inne tryby, połączenie pada) z generatorem `tools/make-midi.py`: oryginalne motywy, bez melodii z gier i konsol (prawa autorskie).
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
