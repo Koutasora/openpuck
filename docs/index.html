@@ -60,8 +60,13 @@
   .chord-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 24px}
   .chord-cols .row{margin:10px 0}
   .chord-cols .row label{flex:0 0 108px}
-  #sndEvents select{flex:0 1 320px;max-width:320px}
-  .chord-cols .chordDesc{margin:-6px 0 10px 122px}
+  .sctable{width:100%;border-collapse:collapse;margin:6px 0}
+  .sctable th,.sctable td{padding:6px 8px;border-bottom:1px solid #272d3d;text-align:left;vertical-align:middle}
+  .sctable th{color:var(--mut);font-weight:600;font-size:12px}
+  .sctable select{width:100%;max-width:340px}
+  .sctable .scProf{display:flex;align-items:center;gap:8px;margin:2px 0}
+  .sctable .scProf span{flex:0 0 64px;color:var(--mut)}
+  .sctable .chordDesc{margin:2px 0 0}
   .colhead{color:var(--mut);font-size:12px;font-weight:600;margin:2px 0 0}
   .note{color:var(--mut);font-size:12px;margin-top:10px}
   #log{font:12px ui-monospace,Menlo,monospace;color:var(--mut);white-space:pre-wrap;margin-top:8px;max-height:140px;overflow:auto}
@@ -226,6 +231,41 @@
   <div class="card" id="shortcutsCard">
     <h2>Shortcuts</h2>
     <p class="note" id="scNote" style="margin-top:0"></p>
+    <div id="scEdit" class="hide">
+      <div id="scSnd" class="hide">
+        <div class="row"><label>Confirm with</label><select id="sndConfirm"></select></div>
+        <div class="row"><label>Volume</label><input type="range" id="sndVol" min="-60" max="0" step="1"><span class="val" id="sndVolV"></span></div>
+        <p class="note" style="margin-top:0">A profile switch is confirmed by vibration (as many pulses as the profile number) or by the profile's melody. The melodies of mode changes and of a controller connecting play only when this includes Sound or Both. 0 dB is the loudest. Confirm with and Volume are saved at once.</p>
+      </div>
+      <table class="sctable" id="scTable">
+        <thead><tr><th>Shortcut (hold all four back paddles)</th><th>Switches to / does</th><th class="scMelCol">Melody</th></tr></thead>
+        <tbody>
+          <tr data-dyn="a"><td>back4 + A</td><td>Steam (fixed)</td><td class="scMelCol"><select class="scMel"></select><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c"><td>back4 + B</td><td><select class="chord" data-i="0"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c"><td>back4 + X</td><td><select class="chord" data-i="1"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c"><td>back4 + Y</td><td><select class="chord" data-i="2"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad left</td><td><select class="chordD" data-i="0"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad up</td><td><select class="chordD" data-i="1"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad right</td><td><select class="chordD" data-i="2"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr data-dyn="c" class="scDpad"><td>back4 + D-pad down</td><td><select class="chordD" data-i="3"></select></td><td class="scMelCol"><select class="scMel"></select><span class="scDash hide">-</span><div class="note scShared" style="margin:2px 0 0"></div></td></tr>
+          <tr class="scFam hide" data-fam="3"><td>Mode changed from the panel: PlayStation</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="3"></select></td></tr>
+          <tr class="scFam hide" data-fam="4"><td>Mode changed from the panel: Xbox</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="4"></select></td></tr>
+          <tr class="scFam hide" data-fam="5"><td>Mode changed from the panel: Switch</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="5"></select></td></tr>
+          <tr><td>back4 + RB / back4 + LB</td><td>Next / previous profile (emulated modes only)</td><td class="scMelCol">
+            <div class="scProf"><span class="scProfName" data-i="0">Profile 1</span><select class="scMel" data-ev="0"></select></div>
+            <div class="scProf"><span class="scProfName" data-i="1">Profile 2</span><select class="scMel" data-ev="1"></select></div>
+            <div class="scProf"><span class="scProfName" data-i="2">Profile 3</span><select class="scMel" data-ev="2"></select></div></td></tr>
+          <tr><td>Controller connects (no shortcut)</td><td>-</td><td class="scMelCol"><select class="scMel" data-ev="7"></select></td></tr>
+        </tbody>
+      </table>
+      <p id="dpadOld" class="note hide">This puck's firmware predates the D-pad chords: update it to configure them.</p>
+      <p class="note">The line under each mode gives its host, "panel" or "no panel", and keyboard/mouse. In a mode with no panel this page cannot connect: come back with all four back paddles + A. Mode changes are saved at once; the melody of a mode is the one of its family (PlayStation, Xbox, Switch, other), so shortcuts of the same family share it.</p>
+      <div class="row hide" id="scSndRow" style="margin:6px 0 12px;flex-wrap:wrap;gap:8px">
+        <button id="scSndSave" class="primary">Save to device</button>
+        <span class="note" id="scSndProb" style="margin:0;color:var(--warn)"></span>
+        <span class="note" id="scSndMsg" style="margin:0"></span>
+      </div>
+    </div>
     <div class="sc-cols">
       <div id="scList"></div>
       <div class="figs" id="scFigs" style="grid-template-columns:1fr;align-content:start"></div>
@@ -273,30 +313,6 @@
         <button id="persistMode">off</button>
         <span class="note" style="flex:1">Off (default): every restart / fresh reconnect boots into Steam mode. On: remembers the last mode you selected.</span>
       </div>
-    </div>
-
-    <div class="card" data-sub="status/modes">
-      <h2>Back4 chords (face + D-pad)</h2>
-      <p class="note" style="margin-top:0">Hold all four back paddles (L4+R4+L5+R5) plus a face button or D-pad direction to switch mode without the WebUI. In modes marked "no panel" this page cannot connect; come back with back4 + A. <strong>A is always Steam</strong> — that is the way back out of any mode. B / X / Y and all four D-pad directions are configurable below (defaults: B=Lizard, X=Xbox, Y=Switch Pro).</p>
-      <div class="chord-cols">
-        <div>
-          <div class="colhead">Face buttons</div>
-          <div class="row"><label>back4 + B</label><select class="chord" data-i="0"></select></div>
-          <div class="row"><label>back4 + X</label><select class="chord" data-i="1"></select></div>
-          <div class="row"><label>back4 + Y</label><select class="chord" data-i="2"></select></div>
-        </div>
-        <!-- D-pad chords (firmware >= v18). Unlike the face selects these offer the game/clean modes too: those
-             modes have no WebUSB interface, so a chord is the only way IN, and back4+A is always the way out.
-             Older firmware has no D-pad chords at all -> the whole column hides (see #dpadChords in applyBlob). -->
-        <div id="dpadChords" class="hide">
-          <div class="colhead">D-pad</div>
-          <div class="row"><label>back4 + Left</label><select class="chordD" data-i="0"></select></div>
-          <div class="row"><label>back4 + Up</label><select class="chordD" data-i="1"></select></div>
-          <div class="row"><label>back4 + Right</label><select class="chordD" data-i="2"></select></div>
-          <div class="row"><label>back4 + Down</label><select class="chordD" data-i="3"></select></div>
-        </div>
-      </div>
-      <p id="dpadOld" class="note hide">This puck's firmware predates the D-pad chords — update it to configure them.</p>
     </div>
 
     <div class="card wide" data-sub="status/status">
@@ -409,13 +425,6 @@
         <p class="note">Strength is a percentage of the amplitude the game asked for; 200% is the shipped default, so leave it there for stock feel. Style reshapes the two motors before that scale: <strong>mono</strong> drives both at the stronger value, <strong>heavy</strong> and <strong>light</strong> mute one motor each, <strong>punchy</strong> softens weak effects while leaving strong ones alone, and <strong>soft</strong> lifts weak ones so subtle rumble is felt.</p>
       </div>
       <p id="rumbleOld" class="note hide">This puck's firmware predates the rumble-shaping settings — update it to configure them.</p>
-    </div>
-
-    <div class="card hide" id="sndSetCard" data-sub="mapping/settings">
-      <h2>Confirmations</h2>
-      <div class="row"><label>Confirm with</label><select id="sndConfirm"></select></div>
-      <div class="row"><label>Volume</label><input type="range" id="sndVol" min="-60" max="0" step="1"><span class="val" id="sndVolV"></span></div>
-      <p class="note">Sets how a profile switch is confirmed: vibration (as many pulses as the profile number) or the profile's melody. Melodies of mode changes and of a controller connecting play only when this includes sound. 0 dB is the loudest. Changes are saved at once; assign the melodies in the Sounds tab.</p>
     </div>
 
     <div class="card wide" data-sub="mapping/mapping">
@@ -554,17 +563,7 @@
         <button id="sndSave" class="primary">Save to device</button>
         <span class="note" id="sndMsg" style="margin:0"></span>
       </div>
-      <p class="note">Play saved melody on puck plays what is stored in the puck, at the volume in Settings, and needs a linked controller. The four voices are the Left trackpad, Right trackpad, Left grip and Right grip (LT, RT, LG, RG); editing, import, Octave and Clear act on the selected voice. Hz 0 is a rest; notes run 1-4000 Hz and 30-5000 ms. Every voice must have 32 entries or fewer to be saved.</p>
-    </div>
-
-    <div class="card hide" id="sndEvCard" data-sub="mapping/sounds">
-      <h2>Events</h2>
-      <p class="note" style="margin-top:0">Which melody plays on each event. Other modes are Steam, Lizard, DirectInput and SInput. Save to device applies the melodies and this assignment together.</p>
-      <div id="sndEvents"></div>
-      <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
-        <button id="sndEvSave" class="primary">Save to device</button>
-        <span class="note" id="sndEvMsg" style="margin:0"></span>
-      </div>
+      <p class="note">Play saved melody on puck plays what is stored in the puck, at the Volume set in Mapping &gt; Shortcuts, and needs a linked controller. The four voices are the Left trackpad, Right trackpad, Left grip and Right grip (LT, RT, LG, RG); editing, import, Octave and Clear act on the selected voice. Hz 0 is a rest; notes run 1-4000 Hz and 30-5000 ms. Every voice must have 32 entries or fewer to be saved.</p>
     </div>
 
     <div class="card" id="lizardCard" style="display:none" data-sub="mapping/settings">
@@ -1094,10 +1093,10 @@ for(const sel of document.querySelectorAll("select.chordD")){
 }
 // one-line description (host · panel · keyboard/mouse) under every chord list, for the selected mode
 function chordDescSync(sel){
-  const row=sel.closest(".row"); let d=row.nextElementSibling;
-  if(!d||!d.classList.contains("chordDesc")){ d=document.createElement("div"); d.className="note chordDesc"; row.after(d); }
+  let dsc=sel.parentNode.querySelector(".chordDesc");
+  if(!dsc){ dsc=document.createElement("div"); dsc.className="note chordDesc"; sel.after(dsc); }
   const v=+sel.value, t=v===CHORD_NONE?"Does nothing":modeDesc(v);
-  d.textContent=t; sel.title=t;
+  dsc.textContent=t; sel.title=t;
 }
 for(const sel of document.querySelectorAll("select.chord, select.chordD")){
   chordDescSync(sel); sel.addEventListener("change",()=>chordDescSync(sel));
@@ -1993,8 +1992,6 @@ function applyBlob(p){
     else if(p[0]<26 && has) sel.querySelector('option[value="'+CHORD_NONE+'"]').remove();
   }
   for(const sel of document.querySelectorAll("select.chord")){ if(document.activeElement!==sel) sel.value=chord[+sel.dataset.i]; }
-  $("#dpadChords").classList.toggle("hide", !dpadCap);
-  $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
   for(const sel of document.querySelectorAll("select.chord, select.chordD")) chordDescSync(sel);
   bindsOnBlob(p);
@@ -3446,10 +3443,10 @@ $("#swGyroMap").addEventListener("change", ()=>setField(38, +$("#swGyroMap").val
 $("#rfSurvey").onclick=()=>manualSurveyRf();
 $("#rfBuilder").onclick=()=>manualJournalBuilderRf();
 for(const sel of document.querySelectorAll("select.chord")){
-  sel.addEventListener("change", ()=>setField(CHORD_FIELD[+sel.dataset.i], +sel.value));
+  sel.addEventListener("change", ()=>{ setField(CHORD_FIELD[+sel.dataset.i], +sel.value); scEditSync(); });
 }
 for(const sel of document.querySelectorAll("select.chordD")){
-  sel.addEventListener("change", ()=>setField(CHORD_DPAD_FIELD[+sel.dataset.i], +sel.value));
+  sel.addEventListener("change", ()=>{ setField(CHORD_DPAD_FIELD[+sel.dataset.i], +sel.value); scEditSync(); });
 }
 // USB mode card: modes with the config panel first, console / no-panel modes in their own group
 {
@@ -3899,7 +3896,7 @@ function profRender(){
     for(let n=0;n<BIND_PROFILES;n++) if(n!==a){ const o=document.createElement("option"); o.value=n; o.textContent=profName(n); sel.appendChild(o); }
   }
   $("#profCopy").disabled=a<0; $("#profReset").disabled=a<0;
-  sndEventsRender();
+  scEditSync();
 }
 function profCopy(){
   if(!binds) return;
@@ -4636,7 +4633,7 @@ function sndProblem(s){
   return "";
 }
 function soundsCommit(){ clearTimeout(soundsSaveTimer); soundsSaveTimer=setTimeout(()=>soundsSave(true),400); }
-function sndMsg(m){ if(/fail|reject|not saved/.test(m)) diagNote("sounds: "+m); for(const id of ["sndMsg","sndEvMsg"]) $("#"+id).textContent=m; }
+function sndMsg(m){ if(/fail|reject|not saved/.test(m)) diagNote("sounds: "+m); for(const id of ["sndMsg","scSndMsg"]) $("#"+id).textContent=m; }
 function sndDirty(){ sndUnsaved=true; sndMsg("unsaved"); }
 // 0x30 plays a stored melody, 0x31 the notes given (not stored); both are acked with 0xB6, ok 0 = nothing played
 async function soundsPlay(op,bytes){
@@ -4650,7 +4647,7 @@ function soundsOnBlob(p){
   if(soundsDev!==dev){ sndLiveHalt(true); sounds=null; soundsBase=null; sndUnsaved=false; soundsDev=dev; soundsLastTry=0; }
   if(cap!==soundsCap){
     soundsCap=cap;
-    for(const id of ["sndCard","sndEvCard","sndSetCard"]) $("#"+id).classList.toggle("hide",!cap);
+    $("#sndCard").classList.toggle("hide",!cap);
     $("#sndOldCard").classList.toggle("hide",cap);
     if(!cap){ sndLiveHalt(true); sounds=null; }
   }
@@ -4675,26 +4672,7 @@ function sndRender(){
   sndRowsRender();
   const cs=$("#sndConfirm"); if(document.activeElement!==cs) cs.value=sounds.confirm;
   setSlider("sndVol",sounds.gain);
-  sndEventsRender();
-}
-function sndEventsRender(){
-  if(!sounds) return;
-  const evs=$("#sndEvents");
-  if(!evs.children.length) SND_EVENTS.forEach((n,e)=>{
-    const row=document.createElement("div"); row.className="row";
-    const lab=document.createElement("label"); row.appendChild(lab);
-    const sel=document.createElement("select");
-    const none=document.createElement("option"); none.value=SND_NONE; none.textContent="None"; sel.appendChild(none);
-    for(let m=0;m<SND_MELODIES;m++){ const o=document.createElement("option"); o.value=m; sel.appendChild(o); }
-    sel.onchange=()=>{ sounds.ev[e]=+sel.value; sndDirty(); sndRender(); };
-    row.appendChild(sel); evs.appendChild(row);
-  });
-  [...evs.children].forEach((row,e)=>{
-    row.firstChild.textContent=sndEventName(e);
-    const sel=row.lastChild;
-    for(let m=0;m<SND_MELODIES;m++) sel.options[m+1].textContent=(m+1)+": "+soundName(m);
-    if(document.activeElement!==sel) sel.value=sounds.ev[e];
-  });
+  scEditSync();
 }
 function sndRowSync(k){
   const n=sndNotes()[k], tr=$("#snote"+k); if(!tr) return;
@@ -4710,7 +4688,8 @@ function sndTotals(){
   cnt.style.color=prob?"var(--warn)":"";
   $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
   $("#sndNotesSum").textContent="Note list ("+st.length+")";
-  for(const id of ["sndSave","sndEvSave"]) $("#"+id).disabled=!!prob;
+  for(const id of ["sndSave","scSndSave"]) $("#"+id).disabled=!!prob;
+  $("#scSndProb").textContent=prob?"Cannot save: "+prob:"";
   sndLiveUi();
   prRefresh();
 }
@@ -5347,7 +5326,7 @@ function sndLiveStart(){
     $("#sndLanes").appendChild(b);
   });
   for(const [v,n] of SND_CONFIRM){ const o=document.createElement("option"); o.value=v; o.textContent=n; $("#sndConfirm").appendChild(o); }
-  $("#sndConfirm").onchange=()=>{ if(!sounds) return; sounds.confirm=+$("#sndConfirm").value; soundsCommit(); };
+  $("#sndConfirm").onchange=()=>{ if(!sounds) return; sounds.confirm=+$("#sndConfirm").value; soundsCommit(); scEditSync(); };
   $("#sndVol").oninput=()=>{ $("#sndVolV").textContent=fmtSlider("sndVol",$("#sndVol").value); };
   $("#sndVol").onchange=()=>{ if(!sounds) return; sounds.gain=+$("#sndVol").value; soundsCommit(); };
   $("#sndName").oninput=()=>{ soundSetName(curMel,$("#sndName").value.slice(0,24)); if(sounds) sndRender(); };
@@ -5361,7 +5340,8 @@ function sndLiveStart(){
     sndLiveHalt(true); sounds.mel[curMel].forEach(v=>{ v.length=0; }); pr.range=null; pr.selS=-1; sndDirty(); sndRender(); };
   $("#sndPrev").onclick=sndPreview;
   $("#sndPlayStored").onclick=()=>soundsPlay(0x30,[curMel]);
-  for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };
+  for(const id of ["sndSave","scSndSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };
+  for(const sel of document.querySelectorAll(".scMel")) sel.onchange=()=>{ if(!sounds) return; sounds.ev[+sel.dataset.ev]=+sel.value; sndDirty(); sndRender(); };
   $("#midiBtn").onclick=()=>$("#midiFile").click();
   $("#midiFile").onchange=()=>{ midiLoad($("#midiFile").files[0]); $("#midiFile").value=""; };
   $("#midiGo").onclick=midiImport;
@@ -5373,25 +5353,31 @@ var scReady=false;
 const SC_SHORT=["Steam","Xbox 360","Switch HORI","Lizard","Switch Pro","PS5","DS4 gyro","PS5 clean","DS4 clean","PS3","Xbox OG","DirectInput","SInput","PS5 console"];
 const SC_BACK4=0x60180; // L4 R4 L5 R5
 let scKey="", scFigs=[];
+// the melody event of a mode: the family the firmware picks (soundsModeEvent): 3 PlayStation, 4 Xbox, 5 Switch, 6 other
+const scFamEv=m=>[5,6,7,8,9,13].includes(m)?3:[1,10].includes(m)?4:[2,4].includes(m)?5:6;
 function scChord(){
   const p=dev&&lastP;
-  return {live:!!p,
+  return {live:!!p, edit:!!(p&&!isDongle),
+    mel:(p&&!isDongle&&soundsCap&&sounds)?{ev:sounds.ev.slice(),names:Array.from({length:SND_MELODIES},(_,i)=>soundName(i))}:null,
     btn:(p&&p.length>25)?[p[23],p[24],p[25]]:[3,1,4],
     dpad:(p&&p[0]>=18&&p.length>183)?[p[180],p[181],p[182],p[183]]:[9,8,7,2]};
 }
 // rows: k = what to press, tb = highlighted buttons, x = result
-function scGroups(c){
-  const M=m=>modeFull(m), ro=(k,tb,x)=>({k,tb,x});
+function scGroups(c,png){
+  // m = the melody of the row, only when the puck's sounds are loaded
+  const me=ev=>c.mel?(c.mel.ev[ev]===SND_NONE?"None":(c.mel.ev[ev]+1)+": "+c.mel.names[c.mel.ev[ev]]):undefined;
+  const M=m=>modeFull(m), ro=(k,tb,x,m)=>({k,tb,x,m});
   // a chord set to None does nothing, so it is left out
-  const mc=(k,tb,m)=>m===CHORD_NONE?null:ro(k,tb,M(m));
+  const mc=(k,tb,m)=>m===CHORD_NONE?null:ro(k,tb,M(m),me(scFamEv(m)));
+  const prof=c.mel?[0,1,2].map(i=>(i+1)+": "+me(i).replace(/^\d+: /,"")).join(", "):undefined;
   return [
     {t:"Switch USB mode",sub:"Hold all four back paddles (L4 R4 L5 R5), then press",rows:[
-      ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode."),
+      ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode.",me(6)),
       mc("back4 + B",SC_BACK4|0x2,c.btn[0]),mc("back4 + X",SC_BACK4|0x4,c.btn[1]),mc("back4 + Y",SC_BACK4|0x8,c.btn[2]),
       mc("back4 + D-pad left",SC_BACK4|0x1000,c.dpad[0]),mc("back4 + D-pad up",SC_BACK4|0x2000,c.dpad[1]),
       mc("back4 + D-pad right",SC_BACK4|0x800,c.dpad[2]),mc("back4 + D-pad down",SC_BACK4|0x400,c.dpad[3])].filter(Boolean)},
     {t:"Profiles",sub:"Hold all four back paddles, then press. The pad buzzes N times for profile N. Emulated modes only.",rows:[
-      ro("back4 + RB",SC_BACK4|0x200,"Next profile"),ro("back4 + LB",SC_BACK4|0x80000,"Previous profile")]},
+      ro("back4 + RB",SC_BACK4|0x200,"Next profile",prof),ro("back4 + LB",SC_BACK4|0x80000,"Previous profile",prof)]},
     {t:"Power and slots",rows:[
       ro("Steam + Y, hold 2 s",0x10000|0x8,"Turn the controller off. Works in every mode."),
       ro("RB + A + Steam, controller off",0x200|0x1|0x10000,"Turn on and connect as slot 1"),
@@ -5399,20 +5385,62 @@ function scGroups(c){
     {t:"Lizard (always) mode",sub:"Defaults, editable in Lizard / desktop mapping",rows:[
       ro("Steam + L5",0x10000|0x40000,"Volume down"),ro("Steam + R5",0x10000|0x100,"Volume up"),
       ro("Steam + L4",0x10000|0x20000,"Ctrl+Alt+Delete"),ro("Steam + X",0x10000|0x4,"Win+Ctrl+O (on-screen keyboard)"),
-      ro("LB, RB",0x80000|0x200,"Held as Ctrl and Alt, so RB + View is Alt+Tab")]}];
+      ro("LB, RB",0x80000|0x200,"Held as Ctrl and Alt, so RB + View is Alt+Tab")]},
+    ...(png&&c.mel?[{t:"Controller connects",rows:[ro("(no shortcut)",0,"A controller connects",me(7))]}]:[])];
+}
+// The editable table: melody selects follow the mode each chord is set to (the family's event), None hides it
+function scEditSync(){
+  const edit=!!(dev&&lastP&&!isDongle);
+  $("#scEdit").classList.toggle("hide",!edit);
+  if(!edit) return;
+  const dcap=lastP[0]>=18&&lastP.length>183;
+  for(const tr of document.querySelectorAll("#scTable tr.scDpad")) tr.classList.toggle("hide",!dcap);
+  $("#dpadOld").classList.toggle("hide",dcap);
+  const snd=!!(soundsCap&&sounds);
+  for(const el of document.querySelectorAll("#scTable .scMelCol, #scSnd, #scSndRow")) el.classList.toggle("hide",!snd);
+  if(!snd){ for(const tr of document.querySelectorAll("#scTable tr.scFam")) tr.classList.add("hide"); return; }
+  for(const el of document.querySelectorAll("#scTable .scProfName")) el.textContent=profName(+el.dataset.i);
+  const dim=sounds.confirm===0||sounds.confirm===1, byEv={};
+  const fill=(sel,ev)=>{
+    sel.dataset.ev=ev;
+    if(!sel.options.length){
+      const o=document.createElement("option"); o.value=SND_NONE; o.textContent="None"; sel.appendChild(o);
+      for(let m=0;m<SND_MELODIES;m++){ const q=document.createElement("option"); q.value=m; sel.appendChild(q); }
+    }
+    for(let m=0;m<SND_MELODIES;m++) sel.options[m+1].textContent=(m+1)+": "+soundName(m);
+    if(document.activeElement!==sel) sel.value=sounds.ev[ev];
+  };
+  for(const tr of document.querySelectorAll("#scTable tr[data-dyn]")){
+    const sel=tr.querySelector(".scMel"), dash=tr.querySelector(".scDash"), cs=tr.querySelector("select.chord, select.chordD");
+    const ev=tr.dataset.dyn==="a"?6:(+cs.value===CHORD_NONE?null:scFamEv(+cs.value));
+    sel.classList.toggle("hide",ev===null); if(dash) dash.classList.toggle("hide",ev!==null);
+    tr.dataset.ev=ev===null?"":ev;
+    if(ev!==null){ fill(sel,ev); (byEv[ev]=byEv[ev]||[]).push(tr); }
+  }
+  for(const sel of document.querySelectorAll("#scTable .scMel")){ if(!sel.closest("tr[data-dyn]")) fill(sel,+sel.dataset.ev); } // profile, connect and family rows
+  // a family no chord points at can still play after a mode change from the panel: it gets its own row
+  for(const tr of document.querySelectorAll("#scTable tr.scFam")) tr.classList.toggle("hide",!!byEv[tr.dataset.fam]);
+  for(const tr of document.querySelectorAll("#scTable tr[data-dyn]")){
+    const note=tr.querySelector(".scShared"), others=(byEv[tr.dataset.ev]||[]).filter(x=>x!==tr).map(x=>x.cells[0].textContent);
+    note.textContent=others.length?"shared with "+others.join(", "):"";
+  }
+  for(const sel of document.querySelectorAll("#scTable .scMel")){
+    sel.style.opacity=dim?"0.55":""; sel.title=dim?"Melodies play only when Confirm with includes Sound":"";
+  }
 }
 function scHl(tb){ for(const f of scFigs) figHighlight(f,0,tb); }
 function scUpdate(){
   const card=$("#shortcutsCard"), c=scChord();
   if(dev){ const h=$("#sub-mapping-shortcuts"); if(h && card.parentNode!==h) h.appendChild(card); }
   else { const h=$("#cloneHome"); if(h.nextElementSibling!==card) h.after(card); }
+  scEditSync();
   const key=JSON.stringify(c);
   if(key===scKey) return;
   scKey=key;
-  $("#scNote").textContent=c.live?"Mode chords are this puck's current assignments (set in Back4 chords). The rest is fixed in the firmware.":
-    "Showing the firmware defaults for the mode chords. Connect a puck to see its own assignments. The rest is fixed in the firmware.";
+  $("#scNote").textContent=c.edit?"The table is this puck's current setup. Modes, Confirm with and Volume are saved when you change them; melodies need Save to device. The fixed shortcuts are listed below the table.":
+    "Showing the firmware defaults for the mode chords. Connect a puck to see and change its own. The rest is fixed in the firmware.";
   const list=$("#scList"); list.textContent="";
-  for(const g of scGroups(c)){
+  for(const g of scGroups(c).slice(c.edit?2:0)){
     const d=document.createElement("div"); d.className="sc-group";
     const h=document.createElement("h3"); h.textContent=g.t; d.appendChild(h);
     if(g.sub){ const sp=document.createElement("p"); sp.className="sub2"; sp.textContent=g.sub; d.appendChild(sp); }
@@ -5490,17 +5518,20 @@ function scDraw(ctx,imgs,col,dark,c,W){
     ctx.font=font(700,15); ctx.fillStyle=col.fg; ctx.textAlign="center";
     ctx.fillText(k,bx+((p.bb[0]+p.bb[2])/2-bv[0])*S2,by+((p.bb[1]+p.bb[3])/2-bv[1])*S2); ctx.fillStyle=col.acc; }
   // other shortcuts as text, right of the back view
-  const tx=bx+bv[2]*S2+36, kw=250, xw=W-40-(tx+kw);
+  const tx=bx+bv[2]*S2+36, kw=250, mw=c.mel?190:0, xw=W-40-(tx+kw)-mw;
   let y=by+4;
-  for(const g of scGroups(c).slice(1)){
-    ctx.textAlign="left"; ctx.fillStyle=col.fg; ctx.font=font(700,18); ctx.fillText(g.t,tx,y+10); y+=26;
+  for(const g of (c.mel?scGroups(c,true):scGroups(c).slice(1))){
+    ctx.textAlign="left"; ctx.fillStyle=col.fg; ctx.font=font(700,18); ctx.fillText(g.t,tx,y+10);
+    if(c.mel){ ctx.fillStyle=col.mut; ctx.font=font(400,13); ctx.fillText("Melody",tx+kw+xw+8,y+10); }
+    y+=26;
     if(g.sub){ ctx.fillStyle=col.mut; ctx.font=font(400,13); for(const l of scWrap(ctx,g.sub,W-40-tx)){ ctx.fillText(l,tx,y+8); y+=18; } }
     ctx.font=font(400,15);
     for(const r of g.rows){
-      const ls=scWrap(ctx,r.x,xw), ks=scWrap(ctx,r.k,kw-12), n=Math.max(ls.length,ks.length);
+      const ls=scWrap(ctx,r.x,xw), ks=scWrap(ctx,r.k,kw-12), ms=r.m?scWrap(ctx,r.m,mw-12):[], n=Math.max(ls.length,ks.length,ms.length);
       ctx.strokeStyle=col.line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(tx,y); ctx.lineTo(W-40,y); ctx.stroke();
       ctx.font=font(700,14,true); ctx.fillStyle=col.fg; ks.forEach((l,i)=>ctx.fillText(l,tx,y+12+i*19));
       ctx.font=font(400,15); ctx.fillStyle=col.fg; ls.forEach((l,i)=>ctx.fillText(l,tx+kw,y+12+i*19));
+      ms.forEach((l,i)=>ctx.fillText(l,tx+kw+xw+8,y+12+i*19));
       y+=n*19+8;
     }
     y+=12;

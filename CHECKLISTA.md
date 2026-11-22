@@ -76,10 +76,11 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 ### 8. Poprawki strony po wydaniu 1.0.0
 - [ ] Status -> Status: karta Version ma tylko trzy pola i notkę; przyciski Copy version i Capture 3 s and copy są na górze Status -> Log, nad listą zdarzeń, i działają (schowek); z dongle'em Log też otwiera się bez błędów
 - [ ] Status -> Debug: karta Factory erase z opisem, potwierdzenia jak dawniej; górny pasek bez Factory erase i mieści się w jednej linii
-- [ ] Status -> Modes, Back4 chords: na listach sama nazwa trybu (także None), pod listą opis wybranego trybu (host, panel, keyboard/mouse), pełny opis w podpowiedzi
+- [ ] Mapping -> Shortcuts, tabela: na listach trybów (back4 + B / X / Y i D-pad) sama nazwa trybu (także None), pod listą opis wybranego trybu (host, panel, keyboard/mouse), pełny opis w podpowiedzi
+- [ ] Rodzina trybów, na którą nie wskazuje żaden skrót (np. Xbox), ma osobny wiersz "Mode changed from the panel: Xbox" z listą melodii; wiersze Profile 1-3 pokazują nazwy profili użytkownika
 - [ ] Mapping -> Live view: drążki w procentach (np. "2%, 3%"), triggery w procentach, surowe wartości w podpowiedzi; Copy diagnostics i Capture mają surowe liczby
 - [ ] Notka "First connect uses the Chrome/Edge device picker..." widoczna tylko bez połączenia, po połączeniu znika, po odłączeniu wraca
-- [ ] Mapping -> Sounds, Events: listy melodii węższe, etykieta i lista w jednym wierszu
+- [ ] Mapping -> Shortcuts: listy melodii mieszczą się w kolumnie Melody, etykieta i lista w jednym wierszu
 - [ ] Rolka myszy zmienia ustawienie w klikniętej (aktywnej) liście, jeden krok na ząbek, bez zawijania; bez kliknięcia lista nie reaguje i rolka przewija stronę
 - [ ] Status -> Modes: kafelki trybów USB równej wielkości w równych kolumnach (4 przy pełnej szerokości, mniej w wąskim oknie), bez poziomego przewijania
 
@@ -114,3 +115,11 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Kopia zapasowa (Export / Import) z pucka na pucek z innym firmware (v1 i v2) przenosi melodie bez błędu
 - [ ] Import MIDI do czterech torów: po wczytaniu pliku (przycisk lub przeciągnięcie) cztery listy (LT / RT / LG / RG) ze źródłami "Track N" i "Track N, ch C" (kanał 10 = drums), domyślnie wg średniej wysokości od najwyższej do LT, RT, LG, RG; perkusja nigdy sama; przy jednym źródle tylko LT, reszta Keep current
 - [ ] Obok każdej listy liczba wpisów toru (powyżej 32 na żółto z podpowiedzią Crop to 32); Import zastępuje wskazane tory po jednym potwierdzeniu z ich nazwami, Keep current zostawia tor, Empty go czyści; komunikat podaje liczbę wpisów na tor
+
+### 11. Shortcuts: jedna tabela (zamiast kart Back4 chords, Confirmations i Events)
+- [ ] Status -> Modes nie ma już karty Back4 chords, Mapping -> Settings karty Confirmations, Mapping -> Sounds karty Events; wszystko jest w Mapping -> Shortcuts
+- [ ] Na górze karty Confirm with (Vibration / Sound / Both / Off) i Volume; zmiana zapisuje się od razu; przy Vibration i Off listy melodii są przyciemnione z podpowiedzią (nadal da się je zmieniać)
+- [ ] Tabela: back4 + A (Steam, stałe), back4 + B / X / Y i D-pad (lista trybów jak dawniej, także None, zapis od razu), back4 + RB / LB (melodie Profile 1-3), Controller connects; kolumna Melody ma listę melodii dla każdego wiersza
+- [ ] Zmiana trybu skrótu (np. back4 + X na PS5) od razu przenosi jego melodię na rodzinę tego trybu (PlayStation, Xbox, Switch, other); gdy kilka skrótów ma tę samą rodzinę, pod listą jest "shared with ..."; skrót ustawiony na None ma "-" zamiast melodii
+- [ ] Save to device pod tabelą zapisuje przypisanie melodii (ten sam zapis co z karty Sounds); przy błędnej melodii przycisk jest nieaktywny i podaje powód
+- [ ] Stałe skróty (Power and slots, Lizard) są pod tabelą jako tekst; bez pucka (strona startowa) karta pokazuje sam arkusz jak dawniej; Save as PNG zawiera kolumnę melodii, gdy puck jest połączony

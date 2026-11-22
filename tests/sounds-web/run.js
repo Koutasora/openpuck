@@ -4,7 +4,7 @@ const http=require("http"), fs=require("fs"), path=require("path");
 const {chromium}=require("playwright");
 
 const DOCS=path.resolve(__dirname,"../../docs");
-const TYPES={".html":"text/html",".js":"text/javascript",".css":"text/css",".mid":"audio/midi",".json":"application/json",".png":"image/png"};
+const TYPES={".html":"text/html",".js":"text/javascript",".css":"text/css",".mid":"audio/midi",".json":"application/json",".png":"image/png",".svg":"image/svg+xml"};
 const server=http.createServer((req,res)=>{
   const f=path.join(DOCS,decodeURIComponent(req.url.split("?")[0]).replace(/^\/+$/,"/index.html"));
   if(!f.startsWith(DOCS)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){ res.writeHead(404); res.end(); return; }
@@ -222,7 +222,7 @@ function smfTracks(format,tracks,us){
   const imp=await ev(()=>({n:sounds.mel[curMel][curLane].length,f:sounds.mel[curMel][curLane].slice(0,3).map(n=>n.freq),ms:sounds.mel[curMel][curLane][0].ms,note:$("#midiNote").textContent}));
   check("MIDI drop imports all entries, no cut to 32, no octave shift",imp.n===40&&same(imp.f,[65,82,65])&&imp.ms===100,imp);
   check("import message names the entries and the save limit",/Imported: LT 40 entries/.test(imp.note)&&/32 or fewer/.test(imp.note),imp.note);
-  const over=await ev(()=>({cnt:$("#sndCount").textContent,col:$("#sndCount").style.color,save:$("#sndSave").disabled,evs:$("#sndEvSave").disabled,add:$("#sndAddNote").disabled}));
+  const over=await ev(()=>({cnt:$("#sndCount").textContent,col:$("#sndCount").style.color,save:$("#sndSave").disabled,evs:$("#scSndSave").disabled,add:$("#sndAddNote").disabled}));
   check("counter warns and Save is disabled above 32",/40 \/ 32/.test(over.cnt)&&/Crop to 32/.test(over.cnt)&&/warn/.test(over.col)&&over.save&&over.evs&&over.add,over);
   const guard=await ev(async()=>{ window.__b=0; const o=sndBuild; sndBuild=function(...a){ window.__b++; return o(...a); };
     dev={}; await soundsSave(false); await soundsSave(true); dev=null; sndBuild=o; return {b:window.__b,msg:$("#sndMsg").textContent}; });
@@ -358,7 +358,7 @@ function smfTracks(format,tracks,us){
   const key=async row=>{ const q=await ev(row=>{ const r=pr.cv.getBoundingClientRect(); return {x:r.left+10,y:r.top+prYof(row)+pr.rowH/2}; },row); await page.mouse.click(q.x,q.y); };
   await key(64); await sleep(150);
   sent=await ev(()=>window.__sent.filter(r=>r.id===0x83));
-  check("keyboard strip click sends a 300 ms tone on the active voice's side (note, gain from Settings)",sent.length===1&&tone(sent[0],0,330,300),sent.map(r=>r.d.slice(0,6)));
+  check("keyboard strip click sends a 300 ms tone on the active voice's side (note, gain from the Volume setting)",sent.length===1&&tone(sent[0],0,330,300),sent.map(r=>r.d.slice(0,6)));
   await ev(()=>{ window.__sent.length=0; });
   await page.click("#sndLive"); await sleep(100); await key(66); await sleep(150);
   sent=await ev(()=>window.__sent.filter(r=>r.id===0x83));
@@ -474,6 +474,80 @@ function smfTracks(format,tracks,us){
   ps=await ev(()=>window.__sent);
   check("test panel: Stop all = off tone on sides 0-4 and rumble off",ps.length===6&&same(ps.slice(0,5).map(r=>r.d[0]),[0,1,2,3,4])&&ps.slice(0,5).every(r=>r.id===0x83&&r.d[1]===0x80)&&ps[5].id===0x80&&ps[5].d.every(x=>x===0),ps.length);
   check("test panel side labels",await ev(()=>[...document.querySelectorAll("#plSides label")].map(l=>l.textContent.trim()).join("|"))==="0 Left trackpad|1 Right trackpad|2 Both trackpads|3 Left grip|4 Right grip");
+
+  // ---- Shortcuts: one table for chords, melodies, Confirm with and Volume ----
+  check("the Back4 chords, Confirmations and Events cards are gone",await ev(()=>!document.getElementById("sndEvCard")&&!document.getElementById("sndSetCard")&&![...document.querySelectorAll("h2")].some(h=>/Back4 chords|Confirmations|^Events$/.test(h.textContent))));
+  const land=await ev(()=>{ dev=null; scKey=""; scUpdate(); return {hidden:$("#scEdit").classList.contains("hide"),groups:[...document.querySelectorAll("#scList h3")].map(h=>h.textContent),note:$("#scNote").textContent}; });
+  check("without a puck the card is the read-only sheet (all four groups, no editor)",land.hidden&&land.groups.length===4&&land.groups[0]==="Switch USB mode"&&/firmware defaults/.test(land.note),land);
+  await ev(()=>{
+    window.__keep={send,soundsWrite,bindsXfer,soundsRead,readBlob,lastP};
+    send=async()=>{}; readBlob=async()=>null; // a mode change: send the field, read the blob back (nothing here)
+    dev={}; lastP=new Array(200).fill(0); lastP[0]=27; lastP[23]=3; lastP[24]=1; lastP[25]=4; [9,8,7,2].forEach((m,i)=>{ lastP[180+i]=m; });
+    document.querySelectorAll("select.chord").forEach((s,i)=>{ s.value=String(lastP[23+i]); });
+    document.querySelectorAll("select.chordD").forEach((s,i)=>{ s.value=String(lastP[180+i]); });
+    sounds=sndEmpty(); soundsCap=true; soundsVer=2; sounds.ev=[0,1,2,3,4,5,6,7]; sounds.confirm=3;
+    tabShow("mapping/shortcuts"); sndRender(); scKey=""; scUpdate();
+  });
+  const tb=await ev(()=>({rows:[...document.querySelectorAll("#scTable tbody tr")].filter(tr=>!tr.classList.contains("hide")).map(tr=>tr.cells[0].textContent),edit:!$("#scEdit").classList.contains("hide"),
+    conf:$("#sndConfirm").value,vol:!!$("#sndVol"),list:[...document.querySelectorAll("#scList h3")].map(h=>h.textContent),inCard:!!$("#shortcutsCard #sndConfirm")&&!!$("#shortcutsCard #sndVol")}));
+  check("with a puck the card has the table: Confirm with and Volume on top, then one row per shortcut and the connect row",tb.edit&&tb.inCard&&tb.conf==="3"&&same(tb.rows,["back4 + A","back4 + B","back4 + X","back4 + Y","back4 + D-pad left","back4 + D-pad up","back4 + D-pad right","back4 + D-pad down","back4 + RB / back4 + LB","Controller connects (no shortcut)"]),tb);
+  check("the fixed shortcuts (Power and slots, Lizard) are listed below the table",same(tb.list,["Power and slots","Lizard (always) mode"]),tb.list);
+  const mv=()=>ev(()=>Object.fromEntries([...document.querySelectorAll("#scTable tr[data-dyn]")].map(tr=>[tr.cells[0].textContent,{v:tr.querySelector(".scMel").value,note:tr.querySelector(".scShared").textContent,hidden:tr.querySelector(".scMel").classList.contains("hide")}])));
+  let mm=await mv();
+  check("melody cells follow the family of each mode (Lizard = other, Xbox 360 = Xbox, Switch Pro = Switch, PS3 / DS4 game / PS5 game = PlayStation)",mm["back4 + A"].v==="6"&&mm["back4 + B"].v==="6"&&mm["back4 + X"].v==="4"&&mm["back4 + Y"].v==="5"&&mm["back4 + D-pad left"].v==="3"&&mm["back4 + D-pad up"].v==="3"&&mm["back4 + D-pad right"].v==="3"&&mm["back4 + D-pad down"].v==="5",Object.values(mm).map(x=>x.v));
+  check("shared melodies are noted in the cell",/back4 \+ A/.test(mm["back4 + B"].note)&&/back4 \+ D-pad down/.test(mm["back4 + Y"].note)&&/D-pad up, back4 \+ D-pad right/.test(mm["back4 + D-pad left"].note)&&mm["back4 + X"].note==="",mm);
+  const fixedProfiles=await ev(()=>[...document.querySelectorAll('#scTable .scMel[data-ev="0"],#scTable .scMel[data-ev="1"],#scTable .scMel[data-ev="2"],#scTable .scMel[data-ev="7"]')].map(s=>s.value));
+  check("Profile 1-3 and Controller connects have their own melody selects",same(fixedProfiles,["0","1","2","7"]),fixedProfiles);
+  await page.selectOption("select.chord[data-i='1']","5");
+  mm=await mv();
+  check("changing back4 + X to PS5 moves its melody cell to the PlayStation event at once, and it becomes shared",mm["back4 + X"].v==="3"&&/D-pad left/.test(mm["back4 + X"].note),mm["back4 + X"]);
+  await page.selectOption("select.chord[data-i='1']","1");
+  mm=await mv();
+  check("changing it back to Xbox 360 returns to the Xbox event",mm["back4 + X"].v==="4"&&mm["back4 + X"].note==="",mm["back4 + X"]);
+  // a melody choice + Save to device: the ev[] array reaches the sounds save path
+  const sv2=await ev(async()=>{
+    let cap=null; bindsXfer=async fn=>fn(); soundsWrite=async b=>{ cap=b; return true; }; soundsRead=async()=>{};
+    const sel=document.querySelector("#scTable tbody tr:nth-child(3) .scMel"); sel.value="6"; sel.dispatchEvent(new Event("change"));
+    const ev1=sounds.ev.slice(); $("#scSndSave").click(); await new Promise(r=>setTimeout(r,200));
+    return {ev1,cap:cap&&cap.slice(6,14),ver:cap&&cap[1],prob:$("#scSndProb").textContent};
+  });
+  check("choosing a melody for back4 + X (Xbox) and pressing Save writes ev[4] in the v2 blob",same(sv2.ev1,[0,1,2,3,6,5,6,7])&&same(sv2.cap,[0,1,2,3,6,5,6,7])&&sv2.ver===2&&sv2.prob==="",sv2);
+  // a family no chord points at gets its own row; profile rows use the user's profile names; modes show a description
+  await page.selectOption("select.chord[data-i='1']","5");
+  const fam=await ev(()=>({vis:[...document.querySelectorAll("#scTable tr.scFam")].filter(tr=>!tr.classList.contains("hide")).map(tr=>tr.cells[0].textContent),v:document.querySelector('#scTable tr.scFam[data-fam="4"] .scMel').value}));
+  check("with no chord on an Xbox mode the row 'Mode changed from the panel: Xbox' appears (PlayStation and Switch are still covered)",same(fam.vis,["Mode changed from the panel: Xbox"])&&fam.v==="6",fam);
+  const fsv=await ev(async()=>{
+    let cap=null; soundsWrite=async b=>{ cap=b; return true; };
+    const sel=document.querySelector('#scTable tr.scFam[data-fam="4"] .scMel'); sel.value="7"; sel.dispatchEvent(new Event("change"));
+    $("#scSndSave").click(); await new Promise(r=>setTimeout(r,200)); return cap&&cap.slice(6,14);
+  });
+  check("saving the family row writes ev[Mode: Xbox]",same(fsv,[0,1,2,3,7,5,6,7]),fsv);
+  await ev(()=>{ sounds.ev[4]=4; });
+  await page.selectOption("select.chord[data-i='1']","1");
+  check("the family row disappears again once a chord points at the Xbox family",await ev(()=>[...document.querySelectorAll("#scTable tr.scFam")].every(tr=>tr.classList.contains("hide"))));
+  const pn=await ev(()=>{ profileNames[0]="Work"; scEditSync(); const t=[...document.querySelectorAll("#scTable .scProfName")].map(x=>x.textContent); profileNames[0]=""; scEditSync(); return t; });
+  check("the profile rows show the user's profile names",same(pn,["Work","Profile 2","Profile 3"]),pn);
+  const dsc=await ev(()=>[...document.querySelectorAll("select.chord")].map(s=>s.parentNode.querySelector(".chordDesc").textContent));
+  check("every mode select has a visible description (host, panel, keyboard/mouse)",dsc.length===3&&dsc.every(x=>/·/.test(x)||/Does nothing/.test(x)),dsc);
+  // an invalid melody: the reason is shown and Save is disabled
+  const inv=await ev(()=>{ sounds.mel[0][0]=Array.from({length:33},()=>({freq:440,ms:100})); sndRender(); return {dis:$("#scSndSave").disabled,prob:$("#scSndProb").textContent}; });
+  check("an invalid melody disables Save in the table and shows the reason",inv.dis&&/33 entries/.test(inv.prob),inv);
+  await ev(()=>{ sounds.mel[0][0]=[]; sndRender(); });
+  // Confirm with: Vibration / Off dim the melody selects, Sound / Both do not
+  await page.selectOption("#sndConfirm","1");
+  const dim=await ev(()=>({o:[...document.querySelectorAll("#scTable .scMel")].map(s=>s.style.opacity),t:document.querySelector("#scTable .scMel").title,c:sounds.confirm}));
+  check("Confirm with = Vibration dims every melody select (still editable) and says why",dim.c===1&&dim.o.every(x=>x==="0.55")&&/include[s]? Sound|includes Sound/.test(dim.t),dim);
+  await page.selectOption("#sndConfirm","2");
+  check("Confirm with = Sound removes the dimming",await ev(()=>[...document.querySelectorAll("#scTable .scMel")].every(s=>s.style.opacity==="")));
+  // a chord set to None has no melody
+  const none=await ev(()=>{ const sel=document.querySelector("select.chord[data-i='2']"); const o=document.createElement("option"); o.value="254"; o.textContent="None"; sel.prepend(o); sel.value="254"; sel.dispatchEvent(new Event("change"));
+    const tr=document.querySelector("#scTable tbody tr:nth-child(4)"); const r={hidden:tr.querySelector(".scMel").classList.contains("hide"),dash:!tr.querySelector(".scDash").classList.contains("hide")}; sel.value="4"; sel.dispatchEvent(new Event("change")); return r; });
+  check("a chord set to None shows - instead of a melody",none.hidden&&none.dash,none);
+  // the PNG sheet is built with the melody column
+  const png=await ev(async()=>{ try{ const cv=await scSheet(false); return {ok:cv.width>0&&cv.height>0}; }catch(e){ return {ok:false,err:e.message}; } });
+  check("the PNG sheet builds with melodies loaded",png.ok,png);
+  await sleep(600);
+  await ev(()=>{ ({send,soundsWrite,bindsXfer,soundsRead,readBlob,lastP}=window.__keep); dev=null; scKey=""; scUpdate(); });
 
   check("no page errors, console errors or failed requests",errors.length===0,errors);
   await browser.close(); server.close();
