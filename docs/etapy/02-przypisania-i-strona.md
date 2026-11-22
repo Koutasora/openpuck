@@ -118,4 +118,29 @@ Test i wydanie
 - Wydanie forka z własnym numerem 1.0.0 (rekomendacja przyjęta przez użytkownika): automatyczny numer w `release.yml` tylko w repo autora; w forku wydanie = ręcznie wypchnięty tag semver na `main` po scaleniu PR (workflow buduje .uf2, wydanie i gałąź `firmware`).
 
 ## Podsumowanie
-(wypełnia /etap-zamknij)
+Decyzje
+- Dawne etapy 02-05 w jednym etapie, jedna gałąź, jeden test na sprzęcie na końcu.
+- Akcje łopatek stosowane w jednym miejscu przed trybami; przypisania w osobnym `binds.bin`, `cfg.bin` autora bez zmian.
+- Klawiatura i mysz tylko w trybach PS5 i DS4-gyro na PC (rozpoznawanie hosta, `host.bin`); tryb Xbox bez zmian (auth XSM3).
+- Strona = panel autora z rozszerzeniami, tylko ciemny motyw; wydania firmware na stronie z `Koutasora/openpuck`.
+- Dźwięki przez raport haptyki 0x83 (słyszalny na sprzęcie), 8 melodii po 32 pozycje, nuty 30-5000 ms, tylko import MIDI, jeden głos; własne motywy, bez dźwięków konsol i gier.
+- Kombinacje back4 mogą być None (0xFE, blok statusu 26).
+- Wydanie forka 1.0.0 ręcznym tagiem; automatyczny numer w `release.yml` tylko w repo autora.
+
+Zrobione
+- Firmware: przypisania Button/Combo/Macro/Key/Mouse dla L4/R4/L5/R5, 3 profile (back4 + LB/RB, wibracja lub melodia), makra, klawiatura i mysz na PC, rozpoznawanie PC/konsola, melodie na zdarzenia (profil, rodzina trybu, połączenie pada), None w kombinacjach back4, polecenia WebUSB 0x26-0x31 (`docs/PROTOCOL.md` §10).
+- Testy bez sprzętu: `tests/binds` (155 + 27), `tests/sounds` (89); build `tools/build-lab.sh`; clang-format 18 i lint czyste.
+- Strona: rysunki Valve, przypisania, profile (nazwy, kopiowanie, reset), makra (zdania, szablony, nagrywanie), Live view, Shortcuts jako PNG, Sounds (edytor nut, odsłuch, import MIDI z przesunięciem o oktawy), Confirmations, plik przypisań JSON, kopia zapasowa z dźwiękami, diagnostyka, Copy w Version.
+- Zestaw własnych melodii `docs/midi` i generator `tools/make-midi.py`; README z sekcją o forku.
+- Test na sprzęcie (główny PC, 2026-11-22): cała `CHECKLISTA.md` §1-6 zaliczona; repo publiczne.
+
+Otwarte sprawy
+- Po scaleniu PR: tag `1.0.0` na `main` (wydanie .uf2 i gałąź `firmware`), GitHub Pages z `main` /docs; sprawdzić listę wydań na stronie pod https://koutasora.github.io/openpuck/.
+- Kryteria "Strona na GitHub Pages" i "Wydanie .uf2" niespełnione w chwili zamknięcia (wymagają scalenia).
+- Pomysły odłożone: dwa głosy (lewy i prawy aktuator), klawiatura/mysz w trybie Xbox, RTTTL.
+
+Ryzyka
+- Zmiany w plikach autora (`README.md`, `docs/index.html`, `release.yml`, `rf_link.cpp`, `webusb_config.cpp`) dadzą konflikty przy scalaniu z `upstream`.
+- Logika kombinacji back4 w `rf_link.cpp` bez testu jednostkowego (sprawdzona tylko na sprzęcie).
+- Pierwszy przebieg `release.yml` w forku nie był jeszcze uruchomiony (Actions w forku, gałąź `firmware`).
+- Niektóre gry przełączają się z pada na klawiaturę/mysz przy każdym zdarzeniu klawiatury lub myszy z łopatki.
