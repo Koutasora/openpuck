@@ -21,13 +21,13 @@ Nie robi:
 - [x] technologie i powody w sekcji "Decyzje"
 - [x] etapy 02-05 w roadmapie jako PLANOWANY
 - [x] build firmware działa (lokalnie albo w Actions forka) i daje .uf2
-- [ ] użytkownik wgrał .uf2 z LAB na głównym PC i pad działa jak na firmware autora
+- [x] użytkownik wgrał .uf2 z LAB na głównym PC i pad działa jak na firmware autora
 - [x] `CHECKLISTA.md` po polsku w repo
 
 ## Plan
 - [x] Plik etapu i roadmapa w `docs/etapy/`
 - [x] Build: przenośny `arduino-cli` + rdzeń Adafruit nRF52, `make build`; dodatkowo Actions forka
-- [ ] Test ręczny na głównym PC: wgranie `build/openpuck/OpenPuck.uf2`, parowanie, tryb PS5 i Xbox, tylne przyciski
+- [x] Test ręczny na głównym PC: wgranie `build/openpuck/OpenPuck.uf2`, parowanie, tryb PS5 i Xbox, tylne przyciski
 - [x] `CHECKLISTA.md` w katalogu głównym
 - Sprawdzenie: wynik `make build` i plik .uf2, wynik testu, Actions forka
 
@@ -42,4 +42,27 @@ Nie robi:
 - Strona: jeden rysunek Steam Controllera z nazwami zależnymi od typu pada zamiast osobnych padów: to fizyczny pad w ręku, bez cudzych grafik.
 
 ## Podsumowanie
-(wypełnia /etap-zamknij)
+
+Decyzje:
+- Technologie jak u autora (Arduino + TinyUSB, nRF52840, panel HTML/JS), żeby łatwo dociągać jego zmiany (merge z `upstream`).
+- Własne prywatne repo `Koutasora/openpuck` z importu GitHuba zamiast forka: niewidoczne dla autora; import ominął brak uprawnienia Workflows w tokenie LAB.
+- Klawiatura i mysz tylko w trybach PC z interfejsami złożonymi (PS5, DS4-gyro); tryby konsolowe zostają pojedynczym HID.
+- Profile przełączane back-4 + LB/RB z potwierdzeniem wibracją; strona z jednym rysunkiem Steam Controllera i tabelą.
+- Test `tests/xinput` pominięty (brak kompilatora C/C++ na LAB); sprawdzenie na sprzęcie u użytkownika.
+
+Zrobione:
+- Klon kodu autora (commit `512a406`), roadmapa z etapami 02-05, `CHECKLISTA.md`.
+- `tools/build-lab.sh`: build na LAB bez make i python3 (arduino-cli 1.6.0 przenośne, rdzeń adafruit:nrf52 1.7.0), wynik `build/openpuck/OpenPuck.uf2` (32% flash, 22% RAM).
+- Wgranie .uf2 na puck użytkownika przez zakładkę Firmware update panelu autora: panel pokazuje build "unknown / clean", pad połączył się bez ponownego parowania.
+- Usunięte gałęzie autora skopiowane importem (zostało `main`).
+
+Otwarte sprawy:
+- Build ma wpisywać wersję i commit (`gen_version.sh` w `tools/build-lab.sh`), żeby panel nie pokazywał "unknown".
+- Osobny test trybów PS5 i Xbox z tylnymi przyciskami na obecnym firmware nie był zrobiony; zrobić przy pierwszym buildzie etapu 02.
+- Przed etapem 02 przejrzeć gałąź autora `copilot/170-add-controller-mapping` (może dublować nasze mapowanie).
+- `adafruit-nrfutil` zainstalowany pip do systemowego Pythona, build go nie wymaga: do usunięcia albo przeniesienia do venv.
+
+Ryzyka:
+- Autor często zmienia kod i układ `cfg.bin`; merge z `upstream` może dawać konflikty w `config.*` i `webusb_config.cpp`.
+- Puck bez przycisku RST: wgrywanie tylko przez panel WebUSB; nieudany firmware bez działającego WebUSB wymaga zwarcia RST-GND.
+- Brak testów automatycznych na LAB; logikę makr warto wydzielić tak, żeby dało się ją testować bez sprzętu.
