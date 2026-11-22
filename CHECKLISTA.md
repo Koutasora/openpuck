@@ -7,6 +7,7 @@
 - [ ] Wgrany .uf2 z LAB działa na głównym PC jak firmware autora
 
 ## Etap 02: przypisania i profile
+- [ ] Firmware wysyła do strony stan przycisków na żywo (pod podgląd w etapie 04)
 - [ ] Tylny przycisk: przycisk pada, kombinacja, makro
 - [ ] 3 profile, przełączanie back-4 + LB/RB, wibracja
 - [ ] Stary zapis ustawień dalej się wczytuje
@@ -20,6 +21,9 @@
 - [ ] Makieta zaakceptowana
 - [ ] Rysunek Steam Controllera z nazwami wg typu pada
 - [ ] Tabela przypisań i edytor makr
+- [ ] Podgląd na żywo: co wciskasz na padzie (nowy kanał WebUSB z firmware)
+- [ ] Podgląd na żywo: co dostaje komputer (Gamepad API + klawiatura/mysz w przeglądarce)
+- [ ] Przycisk "test makra" bez wychodzenia ze strony
 - [ ] Strona na GitHub Pages forka
 
 ## Etap 05: testy i wydanie
