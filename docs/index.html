@@ -208,7 +208,7 @@
   <span id="battTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <span id="hostTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <button id="connectBtn" class="primary">Connect</button>
-  <button id="diagCopy" title="Copy a plain-text report (puck, mode, host, assignments, live state, firmware counters, recent events) to paste into a chat">Copy diagnostics</button>
+  <button id="diagCopy" title="Copy a plain-text report (puck, mode, host, assignments, live state, firmware counters, recent events) to the clipboard">Copy diagnostics</button>
   <span id="updAvail" class="pill hide" title="A newer OpenPuck release is available — click to open the Firmware update tab">…</span>
   <span class="spacer"></span>
   <button id="betaBtn" class="beta" title="Show beta features warning and enable beta UI">Beta</button>
@@ -4998,7 +4998,7 @@ async function scSave(){
 })();
 
 // ===================== Copy diagnostics =====================
-// One plain-text report for pasting into a chat: page, puck, mode, host, assignments, live sample, the last page
+// One plain-text report: page, puck, mode, host, assignments, live sample, the last page
 // events and the firmware diagnostics frame (0x2C -> 0xB4, PROTOCOL.md 10.4). "Capture 3 s" also records what
 // changes while the user holds a paddle.
 var DIAG_EV_MAX=30;
