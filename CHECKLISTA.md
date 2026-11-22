@@ -49,6 +49,23 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [x] Macros: utworzenie makra, Test macro, zapis na padzie, przypisanie do łopatki
 - [x] Strona działa przy wąskim oknie (telefon / wąska przeglądarka)
 
-### 6. Wydanie
-- [ ] Wydanie `.uf2` na GitHubie repo (po teście)
-- [ ] Strona dostępna z GitHuba (GitHub Pages albo inna droga; prywatne repo bez płatnego planu nie ma Pages)
+### 6. Dodatki po pierwszym teście (od 2026-11-22)
+- [ ] Wgraj nowy `build/openpuck/OpenPuck.uf2` przez Firmware update -> local file; pad łączy się bez ponownego parowania, ustawienia zostają
+- [ ] Sounds: Play on puck - z aktuatora pada słychać ton (czy w ogóle słychać)
+- [ ] Sounds: zapis melodii na padzie, po odłączeniu zasilania pucka melodia zostaje
+- [ ] Zmiana profilu na padzie (back4 + LB/RB): potwierdzenie Vibration / Sound / Both / Off działa zgodnie z ustawieniem
+- [ ] Głośność dźwięków: zmiana suwaka słychać
+- [ ] Melodia po zmianie trybu (back4 + przycisk) osobno dla rodzin PlayStation, Xbox, Switch i other
+- [ ] Melodia przy połączeniu pada, najwyżej raz na 20 s (szybkie wyłączenie i włączenie pada nie gra jej drugi raz)
+- [ ] Import pliku MIDI i odsłuch zaimportowanej melodii
+- [ ] Zaznaczanie tekstu na stronie nie znika (strona nie przebudowuje kart w trakcie)
+- [ ] Przycisk Copy w polu Version kopiuje wersję
+- [ ] Profile: zmiana nazwy, kopiowanie i reset profilu
+- [ ] Eksport i import pliku przypisań (zapis, zmiana, import przywraca)
+- [ ] Lizard mapping: nazwy przycisków myszy jak w akcjach
+- [ ] Klawiatura i mysz na PC nadal bez opóźnień (stan wysyłany rzadziej): pisanie, klik, kółko
+
+### 7. Wydanie
+- [ ] Repo publiczne (ustawia użytkownik)
+- [ ] Po scaleniu PR: GitHub Pages - Settings -> Pages -> Deploy from a branch, `main`, `/docs`; strona działa pod https://koutasora.github.io/openpuck/
+- [ ] Wydanie `.uf2` na GitHubie repo (po teście); workflow tworzy gałąź `firmware`, lista wydań na stronie pokazuje wydanie
