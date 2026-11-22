@@ -109,6 +109,7 @@ Test i wydanie
 - Plik przypisań to czytelny JSON (nie hex bloku), walidowany przed jakąkolwiek zmianą stanu; akcje Key/Mouse wymagają statusu >= 24, jak w firmware.
 - Reset profilu = L4 LB, R4 RB, L5 L3, R5 R3 dla każdego typu pada (jak `bindsInitDefaults`); kopiowanie i reset idą zwykłym zapisem bloku przypisań.
 - Copy w karcie Version kopiuje build firmware (wersja albo hash, zależnie od tego, co wpisał `gen_version.sh`) i protokół statusu.
+- Test 2026-11-22 (główny PC): Play on puck gra melodię z aktuatora; raport 0x83 HAPTIC_LFO_TONE (side 0 i 1, bez LFO) jest słyszalny.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

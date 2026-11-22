@@ -51,7 +51,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 
 ### 6. Dodatki po pierwszym teście (od 2026-11-22)
 - [ ] Wgraj nowy `build/openpuck/OpenPuck.uf2` przez Firmware update -> local file; pad łączy się bez ponownego parowania, ustawienia zostają
-- [ ] Sounds: Play on puck - z aktuatora pada słychać ton (czy w ogóle słychać)
+- [x] Sounds: Play on puck - z aktuatora pada słychać ton (czy w ogóle słychać)
 - [ ] Sounds: zapis melodii na padzie, po odłączeniu zasilania pucka melodia zostaje
 - [ ] Zmiana profilu na padzie (back4 + LB/RB): potwierdzenie Vibration / Sound / Both / Off działa zgodnie z ustawieniem; przy Both impulsy i melodia po kolei, impuls nieucięty
 - [ ] Głośność dźwięków: zmiana suwaka słychać
