@@ -115,6 +115,7 @@ Test i wydanie
 - Import melodii tylko z MIDI (bez RTTTL, MusicXML, audio): użytkownikowi wystarcza.
 - Kombinacje back4 + B/X/Y i D-pad mogą mieć wartość None (`CHORD_NONE` = 0xFE, bajt spoza trybów i inny niż 0xFF z `cfg.bin`): nic nie robią; opcja na stronie od wersji bloku 26.
 - Własny zestaw melodii w `docs/midi` (PlayStation, Xbox, Switch, inne tryby, połączenie pada) z generatorem `tools/make-midi.py`: oryginalne motywy, bez melodii z gier i konsol (prawa autorskie).
+- Wydanie forka z własnym numerem 1.0.0 (rekomendacja przyjęta przez użytkownika): automatyczny numer w `release.yml` tylko w repo autora; w forku wydanie = ręcznie wypchnięty tag semver na `main` po scaleniu PR (workflow buduje .uf2, wydanie i gałąź `firmware`).
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
