@@ -364,6 +364,9 @@ function smf(us){
   const li=await ev(()=>sounds.mel[curMel].map(l=>l.length));
   check("MIDI import fills the active voice (LG) and no other",same(li,[2,2,40,0]),li);
   check("Octave and Clear act on the active voice only",await ev(()=>{ sndOctave(1); const a=sounds.mel[curMel][2][0].freq; sndOctave(-1); sndNotes().length=0; sndRender(); return a===131&&sounds.mel[curMel][0].length===2&&sounds.mel[curMel][2].length===0; }));
+  check("Clear all voices empties all four voices after confirm, Cancel keeps them",await ev(()=>{ const m=sounds.mel[curMel]; const fill=()=>m.forEach((v,i)=>{ v.length=0; v.push({freq:440+i,ms:100}); }); const oc=window.confirm;
+    fill(); window.confirm=()=>false; $("#sndClearAll").click(); const kept=m.every(v=>v.length===1);
+    window.confirm=()=>true; $("#sndClearAll").click(); window.confirm=oc; return kept&&m.every(v=>v.length===0); }));
   // Crop to 32 across voices: cut where the first voice would pass 32 entries
   await ev(()=>{ const m=sounds.mel[curMel];
     m[0]=Array.from({length:40},(_,i)=>({freq:i%2?82:65,ms:100}));

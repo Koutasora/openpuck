@@ -514,7 +514,7 @@
       <div class="slot-tabs" id="sndTabs"></div>
       <div class="row" style="margin-top:0"><label>Name</label><input id="sndName" class="mtxt" type="text" maxlength="24"><span class="note" id="sndUsed" style="margin:0;flex:1 1 200px"></span></div>
       <p class="note hide" id="sndV1Warn" style="margin:6px 0 0;color:var(--warn)">This firmware stores one voice (Left trackpad). Update the puck for 4 voices.</p>
-      <div class="row" style="margin:8px 0 0;flex-wrap:wrap;gap:8px"><label style="flex:none">Voice</label><span id="sndLanes" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
+      <div class="row" style="margin:8px 0 0;flex-wrap:wrap;gap:8px"><label style="flex:none">Voice</label><span id="sndLanes" style="display:flex;gap:8px;flex-wrap:wrap"></span><button id="sndClearAll">Clear all voices</button></div>
       <div class="row" style="margin:8px 0 4px;flex-wrap:wrap;gap:8px">
         <button id="sndLive">Play on controller</button>
         <button id="sndLiveStop" disabled>Stop</button>
@@ -5300,6 +5300,9 @@ function sndLiveStart(){
   $("#sndOctUp").onclick=()=>sndOctave(1);
   $("#sndOctDown").onclick=()=>sndOctave(-1);
   $("#sndClear").onclick=()=>{ if(!sounds) return; sndLiveHalt(true); sndNotes().length=0; pr.range=null; pr.selS=-1; sndDirty(); sndRender(); };
+  $("#sndClearAll").onclick=()=>{ if(!sounds||!sounds.mel[curMel].some(v=>v.length)) return;
+    if(!confirm("Clear all four voices of "+soundName(curMel)+"?")) return;
+    sndLiveHalt(true); sounds.mel[curMel].forEach(v=>{ v.length=0; }); pr.range=null; pr.selS=-1; sndDirty(); sndRender(); };
   $("#sndPrev").onclick=sndPreview;
   $("#sndPlayStored").onclick=()=>soundsPlay(0x30,[curMel]);
   for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };

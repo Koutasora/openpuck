@@ -105,7 +105,9 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Edycja, tabela, licznik "N / 32", import MIDI (zatwierdzenie zastępuje tylko aktywny tor), Octave up/down i Clear dotyczą aktywnego toru; Fold pokazuje wiersze wszystkich torów
 - [ ] Crop to 32 tnie wszystkie tory tym samym zakresem, kończy tam, gdzie pierwszy tor przekroczyłby 32 wpisy (kreska na rolce)
 - [ ] Play on controller gra wszystkie niepuste tory naraz, każdy na swoim aktuatorze (LT side 0, RT side 1, LG side 3, RG side 4); pauza w torze wycisza tylko jego aktuator, Stop wycisza wszystkie cztery
-- [ ] Klik w klawisz po lewej gra nutę na aktuatorze aktywnego toru; Preview in browser miksuje wszystkie tory
+- [ ] Klik w klawisz po lewej gra nutę na aktuatorze aktywnego toru
+- [ ] Clear all voices (obok przycisków torów) po potwierdzeniu czyści wszystkie cztery tory bieżącej melodii; Anuluj nic nie zmienia
+- [ ] Tabela nut zwinięta pod "Note list (N)", klik rozwija i zwija; Preview in browser miksuje wszystkie tory
 - [ ] Save to device zapisuje 4 głosy i po ponownym wczytaniu strony wszystkie tory są na miejscu; Play saved melody on puck gra je na pucku; przycisku Play on puck już nie ma
 - [ ] Puck ze starszym firmware (protokół 25-26): ostrzeżenie "This firmware stores one voice (Left trackpad)", zapis tylko toru LT, melodia gra na obu gładzikach; Play on controller gra tor LT na obu gładzikach (jak puck), przyciski RT / LG / RG są przyciemnione z podpowiedzią "not saved"
 - [ ] Przywrócenie kopii z czterema głosami na puck ze starszym firmware: komunikat, że głosy RT, LG i RG nie zostały przywrócone
