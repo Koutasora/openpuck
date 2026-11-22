@@ -21,6 +21,11 @@ void wakeHidBegin()
 	g_wakeHidPresent = true;
 }
 
+Adafruit_USBD_HID *wakeHidObject()
+{
+	return &g_wakeHid;
+}
+
 bool wakeHidPresent()
 {
 	return g_wakeHidPresent;

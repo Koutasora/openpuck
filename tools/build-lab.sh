@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PATH="$LOCALAPPDATA/Programs/arduino-cli:$PATH"
-OUT=build/openpuck
+OUT=${OUT_DIR:-build/openpuck}
 sh gen_version.sh
 arduino-cli compile -b adafruit:nrf52:feather52840 --clean \
 	--build-path build/cache/openpuck --output-dir "$OUT" \

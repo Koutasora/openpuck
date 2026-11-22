@@ -11,6 +11,7 @@
 #pragma once
 #include <stdint.h>
 #include "binds.h"
+#include "usb_tx.h"
 
 // Load host.bin and start host detection. Call after loadCfg().
 void kbmFwInit();
@@ -33,5 +34,18 @@ const char *kbmFwHostName();
 const char *kbmFwHostWhyName();
 // One byte for the live view: bits 0-1 host (HOST_*), bits 2-3 setting (HOSTSET_*), bits 4-7 why (HOSTWHY_*).
 uint8_t kbmFwHostByte();
+// Counters since boot for the diagnostics frame (WebUSB 0x2C).
+struct KbmDiag {
+	uint32_t allowedTrue, allowedFalse; // sendState passes by `allowed`
+	uint32_t mouseOk, mouseFail; // wakeHidMouse returned true / false
+	uint32_t kbdQueued; // keyboard reports queued
+	uint8_t lastButtons; // last mouse buttons sent
+	uint8_t lastMods; // last keyboard modifiers sent
+	uint8_t lastKeys[6]; // last keyboard usages sent
+	uint8_t flags; // bit0 keyboard in descriptor, bit1 failed to add
+};
+void kbmFwDiag(KbmDiag *out);
+// usb_tx counters of the wake mouse and of the keyboard (since it took the interface)
+void kbmFwTxStats(UsbTxStats *wake, UsbTxStats *kbd);
 // The keyboard interface is part of the descriptor the host holds right now.
 bool kbmFwKeyboardMounted();

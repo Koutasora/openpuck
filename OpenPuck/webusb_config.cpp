@@ -15,6 +15,8 @@
 #include "usb_mount.h" // modeSwitchReboot()
 #include "binds_fw.h"
 #include "kbm_fw.h"
+#include "wake_hid.h"
+#include "controllers.h"
 #include "host_detect.h"
 #include "xinput_auth.h"
 #include <Arduino.h>
@@ -843,12 +845,98 @@ static void webusbSendBindsAck(uint8_t op, bool ok)
 		usb_web.flush();
 	}
 }
+// Diagnostics frame 0xB4, layout in docs/PROTOCOL.md. Static buffer: this runs on the loop task, but a 100-byte
+// frame on any small stack is not worth the risk.
+static void put32(uint8_t *&q, uint32_t v)
+{
+	for (int k = 0; k < 4; k++)
+		*q++ = (uint8_t)(v >> (8 * k));
+}
+static void putTx(uint8_t *&q, const UsbTxStats &s)
+{
+	put32(q, s.enqueued);
+	put32(q, s.sent);
+	put32(q, s.sendFail);
+	put32(q, s.dropped);
+	put32(q, s.notReady);
+}
+static void webusbSendDiag()
+{
+	static uint8_t f[2 + 111];
+	if (!usb_web.connected() || tud_vendor_write_available() < sizeof f)
+		return;
+	KbmDiag kd;
+	UsbTxStats wake, kbd;
+	kbmFwDiag(&kd);
+	kbmFwTxStats(&wake, &kbd);
+	uint8_t *q = f;
+	*q++ = 0xB4;
+	*q++ = 111;
+	*q++ = 1; // layout version
+	*q++ = g_usbMode;
+	*q++ = g_etype;
+	*q++ = g_binds.active;
+	*q++ = hostKind();
+	*q++ = hostWhy();
+	*q++ = hostSetting();
+	*q++ = (uint8_t)((kd.flags & 3) | (wakeHidPresent() ? 4 : 0) |
+			 (wakeHidReady() ? 8 : 0) |
+			 (USBDevice.mounted() ? 16 : 0) |
+			 (USBDevice.suspended() ? 32 : 0));
+	*q++ = g_usbMountCount;
+	*q++ = g_active ? g_active->maxSlots() : 0;
+	put32(q, g_bindsDiag.calls);
+	put32(q, g_bindsDiag.lastRaw);
+	put32(q, g_bindsDiag.lastOut);
+	put32(q, g_bindsDiag.nonZero);
+	*q++ = g_bindsDiag.lastNonZero.mods;
+	for (int k = 0; k < BINDS_KEYS_MAX; k++)
+		*q++ = g_bindsDiag.lastNonZero.keys[k];
+	*q++ = g_bindsDiag.lastNonZero.buttons;
+	*q++ = (uint8_t)g_bindsDiag.lastNonZero.wheel;
+	put32(q, kd.allowedTrue);
+	put32(q, kd.allowedFalse);
+	put32(q, kd.mouseOk);
+	put32(q, kd.mouseFail);
+	put32(q, kd.kbdQueued);
+	*q++ = kd.lastButtons;
+	*q++ = kd.lastMods;
+	for (int k = 0; k < 6; k++)
+		*q++ = kd.lastKeys[k];
+	putTx(q, wake);
+	putTx(q, kbd);
+	put32(q, g_bindsDiag.rawSeen);
+	put32(q, g_bindsDiag.outSeen);
+	usb_web.write(f, (uint16_t)(q - f));
+	usb_web.flush();
+}
+
 static void webusbSendLive(uint8_t slot)
 {
-	if (slot >= NSLOT)
+	if (slot >= NSLOT) {
+		// 0xFF = the controller in use. g_curSlot is only the slot the poll happens to be on and cycles
+		// through every linked one, so pick a linked slot with input in hand, else the first linked one.
 		slot = (g_curSlot >= 0 && g_curSlot < NSLOT) ?
 			       (uint8_t)g_curSlot :
 			       0;
+		bool found = false;
+		for (uint8_t i = 0; i < NSLOT; i++) {
+			if (!g_slot[i].used || !g_connReplyMs[i] ||
+			    (millis() - g_connReplyMs[i]) >= 300u)
+				continue;
+			const PuckInput &p = g_in[i];
+			const bool busy = g_rawButtons[i] || p.lt || p.rt ||
+					  abs(p.lx) > 3000 ||
+					  abs(p.ly) > 3000 ||
+					  abs(p.rx) > 3000 || abs(p.ry) > 3000;
+			if (!found || busy) {
+				slot = i;
+				found = true;
+			}
+			if (busy)
+				break;
+		}
+	}
 	uint8_t f[2 + 25];
 	const PuckInput &in = g_in[slot];
 	const uint32_t raw = g_rawButtons[slot], out = in.buttons;
@@ -902,7 +990,7 @@ void webusbPoll()
 			// 0x16 = test rumble (v21); extend this range whenever a new opcode is added, or the
 			// parser drops it as garbage and the handler below never runs.
 			if ((op < 0x01 || op > 0x1A) &&
-			    (op < 0x20 || op > 0x2B)) { // resync: drop one byte
+			    (op < 0x20 || op > 0x2C)) { // resync: drop one byte
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -1210,6 +1298,8 @@ void webusbPoll()
 						   bindsFwSetProfile(buf[1]));
 				g_blobRequest = true;
 				// 0x2B <0 auto|1 PC|2 console>: manual host setting, saved (host.bin), acked with 0xB3
+			} else if (op == 0x2C) {
+				webusbSendDiag();
 			} else if (op == 0x2B) {
 				webusbSendBindsAck(op,
 						   kbmFwSetHostSetting(buf[1]));

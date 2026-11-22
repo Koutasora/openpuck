@@ -24,6 +24,7 @@ struct TxChan {
 	TxItem ring[TX_RING_N];
 	volatile uint8_t head,
 		tail; // head=next write, tail=next read; empty when equal
+	UsbTxStats st;
 };
 static TxChan g_chan[TX_CHAN_MAX];
 
@@ -55,6 +56,7 @@ void usbTxHid(Adafruit_USBD_HID *hid, uint8_t rid, const void *data,
 				c = &g_chan[i];
 				c->hid = hid;
 				c->head = c->tail = 0;
+				memset(&c->st, 0, sizeof c->st);
 				break;
 			}
 		}
@@ -62,8 +64,11 @@ void usbTxHid(Adafruit_USBD_HID *hid, uint8_t rid, const void *data,
 	if (c) {
 		uint8_t h = c->head, nx = txNext(h);
 		// full -> drop the oldest (advance tail), never the newest
-		if (nx == c->tail)
+		if (nx == c->tail) {
 			c->tail = txNext(c->tail);
+			c->st.dropped++;
+		}
+		c->st.enqueued++;
 		c->ring[h].rid = rid;
 		c->ring[h].len = (uint8_t)len;
 		if (len)
@@ -71,6 +76,24 @@ void usbTxHid(Adafruit_USBD_HID *hid, uint8_t rid, const void *data,
 		c->head = nx;
 	}
 	__set_PRIMASK(pm);
+}
+
+bool usbTxStats(Adafruit_USBD_HID *hid, UsbTxStats *out)
+{
+	for (int i = 0; i < TX_CHAN_MAX; i++)
+		if (g_chan[i].hid == hid) {
+			*out = g_chan[i].st;
+			return true;
+		}
+	memset(out, 0, sizeof *out);
+	return false;
+}
+
+void usbTxStatsReset(Adafruit_USBD_HID *hid)
+{
+	for (int i = 0; i < TX_CHAN_MAX; i++)
+		if (g_chan[i].hid == hid)
+			memset(&g_chan[i].st, 0, sizeof g_chan[i].st);
 }
 
 void usbTxClear(Adafruit_USBD_HID *hid)
@@ -102,12 +125,19 @@ void usbTxDrain(void)
 		uint8_t t = c->tail;
 		if (t == c->head)
 			continue; // empty
-		if (!c->hid->ready())
-			continue; // endpoint busy / not mounted -> retry on completion/next tick
+		if (!c->hid->ready()) {
+			// endpoint busy / not mounted -> retry on completion/next tick
+			c->st.notReady++;
+			continue;
+		}
 		TxItem &it = c->ring[t];
 		// sendReport copies into the endpoint buffer, so releasing the slot right after is safe.
-		if (c->hid->sendReport(it.rid, it.data, it.len))
+		if (c->hid->sendReport(it.rid, it.data, it.len)) {
 			c->tail = txNext(t);
+			c->st.sent++;
+		} else {
+			c->st.sendFail++;
+		}
 	}
 	__atomic_clear(&draining, __ATOMIC_RELEASE);
 }

@@ -457,6 +457,7 @@ Messages:
   - `0x2A <profile>`: set active profile 0..2 (saved, confirmation buzz of profile+1 pulses)
   - `0x2B <setting>`: manual host setting, `0` auto, `1` always PC, `2` always console (saved in `host.bin`),
     acked with `0xB3`. **Requires status-blob version ≥ 24.** See §10.3.
+  - `0x2C`: diagnostics, reply `0xB4` (§10.4). Sent only while the panel is connected.
   - `0x20`–`0x24`: staged firmware update (begin/data/end/reboot/abort), acked with `0xAB` frames
   - `0x25 0x57 0x49 0x50 0x45`: **full board wipe** (`"WIPE"` magic, debug panel only). Erases the app
     region + LittleFS (settings + bonds) + bootloader-settings page and reboots app-less, so the board mounts
@@ -471,6 +472,7 @@ Messages:
   - `0xAB 5 <status> <nextOff u32 LE>`: firmware-update ack
   - `0xB0 25 <payload>`: live state (§10.2)
   - `0xB2 <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
+  - `0xB4 111 <payload>`: diagnostics (§10.4)
   - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` / `0x2B` (`ok` 1 = done); for `0x2B` the last byte
     is the host byte of §10.3 instead of the profile
 
@@ -696,6 +698,52 @@ bits 4-7  reason code (table above)
 Serial console (CDC): `BA <p> <et> <i> K<usage hex>[:<mods hex>]` (e.g. `BA 1 3 0 K06:03` = Ctrl+Shift+C),
 `BA <p> <et> <i> Mo<name>` with `L R M` buttons, `B` back, `F` forward, `U` / `D` wheel per press, `U+` / `D+`
 wheel repeating while held; `BL` lists them as `K06:03` / `MoU+`; `HOST [A|P|C]`.
+
+### 10.4 Diagnostics frame `0xB4`
+
+Request `0x2C` (no argument). Reply: `0xB4`, length byte `111`, then 111 payload bytes. All counters are `u32` little
+endian, counted since boot. Use it to find where a back-paddle action is lost: raw buttons seen, binds output,
+`allowed`, queued reports, USB endpoint results.
+
+| offset | size | field |
+|---|---|---|
+| 0 | 1 | layout version (1) |
+| 1 | 1 | `g_usbMode` |
+| 2 | 1 | `g_etype` (0xFF none) |
+| 3 | 1 | active profile |
+| 4 | 1 | host kind (0 unknown, 1 PC, 2 console) |
+| 5 | 1 | host reason (§10.3) |
+| 6 | 1 | host setting |
+| 7 | 1 | flags: bit0 keyboard in descriptor, bit1 keyboard add failed, bit2 wake mouse present, bit3 wake mouse ready, bit4 USB mounted, bit5 suspended |
+| 8 | 1 | mounted pads (`g_usbMountCount`) |
+| 9 | 1 | pad pool size (`maxSlots`) |
+| 10 | 4 | `bindsFwFilter` calls |
+| 14 | 4 | last raw buttons (any slot) |
+| 18 | 4 | last buttons after binds |
+| 22 | 4 | calls with a non-empty key / mouse state |
+| 26 | 1 | last non-empty state: keyboard modifiers |
+| 27 | 6 | its key usages |
+| 33 | 1 | its mouse buttons |
+| 34 | 1 | its wheel (s8) |
+| 35 | 4 | `sendState` passes with `allowed` true |
+| 39 | 4 | passes with `allowed` false |
+| 43 | 4 | mouse reports accepted (`wakeHidMouse` true) |
+| 47 | 4 | mouse reports refused (not ready) |
+| 51 | 4 | keyboard reports queued |
+| 55 | 1 | last mouse buttons sent |
+| 56 | 1 | last keyboard modifiers sent |
+| 57 | 6 | last keyboard usages sent |
+| 63 | 20 | wake mouse USB channel: `enqueued, sent, sendFail, dropped, notReady` (5 x u32) |
+| 83 | 20 | keyboard channel, same fields, counted since the keyboard took the interface |
+| 103 | 4 | every raw button bit ever seen (OR) |
+| 107 | 4 | every button bit ever seen after binds (OR) |
+
+`dropped` = oldest report discarded because the ring was full, `notReady` = drain passes that found a report waiting
+and the endpoint not ready, `sendFail` = `sendReport` refused on a ready endpoint. Button bit numbers are the `TB_*`
+bits of §8.1 (paddles: R4 `0x80`, R5 `0x100`, L4 `0x20000`, L5 `0x40000`).
+
+The `0xB0` live state with slot `0xFF` now picks a linked controller that has input in hand (else the first linked
+one) instead of the slot the poll happened to be on.
 
 ## 11. Timing notes
 

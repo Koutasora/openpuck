@@ -30,6 +30,17 @@ bool bindsFwProfileChord(uint8_t slot, uint32_t raw);
 // Main loop: plays the confirmation buzzes without blocking.
 void bindsFwTask();
 
+// Counters since boot for the diagnostics frame (WebUSB 0x2C).
+struct BindsDiag {
+	uint32_t calls; // bindsFwFilter calls
+	uint32_t lastRaw, lastOut; // buttons before / after binds, last call
+	uint32_t rawSeen,
+		outSeen; // every button bit ever seen before / after binds
+	uint32_t nonZero; // calls whose KEY / MOUSE state was not empty
+	BindsKbm lastNonZero; // that state, last time
+};
+extern BindsDiag g_bindsDiag;
+
 // Last raw buttons per slot (before binds), for the live view over WebUSB.
 extern uint32_t g_rawButtons[NSLOT];
 

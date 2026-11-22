@@ -16,8 +16,10 @@
 //                                    -> mounts as UF2 every boot until re-flashed (see fwupArmFullWipe)
 //               0x26 <idx> / 0x27 <slot> / 0x28 <idx> <len> <data> / 0x29 / 0x2A <profile>   back-paddle binds
 //                                    (read chunk / live state / stage chunk / commit / set profile); docs/PROTOCOL.md
+//               0x2C                 diagnostics: counters of binds / keyboard / mouse / USB channels -> 0xB4
 //               0x2B <0|1|2>         manual host setting: auto / always PC / always console (kbm_fw.h)
 //   dev->host:  0xA5 <len> <payload>  status blob (mode/tunables/link state/rates)
+//               0xB4 111 <payload>   diagnostics, reply to 0x2C (docs/PROTOCOL.md 10.4)
 //               0xB0 25 <payload>    live state (buttons, sticks, profile, battery, host byte)
 //               0xB2 <2+n> <idx> <total> <data>  binds blob chunk
 //               0xB3 3 <op> <ok> <profile|host byte>  ack for 0x28 / 0x29 / 0x2A / 0x2B

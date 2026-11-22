@@ -16,6 +16,8 @@
 
 #include <stdint.h>
 
+class Adafruit_USBD_HID;
+
 // register the boot-mouse wake interface (call from setup() for clean modes + normal puck boot). Locks its
 // TinyUSB HID instance index -- for dynamic-mount modes call this BEFORE the slot pool so it is HID instance 0.
 void wakeHidBegin();
@@ -33,6 +35,9 @@ bool wakeHidReady();
 // send one boot-mouse movement report (buttons=0). This is the input that actually wakes the host: it rides the
 // interface Windows armed as the wake source, unlike a gamepad-slot report. Returns false if not ready.
 bool wakeHidMove(int8_t dx, int8_t dy);
+
+// the wake-mouse HID object (key of its usb_tx channel), for diagnostics
+Adafruit_USBD_HID *wakeHidObject();
 
 // send the mouse state of the binds (buttons: bit n = button n+1) plus `wheel` notches (+ up), no movement.
 // Same interface as the wake nudge: it is the one mouse the host sees. Returns false if not ready.

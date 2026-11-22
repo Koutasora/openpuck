@@ -13,6 +13,7 @@ using namespace Adafruit_LittleFS_Namespace;
 #define BINDS_FILE "/binds.bin"
 
 uint32_t g_rawButtons[NSLOT];
+BindsDiag g_bindsDiag;
 
 // Serialize / stage buffers are static: loop task stack is small and the blob is ~1.1 KB.
 static uint8_t s_io[BINDS_BLOB_BYTES];
@@ -136,6 +137,15 @@ uint32_t bindsFwFilter(uint8_t slot, uint32_t raw)
 	BindsKbm kbm;
 	const uint32_t out = bindsApply(slot, raw, g_etype, millis(), &kbm);
 	kbmFwSubmit(slot, kbm);
+	g_bindsDiag.calls++;
+	g_bindsDiag.lastRaw = raw;
+	g_bindsDiag.lastOut = out;
+	g_bindsDiag.rawSeen |= raw;
+	g_bindsDiag.outSeen |= out;
+	if (kbm.mods || kbm.buttons || kbm.wheel || kbm.keys[0]) {
+		g_bindsDiag.nonZero++;
+		g_bindsDiag.lastNonZero = kbm;
+	}
 	return out;
 }
 

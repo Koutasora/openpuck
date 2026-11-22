@@ -118,9 +118,10 @@ void kbmFwEnumEnd(uint8_t k)
 	h->setReportDescriptor(KBD_DESC, sizeof KBD_DESC);
 	h->setBootProtocol(HID_ITF_PROTOCOL_NONE);
 	h->setPollInterval(10);
-	if (USBDevice.addInterface(*h))
+	if (USBDevice.addInterface(*h)) {
 		s_kbd = h;
-	else
+		usbTxStatsReset(h);
+	} else
 		// no loop of re-enumerations: keep it off until the setting or host changes
 		s_failedKbd = true;
 	memset(&s_sentKbd, 0, sizeof s_sentKbd);
@@ -159,9 +160,30 @@ static void merge(hid_keyboard_report_t &kb, uint8_t &buttons)
 	}
 }
 
+static KbmDiag s_diag;
+
+void kbmFwDiag(KbmDiag *out)
+{
+	*out = s_diag;
+	out->flags = (uint8_t)((s_kbd ? 1 : 0) | (s_failedKbd ? 2 : 0));
+}
+
+void kbmFwTxStats(UsbTxStats *wake, UsbTxStats *kbd)
+{
+	usbTxStats(wakeHidObject(), wake);
+	if (s_kbd)
+		usbTxStats(s_kbd, kbd);
+	else
+		memset(kbd, 0, sizeof *kbd);
+}
+
 static void sendState()
 {
 	const bool allowed = modeHasKbm(g_usbMode) && hostIsPc();
+	if (allowed)
+		s_diag.allowedTrue++;
+	else
+		s_diag.allowedFalse++;
 	hid_keyboard_report_t kb;
 	uint8_t buttons;
 	if (allowed) {
@@ -175,11 +197,18 @@ static void sendState()
 	if (s_kbd && memcmp(&kb, &s_sentKbd, sizeof kb)) {
 		usbTxHid(s_kbd, 0, &kb, sizeof kb);
 		s_sentKbd = kb;
+		s_diag.kbdQueued++;
+		s_diag.lastMods = kb.modifier;
+		memcpy(s_diag.lastKeys, kb.keycode, sizeof s_diag.lastKeys);
 	}
 	if (buttons != s_sentButtons || s_wheelPending) {
 		if (wakeHidMouse(buttons, s_wheelPending)) {
 			s_sentButtons = buttons;
 			s_wheelPending = 0;
+			s_diag.mouseOk++;
+			s_diag.lastButtons = buttons;
+		} else {
+			s_diag.mouseFail++;
 		}
 	}
 }
