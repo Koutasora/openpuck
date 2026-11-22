@@ -45,7 +45,8 @@ Test i wydanie
 - [ ] Dźwięki z haptyki (HAPTIC_LFO_TONE, `docs/PROTOCOL.md`): melodie w pucku, przypisanie do zdarzeń (zmiana profilu, zmiana trybu osobno dla rodzin PlayStation/Xbox/Switch, połączenie pada), przełącznik wibracja/dźwięk/oba/wyłączone i głośność w Settings; na stronie edytor tonów z odsłuchem i import MIDI (jedna linia melodii); domyślnie własne, oryginalne motywy
 - [ ] Rzadsze wysyłanie stanu klawiatury/myszy (dokończyć i sprawdzić `d47ac39`)
 - [ ] Strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu), przycisk Copy w Version
-- [ ] GitHub Pages
+- [ ] Nazwy profili, kopiowanie i reset profilu, eksport/import samych przypisań i makr, nowe nazwy myszy w Lizard mapping
+- [ ] GitHub Pages (konfiguracja w repo; widoczność repo zmienia użytkownik)
 - [ ] Końcowy build, lista testów w `CHECKLISTA.md`, test użytkownika, wydanie
 - Sprawdzenie: test `tests/binds` i build na LAB po każdym kroku; test strony w Chromium (Playwright) na LAB bez sprzętu; jeden test na sprzęcie u użytkownika na końcu
 
@@ -86,6 +87,7 @@ Test i wydanie
 - Do następnego czatu: rzadsze wysyłanie stanu klawiatury/myszy (częściowo w `d47ac39`, niewgrane), strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu znika), potem końcowy build, wydanie .uf2 i publikacja strony.
 - Dźwięki: oryginalne dźwięki PlayStation/Xbox/Switch nie są przepisywane ani dołączane (utwory i znaki dźwiękowe tych firm); użytkownik może wgrać własne melodie przez import MIDI. Domyślne motywy własne.
 - Do decyzji użytkownika w nowym czacie: nazwy profili, kopiowanie profilu i reset przypisań, eksport/import samych przypisań i makr, nowe nazwy myszy w Lizard mapping.
+- Użytkownik (2026-11-22): pozostałe kroki jednym ciągiem bez przystanków; dźwięki w pełnym zakresie, edytor tonów bez makiety (pokazany przy teście końcowym); dołączone nazwy profili, kopiowanie/reset profilu, eksport/import przypisań, nazwy myszy w Lizard; repo `Koutasora/openpuck` będzie publiczne dla GitHub Pages (zmienia użytkownik).
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
