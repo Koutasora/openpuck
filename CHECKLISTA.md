@@ -34,7 +34,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Mouse: klik lewy/prawy, kółko jeden ząbek na wciśnięcie, kółko powtarzane przy trzymaniu i stop po puszczeniu
 - [ ] Puszczona łopatka puszcza klawisz (nic się nie "przykleja"), także po wyłączeniu pada z wciśniętą łopatką
 - [ ] Kombinacje back4 nadal działają i niczego nie wpisują
-- [ ] Discord push-to-talk: łopatka z klawiszem F13, w Discordzie skrót "naciśnij i mów" = ta łopatka; w grze (np. The Blood of Dawnwalker) wciśnięcie łopatki nie przełącza gry na klawiaturę/mysz i pad dalej działa. Dla porównania łopatka z Mouse middle: sprawdzić, czy gra się przełącza
+- [x] Discord push-to-talk: łopatka z klawiszem F13, w Discordzie skrót "naciśnij i mów" = ta łopatka; w grze (np. The Blood of Dawnwalker) wciśnięcie łopatki nie przełącza gry na klawiaturę/mysz i pad dalej działa. Dla porównania łopatka z Mouse middle: sprawdzić, czy gra się przełącza
 - [ ] Wybudzanie PC z uśpienia padem działa jak przed zmianą
 - Tryb Xbox (XInput) na PC: klawiatury i myszy tu celowo nie ma, firmware w tym trybie bez zmian (powody w `docs/PROTOCOL.md` §10.3: deskryptor statyczny, klasa urządzenia 0xFF, Windows nie wczytałby dodatkowego interfejsu HID, brak pewnego sygnału PC). Push-to-talk na F13 na razie przez tryb PS5 albo DS4-gyro (`BA 1 3 0 K68`)
 - [ ] Ustawienie "Keyboard/mouse host" na stronie: Always console usuwa klawiaturę, Always PC dodaje ją od razu po starcie, Auto wraca do rozpoznawania
