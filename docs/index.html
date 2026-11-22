@@ -19,35 +19,35 @@
   .topbar button{padding:7px 12px}
   .wrap{max-width:980px;margin:0 auto;padding:20px}
   /* cards stack in one column; width comes from the wider wrap + grids/rows filling it horizontally */
-  .card{background:var(--card);border:1px solid #272d3d;border-radius:12px;padding:16px 18px;margin:0 0 16px}
+  .card{background:var(--card);border:1px solid #272d3d;border-radius:3px;padding:16px 18px;margin:0 0 16px}
   /* ReversePuck dongle: hide every puck-only Controller card, keep just the paired-pucks card (this leaves
      the debugonly/lizard inline visibility rules untouched, so switching back to a puck restores them). */
   body.dongle #tabMain > .cards > .card:not(#pairedCard){display:none !important}
   .cloneSub{font-size:13px;color:var(--fg);margin:16px 0 6px;padding-top:12px;border-top:1px solid #272d3d}
   #cloneHome .cloneSub{display:none}
-  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 14px}
+  .card h2{font-size:14px;font-weight:700;color:var(--fg);margin:0 0 14px}
   .row{display:flex;align-items:center;gap:14px;margin:12px 0;flex-wrap:wrap}
   .row label{flex:0 0 150px;color:var(--fg)}
   .row .val{flex:0 0 64px;text-align:right;color:var(--acc);font-variant-numeric:tabular-nums}
   input[type=range]{flex:1;min-width:120px;accent-color:var(--acc)}
-  select{background:#0e1017;color:var(--fg);border:1px solid #313a4f;border-radius:8px;padding:6px 8px;flex:1;min-width:120px}
-  button{background:#222a3a;color:var(--fg);border:1px solid #36405a;border-radius:8px;padding:9px 14px;cursor:pointer;font:inherit}
+  select{background:#0e1017;color:var(--fg);border:1px solid #313a4f;border-radius:3px;padding:6px 8px;flex:1;min-width:120px}
+  button{background:#222a3a;color:var(--fg);border:1px solid #36405a;border-radius:3px;padding:9px 14px;cursor:pointer;font:inherit}
   button:hover{border-color:var(--acc2)}
   button.primary{background:var(--acc2);border-color:var(--acc2);color:#06121f;font-weight:600}
-  button.active{background:var(--acc);border-color:var(--acc);color:#062018;font-weight:600}
-  button.beta{background:#2d2613;border-color:#80651c;color:#ffd875;font-weight:600}
-  button.beta.active{background:var(--warn);border-color:var(--warn);color:#1d1604}
-  button.danger{background:#3a1420;border-color:#7a2233;color:#ff9bb0;font-weight:600}
+  button.active{background:var(--acc2);border-color:var(--acc2);color:#06121f;font-weight:600}
+  button.beta{font-weight:600}
+  button.beta.active{background:var(--acc2);border-color:var(--acc2);color:#06121f}
+  button.danger{background:transparent;border-color:var(--bad);color:#ff9bb0;font-weight:600}
   button.danger:hover{border-color:#ff9bb0}
   button:disabled{opacity:.4;cursor:default}
-  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
-  .pill.up{background:#143626;color:var(--acc)} .pill.dn{background:#3a1822;color:var(--bad)}
+  .pill{display:inline-block;font-size:12px;font-weight:600}
+  .pill.up{color:var(--fg)} .pill.dn{color:#ff9bb0}
   /* update-available notice (topbar): :not(.hide) so this ID rule can't out-rank .hide (see #updModal) */
-  #updAvail:not(.hide){background:#14263a;color:var(--acc2);cursor:pointer;border:1px solid #2b4a6d}
+  #updAvail:not(.hide){color:var(--acc2);cursor:pointer;text-decoration:underline}
   #updAvail:hover{text-decoration:underline}
   .statgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px}
-  .stat{background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:10px}
-  .stat .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .stat{background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px}
+  .stat .k{color:var(--mut);font-size:12px}
   .stat .v{font-size:18px;margin-top:2px}
   .modes{display:flex;gap:10px;flex-wrap:wrap}
   /* back4 chords: face buttons in the left column, D-pad in the right; auto-fit collapses to one column on a
@@ -55,33 +55,28 @@
   .chord-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 24px}
   .chord-cols .row{margin:10px 0}
   .chord-cols .row label{flex:0 0 108px}
-  .colhead{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 0}
+  .colhead{color:var(--mut);font-size:12px;font-weight:600;margin:2px 0 0}
   .note{color:var(--mut);font-size:12px;margin-top:10px}
   #log{font:12px ui-monospace,Menlo,monospace;color:var(--mut);white-space:pre-wrap;margin-top:8px;max-height:140px;overflow:auto}
   .hide{display:none}
 
   /* ---- controller slot tabs ---- */
   .slot-tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}
-  .slot-tab{display:flex;align-items:center;gap:7px;padding:5px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#0e1017;border:1px solid #232a3a;color:var(--mut);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+  .slot-tab{display:flex;align-items:center;gap:7px;padding:5px 14px;border-radius:3px;font-size:12px;font-weight:600;background:#0e1017;border:1px solid #232a3a;color:var(--mut);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
   .slot-tab:hover{border-color:var(--acc2);color:var(--fg)}
-  .slot-tab.active{background:#111c2e;border-color:var(--acc2);color:var(--fg)}
-  .slot-tab .dot{width:7px;height:7px;border-radius:50%;background:var(--bad);flex-shrink:0;transition:background .3s}
-  .slot-tab .dot.up{background:var(--acc);animation:pulse-link 2.2s ease-in-out infinite}
-  @keyframes pulse-link{
-    0%,100%{box-shadow:0 0 0 0 rgba(91,214,160,.5)}
-    55%{box-shadow:0 0 0 5px rgba(91,214,160,0)}
-  }
-  @media(prefers-reduced-motion:reduce){.slot-tab .dot.up{animation:none}}
+  .slot-tab.active{background:var(--acc2);border-color:var(--acc2);color:#06121f}
+  .slot-tab .dot{width:7px;height:7px;border-radius:0;background:var(--bad);flex-shrink:0;transition:background .3s}
+  .slot-tab .dot.up{background:var(--acc)}
   .per-slot-grid{margin-bottom:12px}
 
   /* ---- top-level tabs (Controller / Firmware update) ---- */
   #mainTabs{margin:0 0 16px}
   #mainTabs .slot-tab{font-size:13px;padding:7px 18px}
-  #mainTabs .slot-tab.beta-gated{background:#31270e;border-color:#8a6b1e;color:#ffd875}
-  #mainTabs .slot-tab.beta-gated:hover{border-color:var(--warn);color:#ffe7a0}
+  #mainTabs .slot-tab.beta-gated{border-color:var(--warn)}
+  #mainTabs .slot-tab.beta-gated.active{border-color:var(--acc2)}
 
   /* ---- firmware update tab ---- */
-  .dropzone{border:2px dashed #36405a;border-radius:12px;padding:26px 18px;text-align:center;cursor:pointer;
+  .dropzone{border:2px dashed #36405a;border-radius:3px;padding:26px 18px;text-align:center;cursor:pointer;
     color:var(--mut);transition:border-color .15s,background .15s;margin-bottom:14px}
   .dropzone:hover,.dropzone.drag{border-color:var(--acc);color:var(--fg);background:#151b28}
   .dropzone b{color:var(--fg)}
@@ -96,14 +91,14 @@
   .rel-item{border-top:1px solid #232a3a}
   .rel-item:first-child{border-top:0}
   .rel-item .rel-row{border-top:0}
-  .pill.pre{background:#3a2f14;color:var(--warn)}
+  .pill.pre{color:var(--warn)}
   .rel-notes{margin:0 2px 10px;padding:0}
   .rel-notes>summary{cursor:pointer;color:var(--acc2);font-size:12px;list-style:none;padding:2px 0}
   .rel-notes>summary::-webkit-details-marker{display:none}
   .rel-notes>summary::before{content:"\25B8 ";display:inline-block;transition:transform .1s}
   .rel-notes[open]>summary::before{content:"\25BE "}
   .rel-notes .body{white-space:pre-wrap;word-break:break-word;color:var(--fg);font-size:12.5px;
-    background:#151925;border:1px solid #232a3a;border-radius:8px;padding:9px 11px;margin-top:4px;
+    background:#151925;border:1px solid #232a3a;border-radius:3px;padding:9px 11px;margin-top:4px;
     max-height:280px;overflow:auto}
   .rel-notes .body code{background:#0f131c;border-radius:4px;padding:1px 4px;font-size:12px}
   .rel-notes .body a{color:var(--acc2)}
@@ -114,15 +109,13 @@
   /* ---- blocking update modal ---- */
   /* :not(.hide) because this ID selector would otherwise out-rank .hide{display:none} and pin the modal open */
   #updModal:not(.hide){position:fixed;inset:0;z-index:100;background:rgba(8,10,16,.8);display:flex;align-items:center;justify-content:center}
-  .updbox{background:var(--card);border:1px solid #36405a;border-radius:14px;padding:22px 26px;width:min(500px,92vw);box-shadow:0 18px 60px rgba(0,0,0,.5)}
+  .updbox{background:var(--card);border:1px solid #36405a;border-radius:3px;padding:22px 26px;width:min(500px,92vw)}
   .updbox h3{margin:0 0 4px;font-size:16px}
   #updStage{color:var(--fg);margin:10px 0 0;font-size:14px}
-  .updbar{height:10px;background:#0e1017;border:1px solid #232a3a;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+  .updbar{height:10px;background:#0e1017;border:1px solid #232a3a;border-radius:0;overflow:hidden;margin:10px 0 6px}
   #updFill{height:100%;width:0;background:var(--acc);transition:width .2s}
-  #updFill.pulse{background:repeating-linear-gradient(45deg,var(--acc2),var(--acc2) 12px,#38618c 12px,#38618c 24px);animation:updslide 1s linear infinite}
+  #updFill.pulse{background:var(--acc2)}
   #updFill.bad{background:var(--bad)}
-  @keyframes updslide{to{background-position:34px 0}}
-  @media(prefers-reduced-motion:reduce){#updFill.pulse{animation:none}}
 </style>
 </head>
 <body>
@@ -381,7 +374,7 @@
         <button id="hangCsv">Download CSV</button>
         <button id="hangClear">Clear</button>
       </div>
-      <pre id="hangOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:10px;margin:0;max-height:260px;overflow:auto;white-space:pre"></pre>
+      <pre id="hangOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin:0;max-height:260px;overflow:auto;white-space:pre"></pre>
     </div>
 
     <div class="card wide debugonly">
@@ -391,7 +384,7 @@
         <span class="v" id="trailSummary" style="flex:1">no events yet</span>
         <button id="trailClear">Clear</button>
       </div>
-      <pre id="trailOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:10px;margin:0;max-height:260px;overflow:auto;white-space:pre-wrap">—</pre>
+      <pre id="trailOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin:0;max-height:260px;overflow:auto;white-space:pre-wrap">—</pre>
     </div>
 
     <div class="card wide debugonly">
@@ -401,7 +394,7 @@
         <span class="v" id="flightSummary" style="flex:1">no trail loaded</span>
         <button id="flightLoad">Load last-hang trail</button>
       </div>
-      <pre id="flightOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:10px;margin:0;max-height:320px;overflow:auto;white-space:pre">—</pre>
+      <pre id="flightOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin:0;max-height:320px;overflow:auto;white-space:pre">—</pre>
     </div>
 
     <div class="card wide logonly">
@@ -413,7 +406,7 @@
         <button id="capDl">Download .txt</button>
       </div>
       <p class="note">Dump streams the whole ring (oldest→newest) and then keeps live-updating until you press Stop. <code>cmd</code> is the command/report byte, then the raw bytes.</p>
-      <pre id="capOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:10px;margin-top:10px;max-height:260px;overflow:auto;white-space:pre-wrap"></pre>
+      <pre id="capOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin-top:10px;max-height:260px;overflow:auto;white-space:pre-wrap"></pre>
     </div>
     </div><!-- .cards -->
     </div><!-- #tabMain -->
@@ -543,7 +536,7 @@ function betaPopup({title, body, okText="OK", cancelText="Cancel"}){
     let done=false;
     const shade=document.createElement("div");
     shade.style.cssText="position:fixed;inset:0;z-index:90;background:rgba(8,10,16,.55);display:flex;align-items:center;justify-content:center;padding:18px";
-    shade.innerHTML = '<div style="background:var(--card);border:1px solid #80651c;border-radius:12px;padding:20px 22px;width:min(440px,94vw);box-shadow:0 18px 60px rgba(0,0,0,.45)">'
+    shade.innerHTML = '<div style="background:var(--card);border:1px solid #80651c;border-radius:3px;padding:20px 22px;width:min(440px,94vw)">'
       +'<h3 style="margin:0 0 10px;font-size:16px">'+escHtml(title)+'</h3>'
       +body.map(p=>'<p class="note" style="margin:8px 0">'+escHtml(p)+'</p>').join("")
       +'<div class="row" style="justify-content:flex-end;margin:18px 0 0">'
@@ -702,7 +695,7 @@ function setTab(et){
     tab.innerHTML='<span>'+def.name+'</span><span class="active-dot" style="display:none;font-size:11px;color:var(--acc)"> ●</span>';
     tab.onclick=()=>setTab(et); bar.appendChild(tab);
     // panel
-    const sec=document.createElement("div"); sec.style.cssText="background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:12px 14px;display:none";
+    const sec=document.createElement("div"); sec.style.cssText="background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:12px 14px;display:none";
     const rec={sec,tab,activeDot:tab.querySelector(".active-dot"),back:[],qam:null,abSwap:null,pad:null,led:null,ledV:null,rumble:null,padStick:[]};
     // A/B swap + trackpad haptics + rumble toggles
     const tog=document.createElement("div"); tog.className="row";
