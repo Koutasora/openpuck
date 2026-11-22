@@ -30,6 +30,7 @@ using namespace Adafruit_LittleFS_Namespace;
 #include "controllers.h"
 #include "haptics.h"
 #include "binds_fw.h"
+#include "kbm_fw.h"
 #include "rf_link.h"
 #include "puck_hid.h" // puckCmdLogDrain()
 #include "rf_diag.h"
@@ -86,17 +87,20 @@ void usbReenumerate(uint8_t k)
 	USBDevice.clearConfiguration();
 	USBDevice.setConfigurationBuffer(g_usbCfgDesc, sizeof g_usbCfgDesc);
 	g_active->usbIdentity(); // clearConfiguration reset VID/PID/strings -- restore them
-	// serial carries the mounted count so the host invalidates its cached config descriptor on a change
-	snprintf(g_usbSerial, sizeof g_usbSerial, "%s%c%u", g_unit,
+	const bool kbd = kbmFwEnumBegin(k);
+	// serial carries the mounted count (and 'k' for the keyboard) so the host invalidates its cached config
+	// descriptor on a change
+	snprintf(g_usbSerial, sizeof g_usbSerial, "%s%c%u%s", g_unit,
 		 MODE_SUFFIX[(g_usbMode >= 1 && g_usbMode <= MODE_MAX) ?
 				     g_usbMode - 1 :
 				     0],
-		 (unsigned)k);
+		 (unsigned)k, kbd ? "k" : "");
 	USBDevice.setSerialDescriptor(g_usbSerial);
 	if (s_dynWantWakeMouse)
 		wakeHidAddInterface(); // HID instance 0
 	g_active->mountSlots(
 		k); // mode's fixed HIDs (if any) + k slot interfaces
+	kbmFwEnumEnd(k);
 	if (s_dynWantWebusb)
 		USBDevice.addInterface(usb_web);
 	USBDevice.setConfigurationAttribute(0x80 | 0x20);
@@ -154,6 +158,7 @@ void setup()
 	loadCfg();
 	// binds.bin (or defaults from g_type[].back); needs cfg.bin loaded first
 	bindsFwInit();
+	kbmFwInit();
 	rfApplyStartupLastGoodChannel();
 	loadBonds();
 	// Lizard (desktop) keyboard/mouse binding table. Custom remapping applies ONLY in pure
@@ -401,6 +406,8 @@ void loop()
 #endif
 	faultDiagSetStage(7);
 	usbMountTask(); // dynamic mount/unmount of connected controllers (no-op unless enabled)
+	// keyboard interface follows the detected host; KEY / MOUSE reports
+	kbmFwTask();
 	faultDiagSetStage(8);
 	usbTxPump(); // drain queued device->host reports HERE, in loop -- never off-loop (jitters the RF poll)
 	puckCmdLogDrain(); // print captured USB feature commands (diagnostic; no-op unless g_cmdCapture)
@@ -445,6 +452,8 @@ void loop()
 #endif
 	faultDiagSetStage(7);
 	usbMountTask(); // dynamic mount/unmount of connected controllers (no-op unless enabled)
+	// keyboard interface follows the detected host; KEY / MOUSE reports
+	kbmFwTask();
 	faultDiagSetStage(8);
 	usbTxPump(); // drain queued device->host reports HERE, in loop -- never off-loop (jitters the RF poll)
 	puckCmdLogDrain(); // print captured USB feature commands (diagnostic; no-op unless g_cmdCapture)

@@ -33,3 +33,7 @@ bool wakeHidReady();
 // send one boot-mouse movement report (buttons=0). This is the input that actually wakes the host: it rides the
 // interface Windows armed as the wake source, unlike a gamepad-slot report. Returns false if not ready.
 bool wakeHidMove(int8_t dx, int8_t dy);
+
+// send the mouse state of the binds (buttons: bit n = button n+1) plus `wheel` notches (+ up), no movement.
+// Same interface as the wake nudge: it is the one mouse the host sees. Returns false if not ready.
+bool wakeHidMouse(uint8_t buttons, int8_t wheel);

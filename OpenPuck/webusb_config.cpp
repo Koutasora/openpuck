@@ -14,6 +14,8 @@
 #include "usb_tx.h"
 #include "usb_mount.h" // modeSwitchReboot()
 #include "binds_fw.h"
+#include "kbm_fw.h"
+#include "host_detect.h"
 #include "xinput_auth.h"
 #include <Arduino.h>
 #include <string.h>
@@ -34,6 +36,21 @@ extern "C" bool
 __wrap_tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage,
 				  const tusb_control_request_t *request)
 {
+	// What the host asks of us tells PC from console (host_detect.h): Windows fetches the MS OS 2.0 descriptor,
+	// a browser the WebUSB landing page / connects the panel. Xbox modes answer these requests themselves.
+	if (stage == CONTROL_STAGE_SETUP && g_usbMode != MODE_XBOX &&
+	    g_usbMode != MODE_XBOX_OG) {
+		if (request->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR) {
+			if (request->bRequest == 2 && request->wIndex == 7)
+				hostEvent(HE_MSOS2, millis());
+			else if (request->bRequest == 1)
+				hostEvent(HE_WEBUSB, millis());
+		} else if (request->bmRequestType_bit.type ==
+				   TUSB_REQ_TYPE_CLASS &&
+			   request->bRequest == 0x22 && request->wValue) {
+			hostEvent(HE_WEBUSB, millis());
+		}
+	}
 	if (g_usbMode == MODE_XBOX)
 		return xinputAuthControl(rhport, stage, request);
 	if (g_usbMode == MODE_XBOX_OG &&
@@ -107,6 +124,8 @@ static bool boardCommand(uint8_t op)
 //                 (field 39, RUMBLE_STYLE_* in haptics.h)]
 //                [v22: p[196] RF recovery status/journal transport capability marker (0x52)]
 //                [v23: p[197] active binds profile 0..2 (back-paddle actions, binds.h; commands 0x26..0x2A)]
+//                [v24: command 0x2B <0 auto|1 PC|2 console> = manual host setting (kbm_fw.h); live state 0xB0 grows
+//                 to 25 bytes, the last one = detected host]
 #define WB_PAYLEN 196
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
@@ -134,7 +153,9 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (23 = +active binds profile at blob p[197] and the binds/live-state ops 0x26..0x2A -- the panel MUST see >=23
+	// (24 = +op 0x2B (manual host setting) and the host byte at the end of the 0xB0 live state -- the panel MUST
+	// see >=24 before sending 0x2B, older firmware drops it silently;
+	// 23 = +active binds profile at blob p[197] and the binds/live-state ops 0x26..0x2A -- the panel MUST see >=23
 	// before sending those, older firmware drops them silently;
 	// 21 = +rumble style (field 39, blob p[195]) and the REVIVED rumble-strength field 22 at blob p[53], 
 	// now carrying percent/2; 
@@ -158,7 +179,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 23;
+	p[2] = 24;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -798,8 +819,8 @@ static void webusbDrainCapture()
 #endif // OPK_LOG
 // ---- binds frames (loop context; drop-on-full like the other panel frames, the panel retries) ----
 //   0xB2 <2+n> <idx> <total> <n data>      blob chunk (BINDS_CHUNK bytes per chunk, last one shorter)
-//   0xB3 3 <op> <ok 1/0> <profile>         ack for 0x28 / 0x29 / 0x2A
-//   0xB0 24 <payload>                      live state, see docs/PROTOCOL.md
+//   0xB3 3 <op> <ok 1/0> <profile>         ack for 0x28 / 0x29 / 0x2A / 0x2B (0x2B: last byte = host byte)
+//   0xB0 25 <payload>                      live state, see docs/PROTOCOL.md
 static void webusbSendBindsChunk(uint8_t idx)
 {
 	static uint8_t f[4 + BINDS_CHUNK];
@@ -815,7 +836,8 @@ static void webusbSendBindsChunk(uint8_t idx)
 }
 static void webusbSendBindsAck(uint8_t op, bool ok)
 {
-	uint8_t f[5] = { 0xB3, 3, op, (uint8_t)(ok ? 1 : 0), g_binds.active };
+	uint8_t f[5] = { 0xB3, 3, op, (uint8_t)(ok ? 1 : 0),
+			 op == 0x2B ? kbmFwHostByte() : g_binds.active };
 	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
 		usb_web.write(f, sizeof f);
 		usb_web.flush();
@@ -825,11 +847,11 @@ static void webusbSendLive(uint8_t slot)
 {
 	if (slot >= NSLOT)
 		slot = (g_curSlot >= 0 && g_curSlot < NSLOT) ? (uint8_t)g_curSlot : 0;
-	uint8_t f[2 + 24];
+	uint8_t f[2 + 25];
 	const PuckInput &in = g_in[slot];
 	const uint32_t raw = g_rawButtons[slot], out = in.buttons;
 	f[0] = 0xB0;
-	f[1] = 24;
+	f[1] = 25;
 	for (int k = 0; k < 4; k++) {
 		f[2 + k] = (uint8_t)(raw >> (8 * k));
 		f[6 + k] = (uint8_t)(out >> (8 * k));
@@ -848,6 +870,7 @@ static void webusbSendLive(uint8_t slot)
 		 (millis() - g_connReplyMs[slot]) < 300u) ? 1 : 0;
 	f[24] = g_battery[slot];
 	f[25] = g_batteryState[slot];
+	f[26] = kbmFwHostByte();
 	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
 		usb_web.write(f, sizeof f);
 		usb_web.flush();
@@ -875,7 +898,7 @@ void webusbPoll()
 			// 0x16 = test rumble (v21); extend this range whenever a new opcode is added, or the
 			// parser drops it as garbage and the handler below never runs.
 			if ((op < 0x01 || op > 0x1A) &&
-			    (op < 0x20 || op > 0x2A)) { // resync: drop one byte
+			    (op < 0x20 || op > 0x2B)) { // resync: drop one byte
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -907,7 +930,7 @@ void webusbPoll()
 					       2 :
 				(op == 0x0A) ? 4 :
 				(op == 0x25) ? 5 :
-				(op == 0x26 || op == 0x27 || op == 0x2A) ? 2 :
+				(op == 0x26 || op == 0x27 || op == 0x2A || op == 0x2B) ? 2 :
 				(op == 0x28) ? (uint8_t)(3 + (n >= 3 ? buf[2] : 0)) :
 				(op == 0x20) ? 9 :
 				(op == 0x21) ? (uint8_t)(6 + (n >= 6 ? buf[5] :
@@ -1175,6 +1198,9 @@ void webusbPoll()
 			} else if (op == 0x2A) {
 				webusbSendBindsAck(op, bindsFwSetProfile(buf[1]));
 				g_blobRequest = true;
+				// 0x2B <0 auto|1 PC|2 console>: manual host setting, saved (host.bin), acked with 0xB3
+			} else if (op == 0x2B) {
+				webusbSendBindsAck(op, kbmFwSetHostSetting(buf[1]));
 			} else if (op == 0x02) {
 				uint8_t f = buf[1], v = buf[2];
 

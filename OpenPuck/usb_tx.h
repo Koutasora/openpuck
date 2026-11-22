@@ -25,6 +25,10 @@ class Adafruit_USBD_HID;
 void usbTxHid(Adafruit_USBD_HID *hid, uint8_t rid, const void *data,
 	      uint16_t len);
 
+// Drop everything still queued for `hid` (its interface changes role across a re-enumeration, a stale report of
+// the old role must not reach the new one). Loop context.
+void usbTxClear(Adafruit_USBD_HID *hid);
+
 // Kept for call-site stability; no longer does anything (the drain runs from loop() via usbTxPump). Call once.
 void usbTxBegin(void);
 

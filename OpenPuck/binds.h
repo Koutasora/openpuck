@@ -93,8 +93,10 @@ extern BindsCfg g_binds;
 struct BindsKbm {
 	uint8_t mods; // keyboard modifier byte
 	uint8_t keys[BINDS_KEYS_MAX]; // pressed usages, 0 = free
-	uint8_t buttons; // mouse buttons, bit n = button n+1 (L R M Back Forward)
-	int8_t wheel; // notches to emit with THIS call (+ up); 0 on every other call
+	// mouse buttons, bit n = button n+1 (L R M Back Forward)
+	uint8_t buttons;
+	// notches to emit with THIS call (+ up); 0 on every other call
+	int8_t wheel;
 };
 
 // All profiles = BUTTON actions with the given codes (back[et][i]); NULL = 5,6,7,8 (LB,RB,L3,R3). No macros.

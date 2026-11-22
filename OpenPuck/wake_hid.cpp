@@ -47,6 +47,17 @@ bool wakeHidMove(int8_t dx, int8_t dy)
 	return true;
 }
 
+bool wakeHidMouse(uint8_t buttons, int8_t wheel)
+{
+	if (!wakeHidReady())
+		return false;
+	hid_mouse_report_t m = {};
+	m.buttons = buttons;
+	m.wheel = wheel;
+	usbTxHid(&g_wakeHid, 0, &m, sizeof m);
+	return true;
+}
+
 void wakeHidAddInterface()
 {
 	TinyUSBDevice.addInterface(g_wakeHid);

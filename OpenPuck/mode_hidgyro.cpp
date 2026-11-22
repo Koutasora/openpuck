@@ -6,6 +6,7 @@
 #include "bonds.h"
 #include "usb_mount.h"
 #include "usb_tx.h"
+#include "host_detect.h"
 #include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
 #include <string.h>
@@ -57,6 +58,10 @@ static uint16_t hidGyroGetCommon(uint8_t slot, uint8_t rid,
 	(void)slot;
 	if (type != HID_REPORT_TYPE_FEATURE || !buf || reqlen == 0)
 		return 0;
+	if (rid >= 0xF0 && rid <= 0xF3)
+		hostEvent(HE_AUTH, millis());
+	else if (rid == 0x02 || rid == 0x12 || rid == 0x81 || rid == 0xA3)
+		hostEvent(HE_PROBE, millis());
 	memset(buf, 0, reqlen);
 	switch (rid) {
 	case 0x02: // motion calibration (37 incl id)
@@ -87,6 +92,8 @@ static uint16_t hidGyroGetCommon(uint8_t slot, uint8_t rid,
 static void hidGyroSetCommon(uint8_t slot, uint8_t rid, hid_report_type_t type,
 			     uint8_t const *b, uint16_t n)
 {
+	if (type == HID_REPORT_TYPE_FEATURE && rid >= 0xF0 && rid <= 0xF3)
+		hostEvent(HE_AUTH, millis());
 	if (type != HID_REPORT_TYPE_OUTPUT || n < 1)
 		return;
 	uint8_t id;
@@ -216,13 +223,22 @@ void HidGyroController::beginPool()
 	initDs4Macs();
 	uint8_t pool = maxSlots();
 	for (uint8_t s = 0; s < pool; s++) {
-		g_hidGyro[s].enableOutEndpoint(true);
-		g_hidGyro[s].setReportCallback(DS4_GETCB[s], DS4_SETCB[s]);
-		g_hidGyro[s].setReportDescriptor(GYRO_HID_DESC,
-						 sizeof GYRO_HID_DESC);
-		g_hidGyro[s].setPollInterval(1);
+		padRole(s);
 		g_hidGyro[s].begin();
 	}
+}
+void HidGyroController::padRole(uint8_t s)
+{
+	if (s >= NSLOT)
+		return;
+	g_hidGyro[s].enableOutEndpoint(true);
+	g_hidGyro[s].setReportCallback(DS4_GETCB[s], DS4_SETCB[s]);
+	g_hidGyro[s].setReportDescriptor(GYRO_HID_DESC, sizeof GYRO_HID_DESC);
+	g_hidGyro[s].setPollInterval(1);
+}
+Adafruit_USBD_HID *HidGyroController::kbdCarrier(uint8_t k)
+{
+	return k < maxSlots() ? &g_hidGyro[k] : nullptr;
 }
 void HidGyroController::mountSlots(uint8_t k)
 {

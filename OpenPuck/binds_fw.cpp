@@ -2,6 +2,7 @@
 #include "config.h"
 #include "bonds.h"
 #include "haptics.h"
+#include "kbm_fw.h"
 #include "triton.h"
 #include <Arduino.h>
 #include <Adafruit_LittleFS.h>
@@ -130,7 +131,10 @@ uint32_t bindsFwFilter(uint8_t slot, uint32_t raw)
 		for (int i = 0; i < BINDS_BACKS; i++)
 			g_back[i] = held ? 0 : g_type[g_etype].back[i];
 	}
-	return bindsApply(slot, raw, g_etype, millis());
+	BindsKbm kbm;
+	const uint32_t out = bindsApply(slot, raw, g_etype, millis(), &kbm);
+	kbmFwSubmit(slot, kbm);
+	return out;
 }
 
 bool bindsFwProfileChord(uint8_t slot, uint32_t raw)

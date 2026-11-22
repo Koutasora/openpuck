@@ -9,6 +9,8 @@
 #include "fault_diag.h"
 #include "usb_mount.h" // modeSwitchReboot()
 #include "binds_fw.h"
+#include "kbm_fw.h"
+#include "host_detect.h"
 #include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
 #include <stdlib.h>
@@ -17,12 +19,18 @@
 // ---- back-paddle binds console (see the command list at the top) ----
 static const char *const ET_NAME[ET_COUNT] = { "xbox", "switch", "ds4", "ds5" };
 static const char *const PADDLE_NAME[BINDS_BACKS] = { "L4", "R4", "L5", "R5" };
+// BA ... Mo<name>, in BMO_* order starting at 1
+static const char *const MOUSE_NAME[BMO_MAX] = { "L",  "R", "M",  "B", "F",
+						 "U", "D", "U+", "D+" };
 
 static void bindsConsoleList(bool help)
 {
 	if (help) {
-		Serial.println("# BP <1..3> | BA <p> <et> <i> B<code>|C<hexmask>|M<idx> | BM <idx> <hexmask>:<ms> ... | BL");
+		Serial.println("# BP <1..3> | BA <p> <et> <i> B<code>|C<hexmask>|M<idx>|K<usage>[:<mods>]|Mo<name> | BM <idx> <hexmask>:<ms> ... | BL | HOST [A|P|C]");
 		Serial.println("# et: 0 xbox 1 switch 2 ds4 3 ds5; i: 0 L4 1 R4 2 L5 3 R5; code 0..20; masks = TB_* (triton.h)");
+		Serial.println("# K: HID keyboard usage in hex (04 = A), mods in hex (01 LCtrl 02 LShift 04 LAlt 08 LGui, 10 20 40 80 = right ones)");
+		Serial.println("# Mo: L R M mouse buttons, B back, F forward, U D wheel notch per press, U+ D+ repeated while held");
+		Serial.println("# keyboard / mouse only act in PS5 / HIDGYRO modes on a PC host (HOST)");
 		return;
 	}
 	Serial.printf("# active profile %u\n", g_binds.active + 1);
@@ -35,6 +43,10 @@ static void bindsConsoleList(bool help)
 					Serial.printf(" %s=B%u", PADDLE_NAME[i], a.arg);
 				else if (a.type == BA_COMBO)
 					Serial.printf(" %s=C%lX", PADDLE_NAME[i], (unsigned long)a.mask);
+				else if (a.type == BA_KEY)
+					Serial.printf(" %s=K%02X:%02lX", PADDLE_NAME[i], a.arg, (unsigned long)a.mask);
+				else if (a.type == BA_MOUSE)
+					Serial.printf(" %s=Mo%s", PADDLE_NAME[i], MOUSE_NAME[a.arg - 1]);
 				else
 					Serial.printf(" %s=M%u", PADDLE_NAME[i], a.arg);
 			}
@@ -66,13 +78,26 @@ static void bindsConsoleAction(const char *a)
 		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_BUTTON, (uint8_t)strtoul(e, 0, 10), 0);
 	else if (t == 'C' || t == 'c')
 		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_COMBO, 0, strtoul(e, 0, 16));
-	else if (t == 'M' || t == 'm')
+	else if ((t == 'M' || t == 'm') && (*e == 'o' || *e == 'O')) {
+		e++;
+		while (*e == ' ')
+			e++;
+		for (int n = 0; n < BMO_MAX; n++)
+			if (!strcmp(e, MOUSE_NAME[n]))
+				ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_MOUSE, (uint8_t)(n + 1), 0);
+	} else if (t == 'M' || t == 'm')
 		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_MACRO, (uint8_t)strtoul(e, 0, 10), 0);
+	else if (t == 'K' || t == 'k') {
+		char *c;
+		unsigned long usage = strtoul(e, &c, 16);
+		unsigned long mods = *c == ':' ? strtoul(c + 1, 0, 16) : 0;
+		ok = usage <= 0xFF && bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_KEY, (uint8_t)usage, (uint32_t)mods);
+	}
 	if (ok) {
 		bindsFwCommit();
 		Serial.println("# ok");
 	} else
-		Serial.println("# BA <p 1..3> <et 0..3> <i 0..3> B<code 0..20>|C<hexmask>|M<idx 0..7>");
+		Serial.println("# BA <p 1..3> <et 0..3> <i 0..3> B<code 0..20>|C<hexmask>|M<idx 0..7>|K<usage 04..E7 hex>[:<mods hex>]|Mo<L R M B F U D U+ D+>");
 }
 
 static void bindsConsoleMacro(const char *a)
@@ -113,12 +138,36 @@ static void bindsConsoleMacro(const char *a)
 		Serial.println("# BM <idx 0..7> [<hexmask>:<ms> ...] (max 16 steps, ms <= 65535)");
 }
 
+// HOST: what the puck thinks it is plugged into, and the manual override (saved in host.bin)
+static void hostConsole(const char *a)
+{
+	while (*a == ' ')
+		a++;
+	if (*a) {
+		const char c = (char)(*a | 0x20);
+		const bool ok = (c == 'a' && kbmFwSetHostSetting(HOSTSET_AUTO)) ||
+				(c == 'p' && kbmFwSetHostSetting(HOSTSET_PC)) ||
+				(c == 'c' && kbmFwSetHostSetting(HOSTSET_CONSOLE));
+		if (!ok) {
+			Serial.println("# HOST [A auto | P always PC | C always console]");
+			return;
+		}
+	}
+	static const char *const SET[] = { "auto", "PC", "console" };
+	Serial.printf("# host %s (%s); setting %s; keyboard interface %s\n",
+		      kbmFwHostName(), kbmFwHostWhyName(), SET[hostSetting()],
+		      kbmFwKeyboardMounted() ? "on" : "off");
+}
+
 // Back-paddle binds (profiles p=1..3, et=0 Xbox 1 Switch 2 DS4 3 DS5, i=0..3 for L4 R4 L5 R5):
 //   BL                       list the binds    BH   this help
 //   BP <p>                   active profile (+ buzz)
 //   BA <p> <et> <i> B <code> paddle -> button code 0..20 (decimal)
 //   BA <p> <et> <i> C <hex>  paddle -> combo, hex mask of TB_* bits (triton.h)
 //   BA <p> <et> <i> M <idx>  paddle -> macro 0..7
+//   BA <p> <et> <i> K <usage>[:<mods>]  paddle -> keyboard key, hex HID usage + hex modifier byte (BA K04:03 = Ctrl+Shift+A)
+//   BA <p> <et> <i> Mo <name>  paddle -> mouse: L R M buttons, B back, F forward, U / D wheel, U+ / D+ wheel repeating
+//   HOST [A|P|C]             detected host (PC / console) + why; A auto, P always PC, C always console
 //   BM <idx> <hex>:<ms> ...  define macro idx (up to 16 steps); "BM <idx>" clears it
 // CDC commands: l=listen, s=stop, cN=channel, p<hex>=prefix, a<8hex>=base addr, b=bonds, etc.
 // Command order matters: else-if chain, FIRST matching letter wins. 'C' and 'H' appear twice; the second
@@ -144,6 +193,8 @@ void serialConsolePoll()
 				NVIC_SystemReset();
 			} else if (!strcmp(line, "BL") || !strcmp(line, "BH")) {
 				bindsConsoleList(!strcmp(line, "BH"));
+			} else if (!strncmp(line, "HOST", 4)) {
+				hostConsole(line + 4);
 			} else if (!strncmp(line, "BP ", 3)) {
 				long p = atol(line + 3);
 				if (p >= 1 && bindsFwSetProfile((uint8_t)(p - 1)))

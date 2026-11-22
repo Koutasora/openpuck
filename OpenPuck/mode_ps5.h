@@ -18,5 +18,7 @@ class Ps5Controller : public IController {
 	void usbIdentity() override;
 	void beginPool() override;
 	void mountSlots(uint8_t k) override;
+	Adafruit_USBD_HID *kbdCarrier(uint8_t k) override;
+	void padRole(uint8_t k) override;
 };
 extern Ps5Controller g_ps5Ctl;
