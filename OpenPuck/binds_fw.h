@@ -15,6 +15,7 @@ void bindsFwSave();
 // After g_binds changed: rewrite g_type[].back + live mirrors from the active profile, persist.
 void bindsFwCommit();
 // Old panel / console write of a plain paddle code: sets a BUTTON action in the ACTIVE profile.
+// A code binds does not accept (> BINDS_CODE_MAX) is refused and the g_type mirror is put back from binds.
 void bindsFwSetButton(uint8_t etype, uint8_t paddle, uint8_t code);
 // Switch profile (0..BINDS_PROFILES-1): commit + N short buzzes (N = profile number). False if out of range.
 bool bindsFwSetProfile(uint8_t profile);
@@ -24,7 +25,7 @@ bool bindsFwSetProfile(uint8_t profile);
 // are held (that chord must not leak paddle-mapped buttons to the host).
 uint32_t bindsFwFilter(uint8_t slot, uint32_t raw);
 // rf_link.cpp, same call site: back4 + RB = next profile, back4 + LB = previous. Debounced, once per hold.
-// Emulated modes only. Returns true while LB/RB must be hidden from the host (back4 held).
+// Any mode with an emulated type (g_etype < ET_COUNT), console modes too. Returns true while LB/RB must be hidden from the host (back4 held).
 bool bindsFwProfileChord(uint8_t slot, uint32_t raw);
 // Main loop: plays the confirmation buzzes without blocking.
 void bindsFwTask();

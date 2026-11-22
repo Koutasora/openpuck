@@ -63,7 +63,7 @@ static void bindsConsoleList(bool help)
 	}
 }
 
-// args: "<p> <et> <i> <B|C|M><value>" or with a space after the letter
+// args: "<p> <et> <i> <B|C|M|K><value>" or with a space after the letter
 static void bindsConsoleAction(const char *a)
 {
 	char *e;
@@ -73,25 +73,37 @@ static void bindsConsoleAction(const char *a)
 	while (*e == ' ')
 		e++;
 	char t = *e++;
-	bool ok = false;
-	if (t == 'B' || t == 'b')
-		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_BUTTON, (uint8_t)strtoul(e, 0, 10), 0);
-	else if (t == 'C' || t == 'c')
-		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_COMBO, 0, strtoul(e, 0, 16));
-	else if ((t == 'M' || t == 'm') && (*e == 'o' || *e == 'O')) {
+	// ranges first: a narrowing cast would wrap 257 to 1
+	bool ok = p >= 1 && p <= BINDS_PROFILES && et >= 0 && et < ET_COUNT &&
+		  i >= 0 && i < BINDS_BACKS;
+	const uint8_t pp = (uint8_t)(p - 1), ee = (uint8_t)et, ii = (uint8_t)i;
+	if (!ok) {
+	} else if (t == 'B' || t == 'b') {
+		unsigned long v = strtoul(e, 0, 10);
+		ok = v <= BINDS_CODE_MAX &&
+		     bindsSetAction(g_binds, pp, ee, ii, BA_BUTTON, (uint8_t)v, 0);
+	} else if (t == 'C' || t == 'c') {
+		ok = bindsSetAction(g_binds, pp, ee, ii, BA_COMBO, 0, strtoul(e, 0, 16));
+	} else if ((t == 'M' || t == 'm') && (*e == 'o' || *e == 'O')) {
+		ok = false;
 		e++;
 		while (*e == ' ')
 			e++;
 		for (int n = 0; n < BMO_MAX; n++)
 			if (!strcmp(e, MOUSE_NAME[n]))
-				ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_MOUSE, (uint8_t)(n + 1), 0);
-	} else if (t == 'M' || t == 'm')
-		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_MACRO, (uint8_t)strtoul(e, 0, 10), 0);
-	else if (t == 'K' || t == 'k') {
+				ok = bindsSetAction(g_binds, pp, ee, ii, BA_MOUSE, (uint8_t)(n + 1), 0);
+	} else if (t == 'M' || t == 'm') {
+		unsigned long v = strtoul(e, 0, 10);
+		ok = v < BINDS_MACROS &&
+		     bindsSetAction(g_binds, pp, ee, ii, BA_MACRO, (uint8_t)v, 0);
+	} else if (t == 'K' || t == 'k') {
 		char *c;
 		unsigned long usage = strtoul(e, &c, 16);
 		unsigned long mods = *c == ':' ? strtoul(c + 1, 0, 16) : 0;
-		ok = usage <= 0xFF && bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_KEY, (uint8_t)usage, (uint32_t)mods);
+		ok = usage <= 0xFF && mods <= 0xFF &&
+		     bindsSetAction(g_binds, pp, ee, ii, BA_KEY, (uint8_t)usage, (uint32_t)mods);
+	} else {
+		ok = false;
 	}
 	if (ok) {
 		bindsFwCommit();
@@ -106,8 +118,8 @@ static void bindsConsoleMacro(const char *a)
 	long idx = strtol(a, &e, 10);
 	MacroStep st[BINDS_STEPS];
 	uint8_t n = 0;
-	bool ok = true;
-	for (;;) {
+	bool ok = e != a && idx >= 0 && idx < BINDS_MACROS;
+	while (ok) {
 		while (*e == ' ')
 			e++;
 		if (!*e)
@@ -123,7 +135,7 @@ static void bindsConsoleMacro(const char *a)
 			break;
 		}
 		unsigned long ms = strtoul(c + 1, &e, 10);
-		if (ms > 0xFFFF) {
+		if (ms > 0xFFFF || m > 0xFFFFFFFFul) {
 			ok = false;
 			break;
 		}
@@ -131,7 +143,7 @@ static void bindsConsoleMacro(const char *a)
 		st[n].ms = (uint16_t)ms;
 		n++;
 	}
-	if (ok && idx >= 0 && bindsSetMacro(g_binds, (uint8_t)idx, st, n)) {
+	if (ok && bindsSetMacro(g_binds, (uint8_t)idx, st, n)) {
 		bindsFwCommit();
 		Serial.printf("# macro %ld: %u steps\n", idx, n);
 	} else

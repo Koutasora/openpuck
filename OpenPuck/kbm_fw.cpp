@@ -72,10 +72,13 @@ void kbmFwInit()
 	}
 }
 
+// the keyboard interface could not be added to the descriptor
+static bool s_failedKbd;
+
 // What this boot's USB configuration should contain, with k pads mounted.
 static bool wantKeyboard(uint8_t k)
 {
-	return modeHasKbm(g_usbMode) && wakeHidPresent() &&
+	return !s_failedKbd && modeHasKbm(g_usbMode) && wakeHidPresent() &&
 	       hostKind() == HOST_PC && g_active && g_active->kbdCarrier(k);
 }
 
@@ -108,6 +111,9 @@ void kbmFwEnumEnd(uint8_t k)
 	h->setPollInterval(10);
 	if (USBDevice.addInterface(*h))
 		s_kbd = h;
+	else
+		// no loop of re-enumerations: keep it off until the setting or host changes
+		s_failedKbd = true;
 	memset(&s_sentKbd, 0, sizeof s_sentKbd);
 }
 
@@ -197,6 +203,7 @@ bool kbmFwSetHostSetting(uint8_t setting)
 	if (setting > HOSTSET_MAX)
 		return false;
 	hostSetSetting(setting);
+	s_failedKbd = false;
 	save();
 	return true;
 }

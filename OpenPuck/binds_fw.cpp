@@ -99,6 +99,8 @@ void bindsFwSetButton(uint8_t etype, uint8_t paddle, uint8_t code)
 	if (bindsSetAction(g_binds, g_binds.active, etype, paddle, BA_BUTTON,
 			   code, 0))
 		bindsFwCommit();
+	else
+		syncBack();
 }
 
 bool bindsFwSetProfile(uint8_t profile)
@@ -127,7 +129,7 @@ uint32_t bindsFwFilter(uint8_t slot, uint32_t raw)
 		held |= (uint8_t)(1u << slot);
 	else
 		held &= (uint8_t)~(1u << slot);
-	if (held != before) {
+	if (held != before && g_etype < ET_COUNT) {
 		for (int i = 0; i < BINDS_BACKS; i++)
 			g_back[i] = held ? 0 : g_type[g_etype].back[i];
 	}

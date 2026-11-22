@@ -217,7 +217,8 @@ static void testKey()
 	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x03, 0));
 	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0xE8, 0));
 	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x04, 0x100));
-	CHECK(g_binds.act[0][ET_DS5][0].arg == 0x06); // unchanged by the failures
+	// unchanged by the failures
+	CHECK(g_binds.act[0][ET_DS5][0].arg == 0x06);
 	CHECK(bindsBackCode(g_binds, ET_DS5, 0) == 0);
 	// ET_NONE: no kbm, buttons untouched
 	CHECK(bindsApply(0, TB_L4, ET_NONE, 30, &k) == TB_L4);
