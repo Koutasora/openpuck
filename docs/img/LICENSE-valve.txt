@@ -1,9 +1,12 @@
-sc-front.svg and sc-back.svg are derived from "steam_controller_reference_20260429.pdf"
+sc-front.svg, sc-back.svg and sc-top.svg are derived from "steam_controller_reference_20260429.pdf"
 (Steam Controller reference drawing) published by Valve Corporation.
 
-Changes: the front view (sheet 1) and the underside view (sheet 2) were cut out
-and converted to SVG; the sheet frame, title block, dimensions, arrows,
-keep-out areas, notes and the engraved button legends were removed.
+Changes: the front view (sheet 1), the underside view and the top view (sheet 2)
+were cut out and converted to SVG. Removed: the sheet frame, title block,
+dimensions, arrows, keep-out areas, notes, engraved legends, bolts, the thin
+surface lines and duplicate rim contours. The shoulders of the underside view
+and the bumpers of the top view were redrawn as single smooth contours; the
+right half of the top view is the mirrored left half.
 
 The derived files are distributed under the same license as the original:
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
