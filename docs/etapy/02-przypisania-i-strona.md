@@ -42,11 +42,11 @@ Test i wydanie
 - [x] Strona: panel autora w płaskim stylu, rysunki Valve, profile, Combo/Macro, Macros, Live view, bateria
 - [x] Strona: akcje Key/Mouse, karta skrótów jako obrazek, usunięcie zielonych resztek
 - [x] Makra prostsze w obsłudze (na końcu)
-- [ ] Dźwięki z haptyki (HAPTIC_LFO_TONE, `docs/PROTOCOL.md`): melodie w pucku, przypisanie do zdarzeń (zmiana profilu, zmiana trybu osobno dla rodzin PlayStation/Xbox/Switch, połączenie pada), przełącznik wibracja/dźwięk/oba/wyłączone i głośność w Settings; na stronie edytor tonów z odsłuchem i import MIDI (jedna linia melodii); domyślnie własne, oryginalne motywy
-- [ ] Rzadsze wysyłanie stanu klawiatury/myszy (dokończyć i sprawdzić `d47ac39`)
-- [ ] Strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu), przycisk Copy w Version
-- [ ] Nazwy profili, kopiowanie i reset profilu, eksport/import samych przypisań i makr, nowe nazwy myszy w Lizard mapping
-- [ ] GitHub Pages (konfiguracja w repo; widoczność repo zmienia użytkownik)
+- [x] Dźwięki z haptyki (HAPTIC_LFO_TONE, `docs/PROTOCOL.md`): melodie w pucku, przypisanie do zdarzeń (zmiana profilu, zmiana trybu osobno dla rodzin PlayStation/Xbox/Switch, połączenie pada), przełącznik wibracja/dźwięk/oba/wyłączone i głośność w Settings; na stronie edytor tonów z odsłuchem i import MIDI (jedna linia melodii); domyślnie własne, oryginalne motywy
+- [x] Rzadsze wysyłanie stanu klawiatury/myszy (dokończyć i sprawdzić `d47ac39`)
+- [x] Strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu), przycisk Copy w Version
+- [x] Nazwy profili, kopiowanie i reset profilu, eksport/import samych przypisań i makr, nowe nazwy myszy w Lizard mapping
+- [x] GitHub Pages (konfiguracja w repo; widoczność repo zmienia użytkownik)
 - [ ] Końcowy build, lista testów w `CHECKLISTA.md`, test użytkownika, wydanie
 - Sprawdzenie: test `tests/binds` i build na LAB po każdym kroku; test strony w Chromium (Playwright) na LAB bez sprzętu; jeden test na sprzęcie u użytkownika na końcu
 
