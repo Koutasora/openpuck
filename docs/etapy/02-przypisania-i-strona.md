@@ -7,29 +7,29 @@ sprzęcie u użytkownika i wydanie .uf2 na GitHubie.
 
 ## Kryteria zamknięcia
 Firmware: przypisania i profile
-- [ ] Tylny przycisk w każdym trybie emulacji (Xbox, Switch, DS4/PS3, PS5): jeden przycisk, kombinacja albo makro (kroki z czasami)
-- [ ] 3 profile, back4 + RB następny / back4 + LB poprzedni, liczba krótkich wibracji = numer profilu
-- [ ] Profile i makra zostają po odłączeniu zasilania; stary `cfg.bin` dalej się wczytuje, obecne przypisania stają się profilem 1
-- [ ] Polecenia WebUSB: odczyt i zapis przypisań i profili, stan na żywo (przyciski, sticki, triggery, profil, bateria i stan ładowania)
+- [x] Tylny przycisk w każdym trybie emulacji (Xbox, Switch, DS4/PS3, PS5): jeden przycisk, kombinacja albo makro (kroki z czasami)
+- [x] 3 profile, back4 + RB następny / back4 + LB poprzedni, liczba krótkich wibracji = numer profilu
+- [x] Profile i makra zostają po odłączeniu zasilania; stary `cfg.bin` dalej się wczytuje, obecne przypisania stają się profilem 1
+- [x] Polecenia WebUSB: odczyt i zapis przypisań i profili, stan na żywo (przyciski, sticki, triggery, profil, bateria i stan ładowania)
 - [x] Logika makr i kombinacji w osobnym module bez zależności od sprzętu, z testem uruchamianym na LAB
 - [x] Build wpisuje wersję i commit (panel nie pokazuje "unknown")
 
 Firmware: klawiatura i mysz na PC
-- [ ] Na PC pad oraz klawiatura i mysz jako osobne urządzenia; tylny przycisk może dać klawisz (z modyfikatorami) albo przycisk/kółko myszy
-- [ ] Puck rozpoznaje, czy jest podłączony do PC czy do konsoli; klawiatura i mysz tylko na PC
-- [ ] Tryby konsolowe (PS5_GAME, PS5_AUTH, PS3, Switch, Xbox OG) bez zmian w deskryptorach USB
+- [x] Na PC pad oraz klawiatura i mysz jako osobne urządzenia; tylny przycisk może dać klawisz (z modyfikatorami) albo przycisk/kółko myszy
+- [x] Puck rozpoznaje, czy jest podłączony do PC czy do konsoli; klawiatura i mysz tylko na PC
+- [x] Tryby konsolowe (PS5_GAME, PS5_AUTH, PS3, Switch, Xbox OG) bez zmian w deskryptorach USB
 
 Strona konfiguracji
 - [x] Makieta zaakceptowana przez użytkownika przed budową strony
-- [ ] Rysunek Steam Controllera z nazwami przycisków wg typu pada, tabela przypisań, edytor makr, wybór profilu
-- [ ] Podgląd na żywo: co wciskasz na padzie i co dostaje komputer (Gamepad API, klawiatura/mysz w przeglądarce)
-- [ ] Przycisk "test makra" bez wychodzenia ze strony; edytor makr zrozumiały bez instrukcji
-- [ ] Karta ze skrótami pada (kombinacje back4, profile, wyłączanie) jako obrazek do zapisania
-- [ ] Procent baterii i stan ładowania pada
+- [x] Rysunek Steam Controllera z nazwami przycisków wg typu pada, tabela przypisań, edytor makr, wybór profilu
+- [x] Podgląd na żywo: co wciskasz na padzie i co dostaje komputer (Gamepad API, klawiatura/mysz w przeglądarce)
+- [x] Przycisk "test makra" bez wychodzenia ze strony; edytor makr zrozumiały bez instrukcji
+- [x] Karta ze skrótami pada (kombinacje back4, profile, wyłączanie) jako obrazek do zapisania
+- [x] Procent baterii i stan ładowania pada
 - [ ] Strona na GitHub Pages repo
 
 Test i wydanie
-- [ ] Użytkownik wgrał jeden końcowy .uf2 i przeszedł test z `CHECKLISTA.md` na PC (tester pada, Notatnik) i na konsoli
+- [x] Użytkownik wgrał jeden końcowy .uf2 i przeszedł test z `CHECKLISTA.md` na PC (tester pada, Notatnik) i na konsoli
 - [ ] Wydanie .uf2 na GitHubie repo
 - [x] `CHECKLISTA.md` zaktualizowana
 
@@ -79,6 +79,8 @@ Test i wydanie
 - Tryby PS5 DualSense i HID gyro (DS4): bcdUSB 2.10 zamiast 2.00 (test użytkownika: Windows przy 2.00 nie czyta MS OS 2.0, brak WinUSB, panel się nie łączy, host nierozpoznany); nierozpoznany host w tych trybach = PC, bo konsola bez adaptera ich nie przyjmuje. Tryby clean bez zmian.
 - Test 2026-11-22 (główny PC, PS5 DualSense): klik lewy/prawy i klawisz z łopatek działają. Na LAB przez RDP nie działały: fizyczna mysz/klawiatura trafia do sesji konsoli, nie RDP (diagnostyka 0xB4 pokazała wysłane raporty). Diagnostyka (Copy diagnostics, 0x2C/0xB4) zostaje w panelu.
 - Test w grach (użytkownik): push-to-talk z łopatki (F13, mysz) działa w Wiedźminie i emulatorze bez przycinania; w jednej grze każde zdarzenie klawiatura/mysz przełącza grę z pada na klawiaturę/mysz. Uznane za zachowanie gry, bez zmian w pucku (odrzucone: sztuczny przycisk pada po akcji, klawisze multimedialne).
+- Test na sprzęcie 2026-11-22 (główny PC): użytkownik sprawdził całą listę z `CHECKLISTA.md` (przypisania, profile z wibracją, makra, klawiatura/mysz, strona) — działa.
+- Do następnego czatu: rzadsze wysyłanie stanu klawiatury/myszy (częściowo w `d47ac39`, niewgrane), strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu znika), potem końcowy build, wydanie .uf2 i publikacja strony.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
