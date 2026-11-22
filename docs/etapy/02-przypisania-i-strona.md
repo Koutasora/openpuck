@@ -56,6 +56,9 @@ Test i wydanie
 - Wynik akcji wpisywany też do surowego raportu (rep[2..5]), żeby trafiał do trybów push (Xbox, Xbox OG).
 - Przy trzymanych 4 łopatkach `g_back[]` zerowane, a LB/RB maskowane: łopatki i LB/RB nie przeciekają do hosta podczas kombinacji back4 (drobna zmiana względem autora).
 - Profil aktywny jeden dla wszystkich padów (nie osobno na slot).
+- Strona = panel autora `docs/index.html` po angielsku, jego układ i styl; dokładamy tylko nasze elementy (profile, akcje, rysunek, makra, podgląd, bateria). Pierwsza makieta (osobna strona, rysunek odręczny) odrzucona przez użytkownika.
+- Rysunek pada: rzuty z oficjalnego rysunku technicznego Valve (`steam_controller_reference_20260429.pdf` z repo SteamHardware/SteamController), CC BY-NC-SA 4.0, z podpisem autorstwa; pliki CAD poza gitem.
+- Panel autora ma tylko ciemny motyw: zostaje bez przełącznika jasny/ciemny, bo strona ma trzymać się jego wyglądu.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
