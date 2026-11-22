@@ -37,7 +37,7 @@ Test i wydanie
 - [x] `tools/build-lab.sh`: wersja i commit przez `gen_version.sh`
 - [x] `OpenPuck/binds.cpp/.h`: typy akcji, 3 profile × 4 typy padów × 4 przyciski, silnik makr; test `tests/binds` (w64devkit)
 - [x] Integracja w firmware: plik `binds.bin`, hook w `rf_link.cpp`, back4 + LB/RB z wibracją, polecenia WebUSB (z baterią), polecenia konsoli
-- [ ] Klawiatura i mysz: osobne interfejsy HID w trybach PC, rozpoznawanie PC/konsola, akcje klawisz/mysz w `binds`
+- [x] Klawiatura i mysz: osobne interfejsy HID w trybach PC, rozpoznawanie PC/konsola, akcje klawisz/mysz w `binds`
 - [x] Makieta strony, akceptacja użytkownika (panel autora z rozszerzeniami, zrzuty z atrapą)
 - [x] Strona: panel autora w płaskim stylu, rysunki Valve, profile, Combo/Macro, Macros, Live view, bateria
 - [ ] Strona: akcje Key/Mouse, karta skrótów jako obrazek, usunięcie zielonych resztek
@@ -66,6 +66,10 @@ Test i wydanie
 - Panel autora ma tylko ciemny motyw: zostaje bez przełącznika jasny/ciemny, bo strona ma trzymać się jego wyglądu.
 - Kolejność po akceptacji strony (użytkownik): najpierw pad + klawiatura/mysz i rozpoznawanie PC/konsola, potem strona (Key/Mouse, karta skrótów), makra prostsze na końcu.
 - Odpowiedzi WebUSB przeniesione na 0xB0 (stan na żywo), 0xB2 (fragment bloku), 0xB3 (potwierdzenie): 0xAC/0xAD zajmuje przystawka ReversePuck.
+- Klawiatura i mysz tylko w trybach PS5 (z panelem) i DS4-gyro: są już złożone i nie robią auth konsoli. Tryb Xbox pominięty: statyczny, jednointerfejsowy, konsola Xbox 360 robi auth XSM3 i bez testu na sprzęcie ryzyko zepsucia; do decyzji użytkownika.
+- Mysz = istniejący interfejs "wake mouse" (5 przycisków + kółko, deskryptor bez zmian); klawiatura = nowy interfejs niebootowy, tylko po wykryciu PC, nie przy 4 padach naraz (limit endpointów).
+- Rozpoznawanie hosta: zapytanie Windows o MS OS 2.0 albo połączenie panelu WebUSB = PC; auth Sony 0xF0-0xF3 = konsola; Linux/macOS: odczyt tożsamości pada i 5 s bez auth = PC. Start bez klawiatury (chyba że poprzednio PC), po wykryciu jedna przeenumeracja bez restartu. Ręcznie: auto / zawsze PC / zawsze konsola w `host.bin`.
+- Kroki makr z klawiszem pominięte: zmieniałyby układ kroków, a akcje Key/Mouse na łopatce pokrywają główny przypadek.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
