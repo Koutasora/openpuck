@@ -60,6 +60,7 @@
   .chord-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 24px}
   .chord-cols .row{margin:10px 0}
   .chord-cols .row label{flex:0 0 108px}
+  .chord-cols .chordDesc{margin:-6px 0 10px 122px}
   .colhead{color:var(--mut);font-size:12px;font-weight:600;margin:2px 0 0}
   .note{color:var(--mut);font-size:12px;margin-top:10px}
   #log{font:12px ui-monospace,Menlo,monospace;color:var(--mut);white-space:pre-wrap;margin-top:8px;max-height:140px;overflow:auto}
@@ -1020,13 +1021,23 @@ function setTab(et){
 })();
 for(const sel of document.querySelectorAll("select.chord")){
   MODE_NAMES.forEach((n,i)=>{ if(i===7||i===8) return;
-    const o=document.createElement("option"); o.value=i; o.textContent=modeFull(i); sel.appendChild(o); });
+    const o=document.createElement("option"); o.value=i; o.textContent=MODE_NAMES[i]||("mode "+i); o.title=modeDesc(i); sel.appendChild(o); });
 }
 // D-pad chords offer EVERY mode, including the game/clean ones the face selects skip: those modes drop WebUSB,
 // so a chord is the only way into them, and back4+A still gets you back to Steam.
 for(const sel of document.querySelectorAll("select.chordD")){
   MODE_NAMES.forEach((n,i)=>{
-    const o=document.createElement("option"); o.value=i; o.textContent=modeFull(i); sel.appendChild(o); });
+    const o=document.createElement("option"); o.value=i; o.textContent=MODE_NAMES[i]||("mode "+i); o.title=modeDesc(i); sel.appendChild(o); });
+}
+// one-line description (host · panel · keyboard/mouse) under every chord list, for the selected mode
+function chordDescSync(sel){
+  const row=sel.closest(".row"); let d=row.nextElementSibling;
+  if(!d||!d.classList.contains("chordDesc")){ d=document.createElement("div"); d.className="note chordDesc"; row.after(d); }
+  const v=+sel.value, t=v===CHORD_NONE?"Does nothing":modeDesc(v);
+  d.textContent=t; sel.title=t;
+}
+for(const sel of document.querySelectorAll("select.chord, select.chordD")){
+  chordDescSync(sel); sel.addEventListener("change",()=>chordDescSync(sel));
 }
 { const sel=document.getElementById("swGyroMap");
   for(const [lbl,v] of [["Corrected (default)",0],["Legacy (untrimmed)",1]]){
@@ -1921,6 +1932,7 @@ function applyBlob(p){
   $("#dpadChords").classList.toggle("hide", !dpadCap);
   $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
+  for(const sel of document.querySelectorAll("select.chord, select.chordD")) chordDescSync(sel);
   bindsOnBlob(p);
   soundsOnBlob(p);
   if(scReady) scUpdate();
