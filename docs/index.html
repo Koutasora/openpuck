@@ -4312,8 +4312,10 @@ function liveRender(){
   const L=live, et=(L.et<TYPE_DEFS.length)?L.et:-1;
   $("#lvRaw").textContent=maskNames(L.raw,-1,", ")||"—";
   $("#lvOut").textContent=maskNames(L.out,et,", ")||"—";
-  $("#lvLs").textContent=L.lx+", "+L.ly; $("#lvRs").textContent=L.rx+", "+L.ry;
-  $("#lvTr").textContent=L.lt+" / "+L.rt;
+  // percent of full range (sticks +-32767, triggers 0-255); the raw values stay in the tooltip
+  const pc=(v,m)=>Math.round(v/m*100)+"%";
+  const setPct=(id,a,b,m)=>{ const e=$(id); e.textContent=pc(a,m)+(id==="#lvTr"?" / ":", ")+pc(b,m); e.title="raw: "+a+(id==="#lvTr"?" / ":", ")+b; };
+  setPct("#lvLs",L.lx,L.ly,32767); setPct("#lvRs",L.rx,L.ry,32767); setPct("#lvTr",L.lt,L.rt,255);
   $("#lvProf").textContent=profName(L.profile)+(et>=0?" · "+TYPE_DEFS[et].name:" · Steam");
   $("#lvLink").textContent=(L.link?"up":"down")+" · slot "+(L.slot+1);
   $("#lvBatt").textContent=L.batt?(L.batt+"%"+(L.charge===2?" charging":L.charge===4?" charged":"")):"—";
