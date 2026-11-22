@@ -31,7 +31,7 @@ Strona konfiguracji
 Test i wydanie
 - [ ] Użytkownik wgrał jeden końcowy .uf2 i przeszedł test z `CHECKLISTA.md` na PC (tester pada, Notatnik) i na konsoli
 - [ ] Wydanie .uf2 na GitHubie repo
-- [ ] `CHECKLISTA.md` zaktualizowana
+- [x] `CHECKLISTA.md` zaktualizowana
 
 ## Plan
 - [x] `tools/build-lab.sh`: wersja i commit przez `gen_version.sh`
@@ -54,8 +54,8 @@ Test i wydanie
 - Gałąź autora `copilot/170-add-controller-mapping` pominięta: jej kombinacje back4 + D-pad są już w `main` (`g_chordDpad`).
 - Dawne etapy 02-05 połączone w jeden: użytkownik chce w openpuck jednej gałęzi bez pośrednich PR i jednego testu na sprzęcie na końcu.
 - Bateria w poleceniu stanu na żywo: firmware już czyta `g_battery`/`g_batteryState`, strona tylko je pokazuje.
-- Plik `binds.bin`: magic 0xB1, wersja 1, suma kontrolna, 1087 B; zły plik = wartości domyślne.
-- WebUSB: polecenia 0x26-0x2A, odpowiedzi 0xAC (stan na żywo), 0xAE (fragment bloku), 0xAF (potwierdzenie); wersja bloku statusu 23 (opis w `docs/PROTOCOL.md` §10.2).
+- Plik `binds.bin`: magic 0xB1, suma kontrolna, 1079 B; zły plik = wartości domyślne. Wersja 2 dodaje akcje Key/Mouse w tym samym układzie; wersja 1 nadal się wczytuje.
+- WebUSB: polecenia 0x26-0x2A, odpowiedzi 0xAC (stan na żywo), 0xAE (fragment bloku), 0xAF (potwierdzenie); wersja bloku statusu 23 (opis w `docs/PROTOCOL.md` §10.2). Kody odpowiedzi zastąpione, patrz niżej (0xB0/0xB2/0xB3).
 - Makro gra raz do końca, puszczenie go nie przerywa, ponowne wciśnięcie w trakcie ignorowane.
 - `g_type[].back` przepisywane z aktywnego profilu (0 dla kombinacji/makra): stary panel autora i `cfg.bin` zostają spójne.
 - Wynik akcji wpisywany też do surowego raportu (rep[2..5]), żeby trafiał do trybów push (Xbox, Xbox OG).
@@ -72,6 +72,8 @@ Test i wydanie
 - Kroki makr z klawiszem pominięte: zmieniałyby układ kroków, a akcje Key/Mouse na łopatce pokrywają główny przypadek.
 - Makra na stronie: kroki opisane zdaniami (naciśnij/czekaj), szablony, nagrywanie z pada przez stan na żywo (~30 Hz), oś czasu, nazwy w przeglądarce (firmware nazw nie trzyma).
 - Strona do testu uruchamiana lokalnie (`python -m http.server -d docs`): repo prywatne, GitHub Pages wymaga płatnego planu; sposób publikacji do ustalenia przy wydaniu.
+- Podgląd na żywo i nasze odczyty WebUSB wstrzymane w trakcie aktualizacji firmware (uwaga managera: równoległy odczyt gubił potwierdzenia aktualizacji).
+- clang-format 18 z pip w venv (przenośnie), uruchamiany tylko na plikach zmienionych w gałęzi: CI autora blokuje PR bez formatowania.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
