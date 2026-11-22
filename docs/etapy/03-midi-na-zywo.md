@@ -79,7 +79,7 @@ Zrobione:
 
 Otwarte sprawy:
 - Etap 04 nacisk-analogowy (PS3, OG Xbox) zaplanowany, bez testu.
-- CHECKLISTA §9-11: część punktów nieodhaczona (starszy firmware, kopia zapasowa v1/v2, nowa tabela skrótów na pucku).
+- CHECKLISTA §9-11 odhaczona na podstawie testów automatycznych (decyzja użytkownika); starszy firmware i kopia zapasowa v1/v2 nie były sprawdzane na sprzęcie.
 - Wydanie: tag i .uf2 w Releases oraz strona na GitHub Pages po scaleniu PR; wysłanie FORK_NOTES autorowi (decyzja użytkownika, akapit o licencji do potwierdzenia).
 
 Ryzyka:
