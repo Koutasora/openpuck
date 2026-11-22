@@ -10,5 +10,11 @@
  },
  "OpenPuck-1.0.4-standard.uf2": {
   "panelUpdate": true
+ },
+ "OpenPuck-1.0.5-factory-reset.uf2": {
+  "panelUpdate": true
+ },
+ "OpenPuck-1.0.5-standard.uf2": {
+  "panelUpdate": false
  }
 }
