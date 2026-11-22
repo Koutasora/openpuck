@@ -1360,7 +1360,7 @@ const USB_FILTERS=[{vendorId:0x28DE},{vendorId:0x045E},{vendorId:0x057E},{vendor
 // Acquire+set up an already-chosen USBDevice (shared by the manual picker and the no-picker auto-reconnect).
 async function openDevice(d){
   try{
-    dev=d;
+    inReset(); dev=d;
     await dev.open();
     if(dev.configuration===null) await dev.selectConfiguration(1);
     let found=null;
@@ -1434,7 +1434,7 @@ function onGone(){
   window._flightAuto=false; // re-arm the one-shot flight-trail auto-load for the next reconnect
   window._wedgeEp=false; window._wedgePeak=0; // re-arm the live wedge logger for the next wedge episode
   window._lastBlobTs=0; window._hbLostEp=false; // re-arm the heartbeat watchdog (don't fire on a stale pre-reset timestamp)
-  polling=false; dev=null; tabInited=false; bindsCap=false; binds=null; live=null; $("#battTxt").classList.add("hide"); $("#hostTxt").classList.add("hide"); $("#hostRow").classList.add("hide"); // re-default the config tab to the mode on next connect
+  polling=false; dev=null; inReset(); tabInited=false; bindsCap=false; binds=null; live=null; $("#battTxt").classList.add("hide"); $("#hostTxt").classList.add("hide"); $("#hostRow").classList.add("hide"); // re-default the config tab to the mode on next connect
   cloneRender();
   checkUpdateNotice(); // no device = no notice
   $("#connState").textContent="reconnecting…"; $("#connState").className="pill dn";
@@ -1453,29 +1453,78 @@ async function send(bytes){
   try{ await dev.transferOut(epOut, new Uint8Array(bytes)); }
   catch(e){ log("write err: "+e.message); }
 }
+// ---- bulk IN: ONE reader, frames sorted by type ----
+// WebUSB transferIn cannot be cancelled and every reader used to drop whatever frame it did not ask for. The
+// firmware does answer one command with several frames (0x2A = 0xB3 ack + a 0xA5 status blob, 0x02 = status blob)
+// and replies come back late, so a reader regularly picked up the NEXT reader's frame, threw it away, and the
+// whole stream stayed shifted by one. Now: rawIn() keeps at most one transferIn pending and queues its result
+// (a read that times out loses nothing), readFrame() splits transfers into frames and keeps the ones it was not
+// asked for in frameStash for the reader that is.
+let inPend=null, inQueue=[], inErr=null, frameStash=[];
+function inReset(){ inPend=null; inQueue=[]; inErr=null; frameStash=[]; }
+function rawIn(len,timeoutMs){
+  if(inQueue.length) return Promise.resolve(inQueue.shift());
+  if(inErr){ const e=inErr; inErr=null; return Promise.reject(e); }
+  if(!inPend){
+    const d=dev;
+    inPend=d.transferIn(epIn,len).then(r=>{ if(dev===d) inQueue.push(r); },e=>{ if(dev===d) inErr=e; }).then(()=>{ inPend=null; });
+  }
+  const wait=timeoutMs?Promise.race([inPend,new Promise(r=>setTimeout(r,timeoutMs))]):inPend;
+  return wait.then(()=>{
+    if(inQueue.length) return inQueue.shift();
+    if(inErr){ const e=inErr; inErr=null; throw e; }
+    return timeoutMs?null:rawIn(len);
+  });
+}
+const FRAME_TYPES=new Set([0xA5,0xA7,0xAB,0xAC,0xAD,0xB0,0xB2,0xB3]);
+// state snapshots: only the newest is worth reading, and an old one must not pass for the reply to a new request
+const FRAME_SNAPSHOT=new Set([0xA5,0xAC,0xAD,0xB0]);
+const STASH_MAX_AGE=400;
+function stashTake(marker){
+  const now=Date.now(), snap=FRAME_SNAPSHOT.has(marker);
+  if(snap) frameStash=frameStash.filter(f=>f.t!==marker||now-f.ts<=STASH_MAX_AGE);
+  let at=-1;
+  for(let i=0;i<frameStash.length;i++) if(frameStash[i].t===marker){ at=i; if(!snap) break; }
+  if(at<0) return null;
+  const p=frameStash[at].p;
+  frameStash=frameStash.filter((f,i)=>snap?f.t!==marker:i!==at);
+  return p;
+}
+function stashDrop(...types){ frameStash=frameStash.filter(f=>!types.includes(f.t)); }
 // Read one framed reply and return its payload (with the 2-byte [marker][len] header stripped). The blob and
 // the bond-export dump share the same framing, distinguished by the marker byte (0xA5 status, 0xA7 bonds).
-async function readFrame(marker, minLen, readLen){
+// Returns null when no such frame turns up within timeoutMs (default 1 s); a late frame is kept for the next call.
+async function readFrame(marker, minLen, readLen, timeoutMs){
+  const deadline=Date.now()+(timeoutMs||1000);
   try{
-    // largest frame (status blob) spans multiple USB-FS packets; read generously to capture it in one call.
-    // readLen is overridable: the dongle's 0xAC paired-pucks list reaches 213 B (8 pucks) and needs 256.
-    const r = await dev.transferIn(epIn, readLen||256);
-    if(r.status!=="ok"||r.data.byteLength<2) return null;
-    const d=new Uint8Array(r.data.buffer);
-    // Live wedge reporter (0xA9): emitted from the firmware's SOF callback (usbd task) while loop() is stalled --
-    // the ONLY signal that survives a loop wedge on boards that wipe retained RAM across the reset. Scan for it
-    // in every read so it surfaces regardless of which frame we were after. Payload: [stage][stallMs u16].
-    for(let w=0; w+4<d.length; w++){
-      if(d[w]===0xA9 && d[w+1]===3){ onWedge(d[w+2], d[w+3]|(d[w+4]<<8)); break; }
+    for(;;){
+      const got=stashTake(marker);
+      if(got) return got.length>=(minLen||0)?got:null;
+      const remain=deadline-Date.now(); if(remain<=0) return null;
+      // largest frame (status blob) spans multiple USB-FS packets; read generously to capture it in one call.
+      // readLen is overridable: the dongle's 0xAC paired-pucks list reaches 213 B (8 pucks) and needs 256.
+      const r=await rawIn(readLen||256, remain);
+      if(!r) return null;
+      if(r.status!=="ok") return null;
+      if(r.data.byteLength<2) continue;
+      const d=new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength);
+      // Live wedge reporter (0xA9): emitted from the firmware's SOF callback (usbd task) while loop() is stalled --
+      // the ONLY signal that survives a loop wedge on boards that wipe retained RAM across the reset. Scan for it
+      // in every read so it surfaces regardless of which frame we were after. Payload: [stage][stallMs u16].
+      for(let w=0; w+4<d.length; w++){
+        if(d[w]===0xA9 && d[w+1]===3){ onWedge(d[w+2], d[w+3]|(d[w+4]<<8)); break; }
+      }
+      const ts=Date.now();
+      for(let i=0;i+2<=d.length;){
+        const t=d[i], len=d[i+1];
+        if(!(t===marker||FRAME_TYPES.has(t))){ i++; continue; }
+        // truncated read (transfer ended mid-frame): applying a half blob silently skips every late field --
+        // reset cause, pendingHang classification, stack stats -- so drop the whole frame and retry next poll.
+        if(i+2+len>d.length) break;
+        frameStash.push({t,p:d.slice(i+2,i+2+len),ts}); i+=2+len;
+      }
+      if(frameStash.length>32) frameStash.splice(0,frameStash.length-32);
     }
-    let i=0; while(i<d.length && d[i]!==marker) i++;
-    if(i+2>d.length) return null;
-    const len=d[i+1];
-    // truncated read (transfer ended mid-frame): applying a half blob silently skips every late field --
-    // reset cause, pendingHang classification, stack stats -- so drop the whole frame and retry next poll.
-    if(i+2+len>d.length) return null;
-    const p=d.slice(i+2, i+2+len);
-    return p.length>=(minLen||0) ? p : null;
   }catch(e){ if(dev) log("read err: "+e.message); return null; }
 }
 async function readBlob(){ return readFrame(0xA5, 12); }
@@ -1757,7 +1806,16 @@ function fmtSlider(id,v){ return id==="hapBlockS" ? v+" s" : ""+v; }
 function setSlider(id,v){ const el=$("#"+id); if(document.activeElement!==el){ el.value=v; } $("#"+id+"V").textContent=fmtSlider(id,el.value); }
 
 let inflight=false;
+// Our polls (live view ~30 Hz, binds transfers) share the pipe with the status poll. refresh() used to just skip
+// a round when the pipe was busy, which a busy live poll can repeat until no status arrives for seconds
+// ("heartbeat lost"). statusWanted makes the others step aside until the status exchange has had its turn.
+let statusWanted=false;
 async function refresh(){
+  if(dev&&inflight&&!capturing&&!backupBusy&&!flightBusy&&!lizardBusy&&!rfBusy&&!dfuBusy){
+    statusWanted=true;
+    for(let i=0;i<100&&dev&&inflight;i++) await new Promise(r=>setTimeout(r,5));
+    statusWanted=false;
+  }
   if(!dev||inflight||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return; inflight=true;
   // try/finally: an exception anywhere in here (applyBlob included) must never leave inflight latched true --
   // that would silently kill all future polls and read as a fake "heartbeat lost".
@@ -1893,7 +1951,7 @@ async function panelRestore(pn){
   }
   const raw=new Uint8Array(hexDec(pn.binds||"")), b=bindsParse(raw);
   if(!b){ log("import: paddle binds in the file are not valid — skipped"); return "Paddle binds in the file were not valid and were skipped."; }
-  let ok=true;
+  let ok=true; stashDrop(0xB0,0xB2,0xB3);
   for(let idx=0,o=0;o<raw.length;idx++,o+=96){
     const part=[...raw.slice(o,o+96)];
     await send([0x28,idx,part.length,...part]);
@@ -2208,7 +2266,7 @@ async function drainTick(){
     await send([0x06]);
     let done=false, guard=0;
     while(!done && guard++<400){
-      const r=await dev.transferIn(epIn,64);
+      const r=await rawIn(64);
       if(r.status!=="ok") break;
       const d=new Uint8Array(r.data.buffer);
       const m=new Uint8Array(acc.length+d.length); m.set(acc); m.set(d,acc.length); acc=m;
@@ -2283,7 +2341,7 @@ async function loadFlightTrail(){
     let restart=true, done=false, guard=0, acc=new Uint8Array(0);
     while(!done && guard++<600){
       await send([0x10, restart?1:0]); restart=false;
-      const r=await dev.transferIn(epIn,192);
+      const r=await rawIn(192);
       if(r.status!=="ok") break;
       const d=new Uint8Array(r.data.buffer);
       const m=new Uint8Array(acc.length+d.length); m.set(acc); m.set(d,acc.length); acc=m;
@@ -2374,7 +2432,7 @@ async function lizardExchange(fn){
 async function readLizard(){
   let acc=new Uint8Array(0);
   for(let guard=0; guard<64; guard++){
-    const r=await dev.transferIn(epIn,128);
+    const r=await rawIn(128);
     if(r.status!=="ok") break;
     const d=new Uint8Array(r.data.buffer);
     const m=new Uint8Array(acc.length+d.length); m.set(acc); m.set(d,acc.length); acc=m;
@@ -2581,7 +2639,7 @@ async function fwupAckWait(timeoutMs){
   for(;;){
     const remain=deadline-Date.now();
     if(remain<=0) return null;
-    if(!fwupRead) fwupRead=dev.transferIn(epIn, 64);
+    if(!fwupRead) fwupRead=rawIn(64);
     const r=await Promise.race([fwupRead, dfuSleep(remain).then(()=>"timeout")]);
     if(r==="timeout") return null;
     fwupRead=null;
@@ -3231,7 +3289,7 @@ async function lzV2ReadMap(op){
 	let buf=[];
 	let expected=0;
 	for(;;){
-		const r=await dev.transferIn(epIn,256);
+		const r=await rawIn(256);
 		if(r.status!=="ok") throw new Error("lizard-map read failed");
 		const d=new Uint8Array(r.data.buffer);
 		for(const x of d) buf.push(x);
@@ -3433,9 +3491,9 @@ function bindsBuild(b){
 // Run fn on the shared bulk pipe: the status poll must not be in flight (its reply would be eaten by our read).
 async function bindsXfer(fn){
   // during a firmware update the IN pipe belongs to the update acks (runUpdate stops the status poll)
-  for(let i=0;i<200 && dev && !dfuBusy && (inflight||capturing||backupBusy||flightBusy||lizardBusy||rfBusy);i++) await sleep(10);
+  for(let i=0;i<200 && dev && !dfuBusy && (inflight||statusWanted||capturing||backupBusy||flightBusy||lizardBusy||rfBusy);i++) await sleep(10);
   if(!dev || dfuBusy || !polling || inflight) return null;
-  inflight=true;
+  inflight=true; stashDrop(0xB0,0xB2,0xB3); // anything left from earlier is not the answer to what we send now
   try{ return await fn(); }
   catch(e){ log("binds err: "+e.message); return null; }
   finally{ inflight=false; }
@@ -3484,7 +3542,12 @@ async function bindsSave(){
 function bindsCommit(){ clearTimeout(bindsSaveTimer); bindsSaveTimer=setTimeout(bindsSave,300); }
 function bindsMsg(m){ $("#bindsMsg").textContent=m; $("#macroMsg").textContent=m; }
 async function bindsSetProfile(n){
-  const ok=await bindsXfer(async()=>{ await send([0x2A,n]); return await bindsAck(0x2A); });
+  const ok=await bindsXfer(async()=>{
+    await send([0x2A,n]); const k=await bindsAck(0x2A);
+    // the firmware follows the ack with a status blob; take it off the pipe now so it cannot fill the FIFO
+    await readFrame(0xA5,12,256,200);
+    return k;
+  });
   await bindsRead();
   if(!ok) bindsMsg("profile switch failed");
 }
@@ -3880,7 +3943,7 @@ function battText(l){
 }
 async function livePoll(){
   if(dfuBusy&&macroRec) macroRecStop();
-  if(!dev||!bindsCap||dfuBusy||!polling||inflight||bindsSaving||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return;
+  if(!dev||!bindsCap||dfuBusy||!polling||inflight||statusWanted||bindsSaving||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return;
   inflight=true;
   try{ await send([0x27,0xFF]); const p=await readFrame(0xB0,24,256); if(p) live=parseLive(p); }
   catch(e){ log("live err: "+e.message); }
