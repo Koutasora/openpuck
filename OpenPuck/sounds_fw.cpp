@@ -13,15 +13,14 @@ using namespace Adafruit_LittleFS_Namespace;
 // The controller reconnects in bursts when the link flaps; one connect melody per slot in this time is enough.
 #define CONNECT_MIN_GAP_MS 20000u
 
-// OUTPUT report 0x83 sides. Which value means "both" is not documented, so each tone goes out once per side.
-#define TONE_SIDES 2
-// A melody waits while a linked slot has more than this many entries queued (one note adds TONE_SIDES), so it
-// never pushes out other frames (imuForceRaw, id9, power-off). Given up after STALL_MAX_MS.
-#define QUEUE_BUSY_MAX 4
+// A melody waits while a linked slot has more than this many entries queued, so it never pushes out other
+// frames (imuForceRaw, id9, power-off). One due event adds one entry per controller and up to SOUNDS_VOICES
+// events fall due together, so with 6 a full chord (4) still goes out in one loop on top of two entries left
+// from the last one, and 25 of the 32 entries stay free. Given up after STALL_MAX_MS.
+#define QUEUE_BUSY_MAX 6
 #define STALL_MAX_MS 1000u
 
-// Stage buffers are static: loop task stack is small and the blob is ~1 KB.
-static uint8_t s_io[SOUNDS_BLOB_BYTES];
+// Only the committed blob is staged here (loop task stack is small). Also holds the file while it is read at boot.
 static uint8_t s_stage[SOUNDS_BLOB_BYTES];
 static uint16_t s_staged;
 
@@ -55,24 +54,29 @@ static void sendStop(uint8_t mask)
 			relayEnqueue(0x80, zero, sizeof zero, true, s);
 }
 
-static void sendTone(uint8_t mask, uint16_t freq, uint16_t ms)
+// HAPTIC_LFO_TONE {side, gain_db, freq u16, dur u16, lfo_freq u16, lfo_depth}: the controller ends the tone by
+// itself after dur.
+static void sendTone(uint8_t mask, uint8_t side, int8_t gainDb, uint16_t freq,
+		     uint16_t dur)
 {
 	uint8_t p[9];
-	p[1] = (uint8_t)g_sounds.gainDb;
+	p[0] = side;
+	p[1] = (uint8_t)gainDb;
 	p[2] = (uint8_t)freq;
 	p[3] = (uint8_t)(freq >> 8);
-	p[4] = (uint8_t)ms;
-	p[5] = (uint8_t)(ms >> 8);
+	p[4] = (uint8_t)dur;
+	p[5] = (uint8_t)(dur >> 8);
 	// no LFO
 	p[6] = p[7] = p[8] = 0;
-	for (uint8_t s = 0; s < NSLOT; s++) {
-		if (!(mask & (1u << s)) || !hapticLinkUp((int)s))
-			continue;
-		for (uint8_t side = 0; side < TONE_SIDES; side++) {
-			p[0] = side;
+	for (uint8_t s = 0; s < NSLOT; s++)
+		if ((mask & (1u << s)) && hapticLinkUp((int)s))
 			relayEnqueue(0x83, p, sizeof p, true, s);
-		}
-	}
+}
+
+// Stops one side and leaves the others playing: gain -128, freq 0, dur 0x8000 (verified on hardware).
+static void sendOff(uint8_t mask, uint8_t side)
+{
+	sendTone(mask, side, -128, 0, 0x8000);
 }
 
 static bool queueBusy(uint8_t mask)
@@ -86,7 +90,7 @@ static bool queueBusy(uint8_t mask)
 
 static bool start(const Melody &m, uint8_t mask)
 {
-	if (!m.count || !mask)
+	if (soundsMelodyEmpty(m) || !mask)
 		return false;
 	if (soundPlaying(s_player))
 		sendStop(s_mask);
@@ -100,24 +104,34 @@ void soundsFwTask()
 {
 	if (soundPlaying(s_player)) {
 		const uint32_t now = millis();
-		if ((int32_t)(now - s_player.dueMs) >= 0 && queueBusy(s_mask)) {
-			// delay the note rather than squeeze it in; a queue that never drains (link lost) ends the melody
-			if (!s_stallSince)
-				s_stallSince = now ? now : 1;
-			else if ((uint32_t)(now - s_stallSince) >
-				 STALL_MAX_MS) {
-				s_player.playing = false;
+		// the voices that fall due together go out in one pass
+		for (uint8_t i = 0; i < SOUNDS_VOICES; i++) {
+			if (!soundDue(s_player, now)) {
 				s_stallSince = 0;
-				sendStop(s_mask);
+				break;
 			}
-			return;
+			if (queueBusy(s_mask)) {
+				// delay rather than squeeze in; a queue that never drains (link lost) ends the melody
+				if (!s_stallSince)
+					s_stallSince = now ? now : 1;
+				else if ((uint32_t)(now - s_stallSince) >
+					 STALL_MAX_MS) {
+					s_player.playing = false;
+					s_stallSince = 0;
+					sendStop(s_mask);
+				}
+				return;
+			}
+			s_stallSince = 0;
+			const SoundStep st = soundStep(s_player, now);
+			if (st.action == SA_TONE)
+				sendTone(s_mask, soundsSide(st.voice),
+					 g_sounds.gainDb, st.freq, st.ms);
+			else if (st.action == SA_OFF)
+				sendOff(s_mask, soundsSide(st.voice));
+			else if (st.action == SA_STOP)
+				sendStop(s_mask);
 		}
-		s_stallSince = 0;
-		const SoundStep st = soundStep(s_player, now);
-		if (st.action == SA_TONE)
-			sendTone(s_mask, st.freq, st.ms);
-		else if (st.action == SA_STOP)
-			sendStop(s_mask);
 		return;
 	}
 	if (!s_pendMode && !s_pendConnect)
@@ -162,7 +176,8 @@ bool soundsFwPlaySlot(uint8_t n)
 
 bool soundsFwPlayRaw(const uint8_t *buf, uint8_t len)
 {
-	Melody m;
+	// static: a Melody is 520 bytes, too much for the loop task stack next to the call chain
+	static Melody m;
 	return soundsParseMelody(m, buf, len) && start(m, readyMask());
 }
 
@@ -198,14 +213,14 @@ bool soundsFwVibrate()
 
 void soundsFwSave()
 {
-	if (!soundsSerialize(g_sounds, s_io, sizeof s_io))
-		return;
+	uint8_t buf[SOUNDS_CHUNK];
 	InternalFS.remove(SOUNDS_FILE);
 	File f(InternalFS);
-	if (f.open(SOUNDS_FILE, FILE_O_WRITE)) {
-		f.write(s_io, SOUNDS_BLOB_BYTES);
-		f.close();
-	}
+	if (!f.open(SOUNDS_FILE, FILE_O_WRITE))
+		return;
+	for (size_t off = 0; off < SOUNDS_BLOB_BYTES; off += SOUNDS_CHUNK)
+		f.write(buf, soundsSerializeAt(g_sounds, off, buf, sizeof buf));
+	f.close();
 }
 
 void soundsFwInit()
@@ -213,10 +228,10 @@ void soundsFwInit()
 	int got = 0;
 	File f(InternalFS);
 	if (f.open(SOUNDS_FILE, FILE_O_READ)) {
-		got = f.read(s_io, sizeof s_io);
+		got = f.read(s_stage, sizeof s_stage);
 		f.close();
 	}
-	soundsLoad(g_sounds, s_io, got > 0 ? (size_t)got : 0);
+	soundsLoad(g_sounds, s_stage, got > 0 ? (size_t)got : 0);
 	File m(InternalFS);
 	if (m.open(SOUNDS_MODE_FILE, FILE_O_READ)) {
 		s_pendMode = true;
@@ -246,15 +261,10 @@ bool soundsFwSetGain(int gainDb)
 // ---- WebUSB blob transfer ----
 uint8_t soundsFwReadChunk(uint8_t idx, uint8_t *out)
 {
-	if (idx >= SOUNDS_CHUNKS ||
-	    !soundsSerialize(g_sounds, s_io, sizeof s_io))
+	if (idx >= SOUNDS_CHUNKS)
 		return 0;
-	size_t off = (size_t)idx * SOUNDS_CHUNK;
-	size_t n = SOUNDS_BLOB_BYTES - off;
-	if (n > SOUNDS_CHUNK)
-		n = SOUNDS_CHUNK;
-	memcpy(out, s_io + off, n);
-	return (uint8_t)n;
+	return (uint8_t)soundsSerializeAt(g_sounds, (size_t)idx * SOUNDS_CHUNK,
+					  out, SOUNDS_CHUNK);
 }
 
 bool soundsFwStageChunk(uint8_t idx, const uint8_t *data, uint8_t len)
@@ -272,8 +282,8 @@ bool soundsFwStageChunk(uint8_t idx, const uint8_t *data, uint8_t len)
 
 bool soundsFwStageCommit()
 {
-	if (s_staged != SOUNDS_BLOB_BYTES ||
-	    !soundsDeserialize(g_sounds, s_stage, s_staged)) {
+	// the length is checked by soundsDeserialize: a v2 blob, or a v1 one from a page that predates voices
+	if (!soundsDeserialize(g_sounds, s_stage, s_staged)) {
 		s_staged = 0;
 		return false;
 	}

@@ -23,11 +23,11 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - [x] 6. `docs/index.html`: licznik N/32, Crop to selection, Save to device zablokowany poza limitami.
 - [x] 7. `tests/sounds-web/`: test Playwright w Chromium z udawanym `navigator.hid`.
 - [x] 8. `docs/PROTOCOL.md`, `README.md`, `CHECKLISTA.md`.
-- [ ] 9. Poprawki po teście użytkownika (`docs/index.html`, `tests/sounds-web/run.js`): przyciski odsłuchu w pasku nad piano rollem; przełącznik Fold (tylko wiersze z nutami); rysowanie przeciągnięciem (klik = długość ostatniej nuty), prawy/podwójny klik usuwa, kursory przesuwania i zmiany długości, szerszy uchwyt, wyższe wiersze; klik w klawisz gra nutę na padzie (bez połączenia w przeglądarce); "Crop to 32" sam przycina do 32 pozycji (od początku zaznaczenia albo melodii), znacznik końca 32. pozycji na zaznaczeniu; pole BPM (z MIDI przy imporcie, inaczej 120): zmiana rozciąga melodię proporcjonalnie, siatka w taktach (1/4-1/32) przy tym BPM, ms zostają jako opcja.
+- [x] 9. Poprawki po teście użytkownika (`docs/index.html`, `tests/sounds-web/run.js`): przyciski odsłuchu w pasku nad piano rollem; przełącznik Fold (tylko wiersze z nutami); rysowanie przeciągnięciem (klik = długość ostatniej nuty), prawy/podwójny klik usuwa, kursory przesuwania i zmiany długości, szerszy uchwyt, wyższe wiersze; klik w klawisz gra nutę na padzie (bez połączenia w przeglądarce); "Crop to 32" sam przycina do 32 pozycji (od początku zaznaczenia albo melodii), znacznik końca 32. pozycji na zaznaczeniu; pole BPM (z MIDI przy imporcie, inaczej 120): zmiana rozciąga melodię proporcjonalnie, siatka w taktach (1/4-1/32) przy tym BPM, ms zostają jako opcja.
 - BPM przechowywane per zakładka tylko w przeglądarce (jak nazwy melodii), poza blobem pucka: format zapisu bez zmian, puck i tak gra milisekundy.
-- [ ] 10. Firmware (`OpenPuck/sounds.h`, `sounds.cpp`, `sounds_fw.cpp`, `sounds_fw.h`, `webusb_config.cpp`, `serial_console.cpp`): melodia = 4 głosy (side 0, 1, 3, 4) po 32 pozycje, blob `sounds.bin` wersja 2 (v1 wczytywany: melodia do obu gładzików), 4 sekwencery ze wspólnym startem, pauza głosu = off tone na jego side, koniec = zerowy 0x80, protokół statusu 26; 0x31 bez zmian (jeden głos).
-- [ ] 11. `docs/index.html`: przełącznik toru LT/RT/LG/RG, nuty do aktywnego toru, inne przygaszone, tabela i licznik N/32 aktywnego toru, import MIDI do aktywnego toru, Crop to 32 tnie zakres we wszystkich torach, odsłuch 4 torów naraz, zapis bloba v2 (protokół >= 26), przy protokole 25 zapis tylko toru LT z ostrzeżeniem; "Play on puck" usunięty.
-- [ ] 12. Testy: `tests/sounds` (v2, wczytanie v1, 4 głosy), build firmware z RAM/flash przed i po, clang-format 18 i lint, `tests/sounds-web` (tory).
+- [x] 10. Firmware (`OpenPuck/sounds.h`, `sounds.cpp`, `sounds_fw.cpp`, `sounds_fw.h`, `webusb_config.cpp`, `serial_console.cpp`): melodia = 4 głosy (side 0, 1, 3, 4) po 32 pozycje, blob `sounds.bin` wersja 2 (v1 wczytywany: melodia do obu gładzików), 4 sekwencery ze wspólnym startem, pauza głosu = off tone na jego side, koniec = zerowy 0x80, protokół statusu 27 (26 już zajęty); 0x31 bez zmian (jeden głos).
+- [x] 11. `docs/index.html`: przełącznik toru LT/RT/LG/RG, nuty do aktywnego toru, inne przygaszone, tabela i licznik N/32 aktywnego toru, import MIDI do aktywnego toru, Crop to 32 tnie zakres we wszystkich torach, odsłuch 4 torów naraz, zapis bloba v2 (protokół >= 27), przy protokole 25-26 zapis tylko toru LT z ostrzeżeniem; "Play on puck" usunięty.
+- [x] 12. Testy: `tests/sounds` (v2, wczytanie v1, 4 głosy), build firmware z RAM/flash przed i po, clang-format 18 i lint, `tests/sounds-web` (tory).
 - [ ] 13. `docs/PROTOCOL.md`, README, CHECKLISTA; test użytkownika: wgranie UF2, zapis i granie 4 głosów z pucka.
 - Sprawdzenie: test Playwright z kroku 7, przegląd managera, test użytkownika na padzie.
 
@@ -51,6 +51,9 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - Zmiana zakresu 2026-11-22 (użytkownik): nuty osobno dla 4 aktuatorów, łącznie z firmware w tym etapie (puck zapisuje i gra 4 głosy); edycja przez przełącznik aktywnego toru.
 - Blob v2: payload = confirm, gainDb, event[8], 8 melodii x 4 głosy (kolejność side 0, 1, 3, 4) x {count, 32 x {freq u16, ms u16}}; ok. 4,1 KB zamiast 1 KB; v1 wczytywany do obu gładzików, żeby stare melodie brzmiały jak dotąd.
 - Op 0x31 (niezapisana melodia) zostaje jednogłosowy: bufor komend 160 B nie zmieści 4 x 32 nut; strona zamiast niego ma odsłuch na żywo przez WebHID.
+- Protokół statusu 27 dla bloba v2: 26 już oznacza "kombinacja back4 może być 0xFE = None"; strona przy 25-26 zapisuje tylko tor LT (bloba v1) z ostrzeżeniem i odsłuchuje LT na obu gładzikach, jak puck.
+- Przycisk "Play on puck" (op 0x31) usunięty ze strony: odsłuch na żywo przez WebHID go zastępuje, a 0x31 mieści tylko jeden głos; firmware dalej obsługuje 0x31 (zgodność).
+- Firmware: bez kopii SoundsCfg na stosie (4,2 KB przekraczało stos pętli 4 KB); blob sprawdzany w miejscu, potem dekodowany; bufor s_io usunięty (fragmenty serializowane w locie); zapis przyjmuje też blob v1 (starsza strona w pamięci przeglądarki).
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

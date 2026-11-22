@@ -459,7 +459,7 @@ Messages:
     acked with `0xB3`. **Requires status-blob version ≥ 24.** See §10.3.
   - `0x2C`: diagnostics, reply `0xB4` (§10.4). Sent only while the panel is connected.
   - `0x2D <idx>`: read chunk `idx` of the sounds blob (reply `0xB5`). **Requires status-blob version ≥ 25** (older
-    firmware drops `0x2D`–`0x31` silently). See §10.5. For `idx` out of range (or a full TX buffer) there is no `0xB5`
+    firmware drops `0x2D`–`0x31` silently; a version 2 blob needs ≥ 27). See §10.5. For `idx` out of range (or a full TX buffer) there is no `0xB5`
     reply; the host retries.
   - `0x2E <idx> <len> <data>`: stage sounds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks in order)
   - `0x2F`: validate + apply + save the staged blob (`sounds.bin`)
@@ -757,33 +757,43 @@ bits of §8.1 (paddles: R4 `0x80`, R5 `0x100`, L4 `0x20000`, L5 `0x40000`).
 The `0xB0` live state with slot `0xFF` now picks a linked controller that has input in hand (else the first linked
 one) instead of the slot the poll happened to be on.
 
-### 10.5 Melodies (sounds blob version 1, status blob 25)
+### 10.5 Melodies (status blob 25; sounds blob version 2 from status blob 27)
 
-The puck can play short melodies through the controller's actuator: each note is a `HAPTIC_LFO_TONE` OUTPUT report
-`0x83` (§ "Two different `0x8x` id spaces") relayed like rumble, once per side (0 and 1), with `gain_db` = the volume
-setting and no LFO (the report layout comes from SDL; `side` was checked on hardware, see below). The sequencer runs in `loop()` without blocking; every rest and the end of a melody send the zero
-`0x80` rumble report, so the actuator cannot stay latched if a tone ignores its duration.
+The puck can play short melodies through the controller's actuators. A melody has 4 voices, one per actuator, played
+together from one start time: voice 0 = left trackpad (`side` 0), 1 = right trackpad (`side` 1), 2 = left grip (`side` 3),
+3 = right grip (`side` 4). A note is one `HAPTIC_LFO_TONE` OUTPUT report `0x83` (§ "Two different `0x8x` id spaces") on its
+voice's side, relayed like rumble, with `gain_db` = the volume setting and no LFO (the report layout comes from SDL; `side`
+was checked on hardware, see below). The sequencer runs in `loop()` without blocking, one cursor per voice. A rest, and the
+end of a voice before the others, send the off tone (`gain_db` -128, `freq` 0, `dur_ms` 0x8000) on that voice's side only;
+when the last voice ends, the zero `0x80` rumble report follows, so the actuators cannot stay latched if a tone ignores its
+duration.
 
-Sounds blob (`sounds.h`, 1048 bytes, read/written in 96-byte chunks, 11 chunks): `[0xB8][version 1][payload length u16 LE]`,
-payload, `u16 LE` sum of the payload bytes. Payload (1042 bytes):
+Sounds blob (`sounds.h`, 4144 bytes, read/written in 96-byte chunks, 44 chunks): `[0xB8][version 2][payload length u16 LE]`,
+payload, `u16 LE` sum of the payload bytes. Payload (4138 bytes):
 
 | offset | size | field |
 |---|---|---|
 | 0 | 1 | confirmations: `0` off, `1` vibration, `2` sound, `3` both |
 | 1 | 1 | volume = `gain_db`, signed, `-60..0` (`0` loudest), default `-6` |
 | 2 | 8 | melody index (0..7) per event, `0xFF` = no melody |
-| 10 | 8 x 129 | melodies: `{count 0..32, 32 x {freq u16 LE, ms u16 LE}}`; notes past `count` are ignored |
+| 10 | 8 x 4 x 129 | for each melody 0..7, for each voice 0..3: `{count 0..32, 32 x {freq u16 LE, ms u16 LE}}`; notes past `count` are written as zeros and ignored |
+
+Version 1 (1048 bytes, payload 1042, 8 x 129 melody bytes: one voice per melody) is still read: each melody goes into voices 0
+and 1 (both trackpads, as it always played), voices 2 and 3 are empty; the next save writes version 2. A melody is empty when
+all voice counts are 0. The panel MUST see status blob `>= 27` before writing a version 2 blob (older firmware rejects it).
+`0x2F` (commit) also accepts a staged version 1 blob (1048 bytes) from an older panel and stores it as version 2.
 
 Events (index into the event table): `0` profile 1, `1` profile 2, `2` profile 3, `3` mode change to a PlayStation mode
 (PS5, PS5 game, PS5 auth, HID gyro/DS4, DS4 game, PS3), `4` mode change to Xbox (Xbox, Xbox OG), `5` mode change to Switch
 (HORI, Pro), `6` mode change to any other mode (Steam, Lizard, DirectInput, SInput), `7` a controller connected.
-Notes: `freq` 0 = rest, otherwise `1..4000` Hz; `ms` is `30..5000`. A bad blob is rejected whole (`0x2F` acks `ok = 0`) and a
-bad or missing `sounds.bin` means the defaults (own short motifs, melody `i` for event `i`, confirmations = vibration).
+Limits per voice: `freq` 0 = rest, otherwise `1..4000` Hz; `ms` is `30..5000`. A bad blob is rejected whole (`0x2F` acks `ok = 0`) and a
+bad or missing `sounds.bin` means the defaults (own short motifs in voices 0 and 1, melody `i` for event `i`, confirmations = vibration).
 
-The 30 ms minimum protects the relay queue: a note is two `0x83` entries per controller and the relay sends about one
+The 30 ms minimum protects the relay queue: a note is one `0x83` entry per controller and voice and the relay sends about one
 entry per poll cycle (~4 ms), so shorter notes would flood the 32-entry queue and push out other frames. The sequencer
-also holds the next note while a linked slot has more than 4 entries queued (the note is late, not dropped; a queue
-that does not drain for 1 s ends the melody). With confirmation "both", the melody of a profile switch starts after the
+also holds the next event while a linked slot has more than 6 entries queued (the event is late, not dropped, and the due
+times are absolute from the start, so voices do not drift apart (events held back by a stall go out in a burst once the queue
+drains); a queue that does not drain for 1 s ends the melody). With confirmation "both", the melody of a profile switch starts after the
 last vibration pulse. Melodies do not follow the per-type rumble setting: sound is its own setting (confirmations).
 
 The confirmations setting decides how a profile switch is confirmed (vibration = N pulses as before, sound = the
@@ -792,7 +802,8 @@ of the new mode's family on the first connection after the reboot (a flag file l
 plays the connect melody once per 20 s per controller. A melody starts only for controllers that are linked. The
 preview commands `0x30` / `0x31` play whatever the setting is.
 
-`0x31` payload is the melody as in the blob without padding: `[count][count x {freq u16 LE, ms u16 LE}]`, `count` 0..32.
+`0x31` plays one unsaved voice, as in the blob without padding: `[count][count x {freq u16 LE, ms u16 LE}]`, `count` 0..32;
+the puck plays it as voices 0 and 1 (both trackpads). The 160-byte command buffer does not hold 4 voices.
 
 Console: `SNL` list, `SNP <n>` play melody n, `SNE <e>` play the melody of event e, `SNM <0..3>` confirmations,
 `SNG <-60..0>` volume.

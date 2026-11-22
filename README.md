@@ -7,7 +7,7 @@
 > - keyboard and mouse on PC in PS5 and DS4-gyro modes, with PC / console detection;
 > - confirmation sounds and melodies played through the controller's haptics: piano roll editor, MIDI import
 >   (drop a .mid file on the roll), live playback on the controller over WebHID (Play on controller), up to 32
->   entries per melody when saved (original sample melodies in [`docs/midi`](docs/midi), made by `tools/make-midi.py`);
+>   entries per voice when saved, four voices (left and right trackpad, left and right grip; needs firmware with status protocol 27, older firmware stores the left trackpad voice only; original sample melodies in [`docs/midi`](docs/midi), made by `tools/make-midi.py`);
 > - an extended configurator.
 >
 > Configurator: https://koutasora.github.io/openpuck/ - firmware builds: https://github.com/Koutasora/openpuck/releases

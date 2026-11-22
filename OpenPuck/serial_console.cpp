@@ -197,7 +197,7 @@ static void hostConsole(const char *a)
 }
 
 // Melodies played through the controller's actuator (sounds.h):
-//   SNL        list: confirmation setting, volume, event -> melody, note counts
+//   SNL        list: confirmation setting, volume, event -> melody, note counts per voice (4 sides)
 //   SNP <n>    play melody 0..7 now    SNE <e>  play the melody of event e (0..7) if sound is on
 //   SNM <0..3> confirmations: 0 off, 1 vibration, 2 sound, 3 both    SNG <-60..0>  volume in dB
 static void soundsConsole(const char *a)
@@ -213,11 +213,16 @@ static void soundsConsole(const char *a)
 			      g_sounds.confirm, g_sounds.gainDb);
 		for (int e = 0; e < SE_COUNT; e++) {
 			const uint8_t m = g_sounds.event[e];
-			Serial.printf("# %s -> %d (%u notes)\n", EV[e],
-				      m < SOUNDS_MELODIES ? m : -1,
-				      m < SOUNDS_MELODIES ?
-					      g_sounds.melody[m].count :
-					      0);
+			const Melody *mel = m < SOUNDS_MELODIES ?
+						    &g_sounds.melody[m] :
+						    nullptr;
+			Serial.printf(
+				"# %s -> %d (notes per voice %u/%u/%u/%u)\n",
+				EV[e], mel ? m : -1,
+				mel ? mel->voice[0].count : 0,
+				mel ? mel->voice[1].count : 0,
+				mel ? mel->voice[2].count : 0,
+				mel ? mel->voice[3].count : 0);
 		}
 	} else if (a[0] == 'P' && v >= 0) {
 		ok = soundsFwPlaySlot((uint8_t)v);

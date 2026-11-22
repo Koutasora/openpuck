@@ -501,7 +501,7 @@
 
     <div class="card hide" id="sndCard" data-sub="mapping/sounds">
       <h2>Melodies</h2>
-      <p class="note" style="margin-top:0">The puck plays a melody through the controller's actuator, up to 32 notes per melody. Melody names are kept in this browser only.</p>
+      <p class="note" style="margin-top:0">The puck plays a melody through the controller's actuator, up to 32 notes per melody and voice. Melody names are kept in this browser only.</p>
       <div class="row" style="margin:0 0 4px;flex-wrap:wrap;gap:8px">
         <button id="plConnect">Connect controller</button>
         <button id="plDisconnect" disabled>Disconnect</button>
@@ -513,6 +513,8 @@
       <p class="note" style="margin:0 0 10px">Play on controller works with an OpenPuck in Steam mode, an official Valve puck or a controller on a cable (Chrome or Edge).</p>
       <div class="slot-tabs" id="sndTabs"></div>
       <div class="row" style="margin-top:0"><label>Name</label><input id="sndName" class="mtxt" type="text" maxlength="24"><span class="note" id="sndUsed" style="margin:0;flex:1 1 200px"></span></div>
+      <p class="note hide" id="sndV1Warn" style="margin:6px 0 0;color:var(--warn)">This firmware stores one voice (Left trackpad). Update the puck for 4 voices.</p>
+      <div class="row" style="margin:8px 0 0;flex-wrap:wrap;gap:8px"><label style="flex:none">Voice</label><span id="sndLanes" style="display:flex;gap:8px;flex-wrap:wrap"></span></div>
       <div class="row" style="margin:8px 0 4px;flex-wrap:wrap;gap:8px">
         <button id="sndLive">Play on controller</button>
         <button id="sndLiveStop" disabled>Stop</button>
@@ -545,12 +547,11 @@
       </div>
       <p class="note" id="midiNote" style="margin:0 0 10px"></p>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
-        <button id="sndPlayPuck">Play on puck</button>
         <button id="sndPlayStored">Play saved melody on puck</button>
         <button id="sndSave" class="primary">Save to device</button>
         <span class="note" id="sndMsg" style="margin:0"></span>
       </div>
-      <p class="note">Play on puck sends the notes shown here and needs a linked controller at the current volume (Settings). Hz 0 is a rest; notes run 1-4000 Hz and 30-5000 ms. A melody must have 32 entries or fewer to be saved or played on the puck.</p>
+      <p class="note">Play saved melody on puck plays what is stored in the puck, at the volume in Settings, and needs a linked controller. The four voices are the Left trackpad, Right trackpad, Left grip and Right grip (LT, RT, LG, RG); editing, import, Octave and Clear act on the selected voice. Hz 0 is a rest; notes run 1-4000 Hz and 30-5000 ms. Every voice must have 32 entries or fewer to be saved.</p>
     </div>
 
     <div class="card hide" id="sndEvCard" data-sub="mapping/sounds">
@@ -2134,7 +2135,7 @@ async function panelSnapshot(){
     macroNames:Array.from({length:BIND_MACROS},(_,i)=>macroNames[i]||""),
     profileNames:Array.from({length:BIND_PROFILES},(_,i)=>profileNames[i]||"")};
   if(p[0]>=25){
-    const sraw=await soundsReadRaw();
+    const sraw=await soundsReadRaw(p[0]>=27?SND_CHUNKS2:SND_CHUNKS);
     if(sraw&&sndParse(sraw)) o.sounds={blob:hexEnc(sraw),names:Array.from({length:SND_MELODIES},(_,i)=>soundNames[i]||"")};
   }
   if(p[0]>=24){
@@ -2172,12 +2173,14 @@ async function panelRestore(pn){
   }
   let note="", soundsDone=false;
   if(pn.sounds&&typeof pn.sounds==="object"){
-    const sraw=new Uint8Array(hexDec(pn.sounds.blob||""));
+    const sraw=new Uint8Array(hexDec(pn.sounds.blob||"")), snd=sndParse(sraw);
     if(p[0]<25) note="Sounds were skipped: this puck's firmware is too old.";
-    else if(!sndParse(sraw)) note="Sounds in the file were not valid and were skipped.";
-    else if(!await soundsWrite([...sraw])) note="The puck rejected the sounds.";
+    else if(!snd) note="Sounds in the file were not valid and were skipped.";
+    else if(!await soundsWrite(sndBuild(snd,p[0]>=27?2:1))) note="The puck rejected the sounds."; // v1 or v2 file, written in what the puck speaks
     else {
       soundsDone=true;
+      if(snd.ver===2&&p[0]<27&&snd.mel.some(m=>m[1].length||m[2].length||m[3].length))
+        note="Sounds were restored without the Right trackpad, Left grip and Right grip voices: this puck's firmware stores one voice (Left trackpad).";
       if(Array.isArray(pn.sounds.names)){
         soundNames=pn.sounds.names.slice(0,SND_MELODIES).map(x=>typeof x==="string"?x.slice(0,24):"");
         try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){}
@@ -4497,10 +4500,16 @@ function bindsOnBlob(p){
   liveLoop();
 })();
 
-// ===================== Melodies (sounds blob v1, status blob 25+) =====================
+// ===================== Melodies (sounds blob v1 on status 25-26, v2 with four voices on 27+) =====================
 // Wire format and ops: docs/PROTOCOL.md §10.5. Hidden below status protocol 25: older firmware drops 0x2D..0x31
 // silently, so they must never be sent blind. Transfers use bindsXfer (one pipe reader, paused during updates).
-const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
+const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_CHUNKS2=44, SND_FREQ_MAX=4000, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_PAYLOAD2=4138, SND_NONE=0xFF;
+// four voices (blob v2, status protocol 27 and up): index = voice, value = the side it plays on
+// On a v1 puck (soundsVer 1) only the Left trackpad voice exists and the puck plays it on both trackpads; the
+// other voices are not stored, so they are neither played nor previewed.
+const sndPlayLanes=()=>soundsVer===2?[0,1,2,3]:[0];
+const sndLaneSides=v=>soundsVer===2?[SND_SIDES[v]]:[0,1];
+const SND_LANES=4, SND_SIDES=[0,1,3,4], SND_LANE_ABBR=["LT","RT","LG","RG"], SND_LANE_NAMES=["Left trackpad","Right trackpad","Left grip","Right grip"];
 const SND_EVENTS=["Profile 1","Profile 2","Profile 3","Mode: PlayStation","Mode: Xbox","Mode: Switch",
   "Mode: other","Controller connected"];
 const SND_CONFIRM=[[1,"Vibration"],[2,"Sound"],[3,"Both"],[0,"Off"]];
@@ -4509,8 +4518,8 @@ const NOTE_LO=24, NOTE_HI=107; // C1 (33 Hz) .. B7 (3951 Hz), all under the 4000
 var sounds=null, soundsDev=null, soundsCap=null, soundsLastTry=0, soundsSaving=false, soundsSaveTimer=0;
 // soundsBase = the blob as last read from or written to the puck; soundsPending = a save asked for while one runs
 // ("all" or "fields"); sndUnsaved = melody or event edits not yet on the puck
-var soundsBase=null, soundsPending=null, sndUnsaved=false;
-let curMel=0, soundNames=[], midiData=null;
+var soundsBase=null, soundsPending=null, sndUnsaved=false, soundsVer=1; // soundsVer: blob version the puck speaks (1 below protocol 27)
+let curMel=0, curLane=0, soundNames=[], midiData=null;
 try{ const n=JSON.parse(localStorage.getItem("openpuck.soundNames")||"[]"); if(Array.isArray(n)) soundNames=n; }catch(e){}
 function soundName(m){ const n=soundNames[m]; return (typeof n==="string"&&n.trim())?n.trim():"Melody "+(m+1); }
 function soundSetName(m,v){ soundNames[m]=v; try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){} }
@@ -4526,34 +4535,42 @@ function noteOf(freq){
 }
 const noteLabel=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
 function sndEmpty(){
-  return {confirm:1,gain:-6,ev:[0,1,2,3,4,5,6,7],mel:Array.from({length:SND_MELODIES},()=>[])};
+  return {confirm:1,gain:-6,ev:[0,1,2,3,4,5,6,7],mel:Array.from({length:SND_MELODIES},()=>Array.from({length:SND_LANES},()=>[]))};
 }
 function sndParse(d){
-  if(d.length!==4+SND_PAYLOAD+2||d[0]!==0xB8||d[1]!==1) return null;
+  if(d[0]!==0xB8||(d[1]!==1&&d[1]!==2)) return null;
+  const ver=d[1], pay=ver===2?SND_PAYLOAD2:SND_PAYLOAD;
+  if(d.length!==4+pay+2) return null;
   const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);
-  if(dv.getUint16(2,true)!==SND_PAYLOAD) return null;
-  let sum=0; for(let i=4;i<4+SND_PAYLOAD;i++) sum=(sum+d[i])&0xFFFF;
-  if(sum!==dv.getUint16(4+SND_PAYLOAD,true)) return null;
-  const s=sndEmpty(); s.confirm=d[4]; s.gain=(d[5]<<24)>>24;
+  if(dv.getUint16(2,true)!==pay) return null;
+  let sum=0; for(let i=4;i<4+pay;i++) sum=(sum+d[i])&0xFFFF;
+  if(sum!==dv.getUint16(4+pay,true)) return null;
+  const s=sndEmpty(); s.confirm=d[4]; s.gain=(d[5]<<24)>>24; s.ver=ver;
   for(let e=0;e<8;e++) s.ev[e]=d[6+e];
-  for(let m=0,o=14;m<SND_MELODIES;m++,o+=129){
+  const lanes=ver===2?SND_LANES:1;
+  for(let m=0,o=14;m<SND_MELODIES;m++) for(let v=0;v<lanes;v++,o+=129){
     const n=d[o]; if(n>SND_NOTES) return null;
-    for(let k=0;k<n;k++) s.mel[m].push({freq:dv.getUint16(o+1+k*4,true),ms:dv.getUint16(o+3+k*4,true)});
+    for(let k=0;k<n;k++) s.mel[m][v].push({freq:dv.getUint16(o+1+k*4,true),ms:dv.getUint16(o+3+k*4,true)});
   }
+  // a v1 melody plays on both trackpads (the firmware mirrors it): voice 1 is a copy, the grips are empty
+  if(ver===1) for(const mel of s.mel) mel[1]=mel[0].map(n=>({...n}));
   return s;
 }
-function sndBuild(s){
+// ver 1 = one voice (the Left trackpad one), ver 2 = four voices; default: what the connected puck speaks
+function sndBuild(s,ver){
+  ver=ver||soundsVer; const lanes=ver===2?SND_LANES:1;
   const pl=[s.confirm,s.gain&255,...s.ev];
-  for(const mel of s.mel){
-    pl.push(mel.length);
-    for(let k=0;k<SND_NOTES;k++){ const n=mel[k]||{freq:0,ms:0}; pl.push(n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8); }
+  for(const mel of s.mel) for(let v=0;v<lanes;v++){
+    const lane=mel[v];
+    pl.push(lane.length);
+    for(let k=0;k<SND_NOTES;k++){ const n=lane[k]||{freq:0,ms:0}; pl.push(n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8); }
   }
   let sum=0; for(const v of pl) sum=(sum+v)&0xFFFF;
-  return [0xB8,1,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
+  return [0xB8,ver,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
 }
-async function soundsReadRaw(){
+async function soundsReadRaw(chunks=soundsVer===2?SND_CHUNKS2:SND_CHUNKS){
   const buf=[];
-  for(let idx=0;idx<SND_CHUNKS;idx++){
+  for(let idx=0;idx<chunks;idx++){
     let f=null;
     for(let t=0;t<3 && !f;t++){ await send([0x2D,idx]); f=await readFrame(0xB5,3,256); if(f && f[0]!==idx) f=null; }
     if(!f) return null;
@@ -4607,10 +4624,11 @@ async function soundsSave(fieldsOnly){
   else sndMsg(ok===null?"not saved: the puck is busy, try again":"device rejected the sounds");
 }
 function sndProblem(s){
-  for(let m=0;m<SND_MELODIES;m++){
-    const mel=s.mel[m];
-    if(mel.length>SND_NOTES) return soundName(m)+" has "+mel.length+" entries, the limit is "+SND_NOTES;
-    if(mel.some(n=>n.ms<SND_MS_MIN||n.ms>SND_MS_MAX||n.freq<0||n.freq>SND_FREQ_MAX)) return soundName(m)+" has values out of limits";
+  const lanes=soundsVer===2?SND_LANES:1; // a v1 puck only stores the Left trackpad voice
+  for(let m=0;m<SND_MELODIES;m++) for(let v=0;v<lanes;v++){
+    const mel=s.mel[m][v], who=soundName(m)+(lanes>1?" ("+SND_LANE_ABBR[v]+")":"");
+    if(mel.length>SND_NOTES) return who+" has "+mel.length+" entries, the limit is "+SND_NOTES;
+    if(mel.some(n=>n.ms<SND_MS_MIN||n.ms>SND_MS_MAX||n.freq<0||n.freq>SND_FREQ_MAX)) return who+" has values out of limits";
   }
   return "";
 }
@@ -4624,6 +4642,8 @@ async function soundsPlay(op,bytes){
 }
 function soundsOnBlob(p){
   const cap=(p[0]>=25 && !isDongle);
+  soundsVer=p[0]>=27?2:1;
+  $("#sndV1Warn").classList.toggle("hide",!(cap&&soundsVer===1));
   if(soundsDev!==dev){ sndLiveHalt(true); sounds=null; soundsBase=null; sndUnsaved=false; soundsDev=dev; soundsLastTry=0; }
   if(cap!==soundsCap){
     soundsCap=cap;
@@ -4635,13 +4655,15 @@ function soundsOnBlob(p){
 }
 
 // ---- editor ----
-const sndNotes=()=>sounds.mel[curMel];
+const sndNotes=()=>sounds.mel[curMel][curLane];
 function sndNoteName(n){ const k=noteOf(n.freq); return k==="rest"?"Rest":k==="custom"?"":noteLabel(+k); }
 function sndEventName(e){ return e<3?profName(e):SND_EVENTS[e]; }
 function sndRender(){
   if(!sounds) return;
   [...$("#sndTabs").children].forEach((t,m)=>{ t.classList.toggle("active",m===curMel);
-    t.textContent=soundName(m)+(sounds.mel[m].length?" ("+sounds.mel[m].length+")":""); });
+    const n=sounds.mel[m].reduce((a,l)=>a+l.length,0); t.textContent=soundName(m)+(n?" ("+n+")":""); });
+  [...$("#sndLanes").children].forEach((b,v)=>{ const n=sounds.mel[curMel][v].length; b.textContent=SND_LANE_ABBR[v]+(n?" "+n:""); b.classList.toggle("primary",v===curLane);
+    const lost=soundsVer===1&&v>0; b.style.opacity=lost?"0.55":""; b.title=SND_LANE_NAMES[v]+" (side "+SND_SIDES[v]+")"+(lost?": not saved, this firmware stores one voice":""); });
   const nameEl=$("#sndName"); if(document.activeElement!==nameEl) nameEl.value=soundNames[curMel]||"";
   const bpmEl=$("#prBpm"); if(document.activeElement!==bpmEl) bpmEl.value=bpmOf(curMel);
   nameEl.placeholder="Melody "+(curMel+1);
@@ -4685,7 +4707,6 @@ function sndTotals(){
   cnt.style.color=prob?"var(--warn)":"";
   $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
   for(const id of ["sndSave","sndEvSave"]) $("#"+id).disabled=!!prob;
-  $("#sndPlayPuck").disabled=!st.length||over;
   sndLiveUi();
   prRefresh();
 }
@@ -4732,20 +4753,24 @@ function sndPreviewStop(){
 }
 function sndPreview(){
   if(sndPrevOsc.length){ sndPreviewStop(); return; }
-  const st=sndNotes(); if(!st.length) return;
+  const lanes=sndPlayLanes().map(v=>sounds.mel[curMel][v]).filter(l=>l.length); if(!lanes.length) return;
   sndLiveHalt(true);
   try{
     sndCtx=sndCtx||new (window.AudioContext||window.webkitAudioContext)();
     sndCtx.resume();
-    const g=sndCtx.createGain(); g.gain.value=0.12; g.connect(sndCtx.destination);
-    let t=sndCtx.currentTime+0.05;
-    for(const n of st){
-      const d=n.ms/1000;
-      if(n.freq){ const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=n.freq; o.connect(g); o.start(t); o.stop(t+d); sndPrevOsc.push(o); }
-      t+=d;
+    const g=sndCtx.createGain(); g.gain.value=0.12/Math.sqrt(lanes.length); g.connect(sndCtx.destination);
+    const t0=sndCtx.currentTime+0.05; let tEnd=t0;
+    for(const st of lanes){ // one oscillator per note, every voice from the same start
+      let t=t0;
+      for(const n of st){
+        const d=n.ms/1000;
+        if(n.freq){ const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=n.freq; o.connect(g); o.start(t); o.stop(t+d); sndPrevOsc.push(o); }
+        t+=d;
+      }
+      tEnd=Math.max(tEnd,t);
     }
     $("#sndPrev").textContent="Stop preview"; sndPrevT0=performance.now()+50; prAnim();
-    sndPrevTimer=setTimeout(sndPreviewStop,(t-sndCtx.currentTime)*1000+100);
+    sndPrevTimer=setTimeout(sndPreviewStop,(tEnd-sndCtx.currentTime)*1000+100);
   }catch(e){ sndMsg("preview failed: "+e.message); }
 }
 // moves every note of the melody by whole octaves (note names stay exact); rests stay; refuses to leave 1..SND_FREQ_MAX
@@ -4859,8 +4884,8 @@ function midiImport(){
   if(!midiData||!sounds) return;
   const {m,name}=midiData, line=midiLine(m,m.tracks[+$("#midiTrack").value]);
   if(!line.notes.length){ $("#midiNote").textContent="This track has no playable notes."; return; }
-  if(sndNotes().length && !confirm("Replace the notes of "+soundName(curMel)+" with this track?")) return;
-  sounds.mel[curMel]=line.notes;
+  if(sndNotes().length && !confirm("Replace the notes of "+soundName(curMel)+" ("+SND_LANE_NAMES[curLane]+") with this track?")) return;
+  sounds.mel[curMel][curLane]=line.notes;
   if(!soundNames[curMel]) soundSetName(curMel,name.slice(0,24));
   const t0=m.tempos.length?m.tempos.reduce((a,b)=>b.t<a.t?b:a):null;
   bpmSet(curMel,t0?Math.max(20,Math.min(400,Math.round(60000000/t0.us))):120);
@@ -4876,14 +4901,19 @@ function midiImport(){
 // The melody is one mono sequence {freq,ms} (freq 0 = rest). The roll shows it as notes {s,e,freq} in ms, edits
 // them, and converts back after every edit (prEntries): sorted by start, gaps become rests, no overlaps.
 const PR_LO=24, PR_HI=107, PR_KW=46, PR_RH=22, PR_GRIP=8, PR_FOLD="openpuck.prFold";
-const pr={cv:null, x0:0, pxms:0.2, pTop:84, rowH:14, w:0, h:0, notes:[], selS:-1, range:null, drag:null, ph:-1, fitNow:true, fold:false, fl:null, lastLen:200, addedAt:0};
+const pr={cv:null, x0:0, pxms:0.2, pTop:84, rowH:14, w:0, h:0, notes:[], selS:-1, range:null, drag:null, ph:-1, fitNow:true, fold:false, fl:null, lastLen:200, addedAt:0, others:[]};
 const prRow=f=>Math.max(PR_LO,Math.min(PR_HI,Math.round(69+12*Math.log2(f/440))));
 const prBlack=r=>[1,3,6,8,10].includes(r%12);
-function prNotes(){
+function prNotesOf(list){
   const out=[]; let t=0;
-  for(const n of sndNotes()){ if(n.freq) out.push({s:t,e:t+n.ms,freq:n.freq}); t+=n.ms; }
+  for(const n of list){ if(n.freq) out.push({s:t,e:t+n.ms,freq:n.freq}); t+=n.ms; }
   return out;
 }
+const prNotes=()=>prNotesOf(sndNotes());
+// the other voices: drawn dimmed, never hit-tested
+const prOthers=()=>sounds.mel[curMel].map((l,v)=>v===curLane?[]:prNotesOf(l));
+// length of the longest voice
+const prSpan=()=>Math.max(0,...sounds.mel[curMel].map(l=>l.reduce((a,n)=>a+n.ms,0)));
 function prTotal(){ let t=0; for(const n of sndNotes()) t+=n.ms; return t; }
 // notes (already free of overlaps) -> melody entries; a gap under SND_MS_MIN is closed, long rests are split
 // trail = the trailing rest the melody already had before the edit (kept after the new last note); no notes = empty
@@ -4919,7 +4949,7 @@ const prXof=ms=>PR_KW+(ms-pr.x0)*pr.pxms, prMsOf=x=>pr.x0+(x-PR_KW)/pr.pxms;
 function prFoldList(){
   if(pr.drag) return pr.drag.rows||null; // frozen during a drag so the rows do not jump
   if(!pr.fold) return null;
-  const l=[...new Set(pr.notes.map(n=>prRow(n.freq)))].sort((a,b)=>b-a);
+  const l=[...new Set([...pr.notes,...pr.others.flat()].map(n=>prRow(n.freq)))].sort((a,b)=>b-a);
   return l.length?l:null;
 }
 const prYof=r=>pr.fl?(pr.fl.indexOf(r)<0?-9999:PR_RH+pr.fl.indexOf(r)*pr.rowH):PR_RH+(pr.pTop-r)*pr.rowH;
@@ -4934,9 +4964,9 @@ function prBpmChange(){
   if(!sounds) return;
   const old=bpmOf(curMel), nb=Math.max(20,Math.min(400,Math.round(+$("#prBpm").value)||old));
   $("#prBpm").value=nb; if(nb===old) return;
-  const st=sndNotes(), ms=st.map(n=>Math.round(n.ms*old/nb));
-  if(ms.some(v=>v<SND_MS_MIN||v>SND_MS_MAX)){ $("#prBpm").value=old; sndMsg("BPM not changed: an entry would leave "+SND_MS_MIN+"-"+SND_MS_MAX+" ms"); return; }
-  sndLiveHalt(true); st.forEach((n,i)=>{ n.ms=ms[i]; }); bpmSet(curMel,nb);
+  const lanes=sounds.mel[curMel], ms=lanes.map(l=>l.map(n=>Math.round(n.ms*old/nb)));
+  if(ms.some(l=>l.some(v=>v<SND_MS_MIN||v>SND_MS_MAX))){ $("#prBpm").value=old; sndMsg("BPM not changed: an entry would leave "+SND_MS_MIN+"-"+SND_MS_MAX+" ms"); return; }
+  sndLiveHalt(true); lanes.forEach((l,v)=>l.forEach((n,i)=>{ n.ms=ms[v][i]; })); bpmSet(curMel,nb);
   pr.range=null; pr.selS=-1; pr.fitNow=true; sndDirty(); sndRender();
 }
 function prVisRows(){ return Math.max(1,Math.floor((pr.h-PR_RH)/pr.rowH)); }
@@ -4945,11 +4975,11 @@ function prClampV(){
   pr.pTop=vis>=PR_HI-PR_LO+1?PR_HI:Math.min(PR_HI,Math.max(PR_LO+vis-1,pr.pTop));
 }
 function prFit(){
-  const rows=pr.notes.map(n=>prRow(n.freq));
+  const rows=[...pr.notes,...pr.others.flat()].map(n=>prRow(n.freq));
   const lo=Math.max(PR_LO,(rows.length?Math.min(...rows):60)-3), hi=Math.min(PR_HI,(rows.length?Math.max(...rows):72)+3);
   pr.rowH=Math.max(16,Math.min(24,Math.floor((pr.h-PR_RH)/(hi-lo+1))));
   pr.pTop=hi+Math.max(0,Math.floor((prVisRows()-(hi-lo+1))/2)); prClampV();
-  pr.pxms=Math.max(0.01,Math.min(3,(pr.w-PR_KW-12)/Math.max(prTotal(),1000))); pr.x0=0;
+  pr.pxms=Math.max(0.01,Math.min(3,(pr.w-PR_KW-12)/Math.max(prSpan(),1000))); pr.x0=0;
 }
 function prZoom(f,cx){
   const x=cx==null?(pr.w+PR_KW)/2:cx, ms=prMsOf(x);
@@ -4958,12 +4988,12 @@ function prZoom(f,cx){
 }
 function prSync(){
   const sc=$("#prScroll"), vis=(pr.w-PR_KW)/pr.pxms;
-  sc.max=Math.max(0,Math.round(Math.max(prTotal(),4000)+1000-vis)); pr.x0=Math.min(pr.x0,+sc.max); sc.value=Math.round(pr.x0);
+  sc.max=Math.max(0,Math.round(Math.max(prSpan(),4000)+1000-vis)); pr.x0=Math.min(pr.x0,+sc.max); sc.value=Math.round(pr.x0);
 }
 function prRefresh(){
   if(!pr.cv) return;
-  pr.notes=prNotes();
-  $("#prClearSel").disabled=!pr.range; $("#prCrop").disabled=!pr.range&&sndNotes().length<=SND_NOTES;
+  pr.notes=prNotes(); pr.others=prOthers();
+  $("#prClearSel").disabled=!pr.range; $("#prCrop").disabled=!pr.range&&!sounds.mel[curMel].some(l=>l.length>SND_NOTES);
   prSync(); prDraw();
 }
 function prDraw(){
@@ -5014,10 +5044,16 @@ function prDraw(){
     g.fillStyle=fg; g.globalAlpha=0.12; g.fillRect(x1,0,x2-x1,H); g.globalAlpha=1;
     g.fillStyle=fg; g.fillRect(x1,0,1,H); g.fillRect(x2-1,0,1,H);
     const c=prCropList();
-    if(c.out.length>=SND_NOTES){ const xm=Math.round(prXof(c.end)); if(xm>=PR_KW&&xm<=W){ g.fillStyle=acc; g.fillRect(xm-1,0,2,H); } }
+    if(c.capped){ const xm=Math.round(prXof(c.end)); if(xm>=PR_KW&&xm<=W){ g.fillStyle=acc; g.fillRect(xm-1,0,2,H); } }
   }
   // notes
   g.save(); g.beginPath(); g.rect(PR_KW,PR_RH,W-PR_KW,H-PR_RH); g.clip();
+  g.strokeStyle=acc; g.lineWidth=1; g.globalAlpha=0.45;
+  for(const o of pr.others) for(const n of o){
+    const x1=prXof(n.s), x2=prXof(n.e), y=prYof(prRow(n.freq));
+    if(x2>=PR_KW&&x1<=W) g.strokeRect(Math.round(x1)+0.5,y+1.5,Math.max(2,x2-x1-2),pr.rowH-3);
+  }
+  g.globalAlpha=1;
   for(const n of pr.notes){
     const x1=prXof(n.s), x2=prXof(n.e), y=prYof(prRow(n.freq)), sel=n.s===pr.selS;
     if(x2<PR_KW||x1>W) continue;
@@ -5056,27 +5092,33 @@ function sndBeep(freq,ms){
 function prKeyPlay(row){
   if(!sounds||lv.w||lv.timer) return;
   const freq=noteHz(row);
-  if(pl.cur) plSendTones([0,1],Math.min(0,sounds.gain),freq,300,0,0); else sndBeep(freq,300);
+  if(pl.cur) plSendTones(sndLaneSides(curLane),Math.min(0,sounds.gain),freq,300,0,0); else sndBeep(freq,300);
 }
-// What Crop to 32 keeps: from the selection start (else the melody start) up to the selection end, at most
-// SND_NOTES entries; pieces under SND_MS_MIN are dropped. end = where the last kept entry ends.
+// What Crop to 32 keeps, for all voices: from the selection start (else the melody start) up to the selection end,
+// cut where the first voice would pass SND_NOTES entries; pieces under SND_MS_MIN are dropped.
+// end = where the kept range ends (finite when a voice limited it).
 function prCropList(){
-  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, out=[]; let t=0, end=a;
-  for(const n of sndNotes()){
-    if(out.length>=SND_NOTES) break;
-    const lo=Math.max(t,a), hi=Math.min(t+n.ms,b);
-    if(hi-lo>=SND_MS_MIN){ out.push({freq:n.freq,ms:hi-lo}); end=hi; }
-    t+=n.ms;
-  }
-  return {out,end};
+  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, mel=sounds.mel[curMel];
+  const cut=(lane,lim)=>{
+    const out=[], hi=[]; let t=0;
+    for(const n of lane){
+      const lo=Math.max(t,a), h=Math.min(t+n.ms,lim);
+      if(h-lo>=SND_MS_MIN){ out.push({freq:n.freq,ms:h-lo}); hi.push(h); }
+      t+=n.ms;
+    }
+    return {out,hi};
+  };
+  let lim=b, capped=false;
+  for(const lane of mel){ const c=cut(lane,b); if(c.out.length>SND_NOTES){ lim=Math.min(lim,c.hi[SND_NOTES-1]); capped=true; } }
+  return {lanes:mel.map(l=>cut(l,lim).out.slice(0,SND_NOTES)),end:lim,capped};
 }
 function prCrop(){
   if(!sounds) return;
   sndLiveHalt(true);
-  const {out}=prCropList(), st=sndNotes(); let total=0; for(const n of out) total+=n.ms;
-  st.length=0; st.push(...out);
+  const {lanes}=prCropList(); let n=0, total=0;
+  lanes.forEach((out,v)=>{ n=Math.max(n,out.length); total=Math.max(total,out.reduce((a,x)=>a+x.ms,0)); const st=sounds.mel[curMel][v]; st.length=0; st.push(...out); });
   pr.range=null; pr.selS=-1; pr.fitNow=true; sndDirty(); sndRender();
-  sndMsg("Kept "+out.length+" entries ("+(total/1000).toFixed(2)+" s)");
+  sndMsg("Kept "+n+" entries ("+(total/1000).toFixed(2)+" s)");
 }
 function prInit(){
   const cv=pr.cv=$("#prCanvas");
@@ -5184,11 +5226,12 @@ function prAnim(){
   if(ph!==pr.ph||ph>=0){ pr.ph=ph; prDraw(); }
   if(ph>=0) requestAnimationFrame(prAnim);
 }
-// live playback on the controller (WebHID): every note is a 0x83 tone on side 0 and 1 (the two trackpads), like
-// the puck firmware does; a rest is an off tone. Timed from a Worker so a background tab keeps time.
+// live playback on the controller (WebHID): every voice plays its notes as 0x83 tones on its own side
+// (SND_SIDES: 0 and 1 trackpads, 3 and 4 grips); a rest or the end of a voice is an off tone on that side only.
+// Timed from a Worker so a background tab keeps time.
 const lv={w:null, timer:0, url:"", t0:0, base:0, evs:[], next:0, gain:0};
 function sndLiveUi(){
-  const has=!!(sounds&&pl.cur&&sndNotes().length);
+  const has=!!(sounds&&pl.cur&&sndPlayLanes().some(v=>sounds.mel[curMel][v].length));
   $("#sndLive").disabled=!has||!!(lv.w||lv.timer);
   $("#sndLiveStop").disabled=!(lv.w||lv.timer);
 }
@@ -5197,30 +5240,35 @@ function sndLiveHalt(silence){
   if(lv.w){ lv.w.terminate(); lv.w=null; }
   if(lv.timer){ clearInterval(lv.timer); lv.timer=0; }
   if(lv.url){ URL.revokeObjectURL(lv.url); lv.url=""; }
-  if(silence&&running&&pl.cur) plOff([0,1]);
+  if(silence&&running&&pl.cur) plOff(SND_SIDES);
   pr.ph=-1; prDraw(); sndLiveUi();
 }
 function sndLiveTick(){
-  const pos=performance.now()-lv.t0;
-  let last=-1;
-  while(lv.next<lv.evs.length && lv.evs[lv.next].t<=pos) last=lv.next++;
-  if(last<0) return;
-  const ev=lv.evs[last], gain=lv.gain;
-  // only the current event is sent; events the tick missed are skipped
-  if(ev.end){ plOff([0,1]); sndLiveHalt(false); return; }
-  if(!ev.freq) plOff([0,1]);
-  else{
-    const rem=pos-ev.t<15?ev.ms:Math.max(1,Math.round(ev.t+ev.ms-pos));
-    plSendTones([0,1],gain,Math.max(1,Math.min(12000,ev.freq)),Math.min(32767,rem),0,0);
+  const pos=performance.now()-lv.t0, due=[];
+  while(lv.next<lv.evs.length && lv.evs[lv.next].t<=pos) due.push(lv.evs[lv.next++]);
+  if(!due.length) return;
+  // per side only the current event is sent; events the tick missed are skipped
+  const cur={}; for(const ev of due) cur[ev.lane]=ev;
+  for(const lane in cur){
+    const ev=cur[lane];
+    if(ev.end||!ev.freq) plOff(ev.sides);
+    else{
+      const rem=pos-ev.t<15?ev.ms:Math.max(1,Math.round(ev.t+ev.ms-pos));
+      plSendTones(ev.sides,lv.gain,Math.max(1,Math.min(12000,ev.freq)),Math.min(32767,rem),0,0);
+    }
   }
+  if(lv.next>=lv.evs.length) sndLiveHalt(false);
 }
 function sndLiveStart(){
   if(!sounds||!pl.cur) return;
-  const st=sndNotes(); if(!st.length) return;
-  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, evs=[]; let t=0;
-  for(const n of st){ const lo=Math.max(t,a), hi=Math.min(t+n.ms,b); if(hi>lo) evs.push({t:lo-a,freq:n.freq,ms:hi-lo}); t+=n.ms; }
+  const a=pr.range?pr.range.a:0, b=pr.range?pr.range.b:Infinity, evs=[];
+  sndPlayLanes().forEach(v=>{
+    const mine=[], sides=sndLaneSides(v); let t=0;
+    for(const n of sounds.mel[curMel][v]){ const lo=Math.max(t,a), hi=Math.min(t+n.ms,b); if(hi>lo) mine.push({t:lo-a,lane:v,sides,freq:n.freq,ms:hi-lo}); t+=n.ms; }
+    if(mine.length){ const e=mine[mine.length-1]; mine.push({t:e.t+e.ms,lane:v,sides,end:true}); evs.push(...mine); }
+  });
   if(!evs.length) return;
-  const e=evs[evs.length-1]; evs.push({t:e.t+e.ms,end:true});
+  evs.sort((x,y)=>x.t-y.t);
   sndLiveHalt(false); sndPreviewStop();
   lv.evs=evs; lv.next=0; lv.base=a; lv.t0=performance.now()+30; lv.gain=Math.min(0,sounds.gain);
   try{
@@ -5234,6 +5282,11 @@ function sndLiveStart(){
   for(let m=0;m<SND_MELODIES;m++){ const t=document.createElement("span"); t.className="slot-tab";
     t.onclick=()=>{ sndPreviewStop(); sndLiveHalt(true); curMel=m; pr.range=null; pr.selS=-1; pr.fitNow=true; if(sounds) sndRender(); }; tabs.appendChild(t); }
   prInit();
+  SND_LANE_ABBR.forEach((a,v)=>{
+    const b=document.createElement("button"); b.textContent=a; b.title=SND_LANE_NAMES[v]+" (side "+SND_SIDES[v]+")";
+    b.onclick=()=>{ if(curLane===v) return; curLane=v; pr.selS=-1; if(sounds) sndRender(); };
+    $("#sndLanes").appendChild(b);
+  });
   for(const [v,n] of SND_CONFIRM){ const o=document.createElement("option"); o.value=v; o.textContent=n; $("#sndConfirm").appendChild(o); }
   $("#sndConfirm").onchange=()=>{ if(!sounds) return; sounds.confirm=+$("#sndConfirm").value; soundsCommit(); };
   $("#sndVol").oninput=()=>{ $("#sndVolV").textContent=fmtSlider("sndVol",$("#sndVol").value); };
@@ -5245,7 +5298,6 @@ function sndLiveStart(){
   $("#sndOctDown").onclick=()=>sndOctave(-1);
   $("#sndClear").onclick=()=>{ if(!sounds) return; sndLiveHalt(true); sndNotes().length=0; pr.range=null; pr.selS=-1; sndDirty(); sndRender(); };
   $("#sndPrev").onclick=sndPreview;
-  $("#sndPlayPuck").onclick=()=>{ const st=sndNotes(); if(st.length>SND_NOTES){ sndMsg("too long to play on the puck: "+SND_NOTES+" entries at most"); return; } soundsPlay(0x31,[st.length,...st.flatMap(n=>[n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8])]); };
   $("#sndPlayStored").onclick=()=>soundsPlay(0x30,[curMel]);
   for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };
   $("#midiBtn").onclick=()=>$("#midiFile").click();

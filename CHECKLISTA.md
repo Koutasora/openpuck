@@ -89,7 +89,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Przeciągnięcie po linijce czasu zaznacza zakres; Clear selection czyści; Crop to 32 zostawia zakres od jego początku, najwyżej 32 wpisy (cienka kreska na rolce pokazuje, gdzie kończy się 32. wpis), bez zaznaczenia pierwsze 32 wpisy
 - [ ] Zoom (przyciski i Ctrl + kółko), przewijanie (kółko, Shift + kółko, suwak pod rolką), Fit
 - [ ] Przeciągnięcie pliku .mid na piano roll otwiera wybór ścieżki; Import wstawia wszystkie wpisy (także ponad 32), bez przesunięcia o oktawy
-- [ ] Melodia ponad 32 wpisów: licznik na żółto z podpowiedzią, Save to device i Play on puck nieaktywne; po Crop wracają
+- [ ] Melodia ponad 32 wpisów: licznik na żółto z podpowiedzią, Save to device nieaktywny; po Crop wraca
 - [ ] Connect controller (WebHID): OpenPuck w trybie Steam, puck Valve i pad na kablu; interfejs z padem wybierany sam; Play on controller gra melodię na gładzikach, Stop ją kończy, czerwona kreska idzie za dźwiękiem
 - [ ] Play on controller z zaznaczonym zakresem gra tylko zakres; Disconnect i zamknięcie karty wyciszają pad
 - [ ] Status -> Debug: Haptic test panel gra ton na każdym side (0 lewy gładzik, 1 prawy, 2 oba, 3 lewy uchwyt, 4 prawy uchwyt), Stop all wycisza
@@ -99,3 +99,14 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Klik w klawisz po lewej gra nutę 300 ms (na padzie po połączeniu, inaczej w przeglądarce), nie podczas odtwarzania
 - [ ] Piano roll: pole BPM (20-400) ustawia się z tempa importowanego pliku MIDI (bez tempa 120), zmiana BPM rozciąga całą melodię proporcjonalnie, a gdy któraś nuta wyszłaby poza 30-5000 ms, zmiana jest odrzucona; BPM jest pamiętany osobno dla każdej melodii tylko w przeglądarce
 - [ ] Przyciąganie 1/4, 1/8, 1/16 (domyślnie), 1/32 wg BPM; linie taktu i uderzeń na rolce, numery taktów na linijce przy przyciąganiu do uderzeń
+
+### 10. Sounds: cztery głosy (etap 03, wymaga firmware z protokołem statusu 27)
+- [ ] Nad piano rollem cztery przyciski LT / RT / LG / RG (lewy gładzik, prawy gładzik, lewy uchwyt, prawy uchwyt) z liczbą wpisów; aktywny w kolorze akcentu, nuty pozostałych torów są przyciemnione, obrysowane i nie da się ich chwycić
+- [ ] Edycja, tabela, licznik "N / 32", import MIDI (zatwierdzenie zastępuje tylko aktywny tor), Octave up/down i Clear dotyczą aktywnego toru; Fold pokazuje wiersze wszystkich torów
+- [ ] Crop to 32 tnie wszystkie tory tym samym zakresem, kończy tam, gdzie pierwszy tor przekroczyłby 32 wpisy (kreska na rolce)
+- [ ] Play on controller gra wszystkie niepuste tory naraz, każdy na swoim aktuatorze (LT side 0, RT side 1, LG side 3, RG side 4); pauza w torze wycisza tylko jego aktuator, Stop wycisza wszystkie cztery
+- [ ] Klik w klawisz po lewej gra nutę na aktuatorze aktywnego toru; Preview in browser miksuje wszystkie tory
+- [ ] Save to device zapisuje 4 głosy i po ponownym wczytaniu strony wszystkie tory są na miejscu; Play saved melody on puck gra je na pucku; przycisku Play on puck już nie ma
+- [ ] Puck ze starszym firmware (protokół 25-26): ostrzeżenie "This firmware stores one voice (Left trackpad)", zapis tylko toru LT, melodia gra na obu gładzikach; Play on controller gra tor LT na obu gładzikach (jak puck), przyciski RT / LG / RG są przyciemnione z podpowiedzią "not saved"
+- [ ] Przywrócenie kopii z czterema głosami na puck ze starszym firmware: komunikat, że głosy RT, LG i RG nie zostały przywrócone
+- [ ] Kopia zapasowa (Export / Import) z pucka na pucek z innym firmware (v1 i v2) przenosi melodie bez błędu

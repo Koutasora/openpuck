@@ -131,6 +131,7 @@ static bool boardCommand(uint8_t op)
 //                 to 25 bytes, the last one = detected host]
 //                [v25: commands 0x2D..0x31 = melodies (sounds.h)]
 //                [v26: chord bytes may be 0xFE = None (the combination does nothing)]
+//                [v27: sounds blob version 2, 4 voices per melody (sounds.h)]
 #define WB_PAYLEN 196
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
@@ -158,7 +159,9 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (26 = back4 chord bytes (p[25..27], p[182..185]) may be 0xFE = None (CHORD_NONE): the panel offers it
+	// (27 = sounds blob v2, 4 voices per melody (sounds.h): the panel MUST see >=27 before writing a v2 blob,
+	// older firmware rejects it;
+	// 26 = back4 chord bytes (p[25..27], p[182..185]) may be 0xFE = None (CHORD_NONE): the panel offers it
 	// only from 26, older firmware would reject the write;
 	// 25 = +melody ops 0x2D..0x31 (sounds.h) -- the panel MUST see >=25 before sending them, older firmware
 	// drops them silently;
@@ -188,7 +191,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 26;
+	p[2] = 27;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -1351,10 +1354,10 @@ void webusbPoll()
 			} else if (op == 0x2B) {
 				webusbSendBindsAck(op,
 						   kbmFwSetHostSetting(buf[1]));
-				// ---- melodies (sounds.h), protocol v25 ----
+				// ---- melodies (sounds.h), protocol v25 (blob v2 with 4 voices: v27) ----
 				// 0x2D <idx>: read sounds blob chunk -> 0xB5. 0x2E <idx> <len> <data>: stage chunk (idx 0 restarts).
 				// 0x2F: validate + apply + save. 0x30 <n>: play stored melody n. 0x31 <count> <notes>: play a
-				// melody that is not stored. 0x2E..0x31 are acked with 0xB6.
+				// melody that is not stored (one voice, played on both trackpads). 0x2E..0x31 are acked with 0xB6.
 			} else if (op == 0x2D) {
 				webusbSendSoundsChunk(buf[1]);
 			} else if (op == 0x2E) {
