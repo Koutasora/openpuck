@@ -43,6 +43,8 @@ struct KbmDiag {
 	uint8_t lastMods; // last keyboard modifiers sent
 	uint8_t lastKeys[6]; // last keyboard usages sent
 	uint8_t flags; // bit0 keyboard in descriptor, bit1 failed to add
+	uint32_t reenums; // re-enumerations this module asked for
+	uint32_t saves; // host.bin flash writes
 };
 void kbmFwDiag(KbmDiag *out);
 // usb_tx counters of the wake mouse and of the keyboard (since it took the interface)

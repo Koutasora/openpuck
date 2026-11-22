@@ -472,7 +472,7 @@ Messages:
   - `0xAB 5 <status> <nextOff u32 LE>`: firmware-update ack
   - `0xB0 25 <payload>`: live state (§10.2)
   - `0xB2 <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
-  - `0xB4 111 <payload>`: diagnostics (§10.4)
+  - `0xB4 119 <payload>`: diagnostics (§10.4)
   - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` / `0x2B` (`ok` 1 = done); for `0x2B` the last byte
     is the host byte of §10.3 instead of the profile
 
@@ -701,7 +701,7 @@ wheel repeating while held; `BL` lists them as `K06:03` / `MoU+`; `HOST [A|P|C]`
 
 ### 10.4 Diagnostics frame `0xB4`
 
-Request `0x2C` (no argument). Reply: `0xB4`, length byte `111`, then 111 payload bytes. All counters are `u32` little
+Request `0x2C` (no argument). Reply: `0xB4`, length byte `119`, then 119 payload bytes. All counters are `u32` little
 endian, counted since boot. Use it to find where a back-paddle action is lost: raw buttons seen, binds output,
 `allowed`, queued reports, USB endpoint results.
 
@@ -737,6 +737,8 @@ endian, counted since boot. Use it to find where a back-paddle action is lost: r
 | 83 | 20 | keyboard channel, same fields, counted since the keyboard took the interface |
 | 103 | 4 | every raw button bit ever seen (OR) |
 | 107 | 4 | every button bit ever seen after binds (OR) |
+| 111 | 4 | re-enumerations requested by the keyboard logic |
+| 115 | 4 | `host.bin` flash writes |
 
 `dropped` = oldest report discarded because the ring was full, `notReady` = drain passes that found a report waiting
 and the endpoint not ready, `sendFail` = `sendReport` refused on a ready endpoint. Button bit numbers are the `TB_*`

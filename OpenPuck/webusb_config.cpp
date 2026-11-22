@@ -862,7 +862,7 @@ static void putTx(uint8_t *&q, const UsbTxStats &s)
 }
 static void webusbSendDiag()
 {
-	static uint8_t f[2 + 111];
+	static uint8_t f[2 + 119];
 	if (!usb_web.connected() || tud_vendor_write_available() < sizeof f)
 		return;
 	KbmDiag kd;
@@ -871,7 +871,7 @@ static void webusbSendDiag()
 	kbmFwTxStats(&wake, &kbd);
 	uint8_t *q = f;
 	*q++ = 0xB4;
-	*q++ = 111;
+	*q++ = 119;
 	*q++ = 1; // layout version
 	*q++ = g_usbMode;
 	*q++ = g_etype;
@@ -907,6 +907,8 @@ static void webusbSendDiag()
 	putTx(q, kbd);
 	put32(q, g_bindsDiag.rawSeen);
 	put32(q, g_bindsDiag.outSeen);
+	put32(q, kd.reenums);
+	put32(q, kd.saves);
 	usb_web.write(f, (uint16_t)(q - f));
 	usb_web.flush();
 }

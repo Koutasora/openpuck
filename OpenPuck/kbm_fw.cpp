@@ -39,6 +39,8 @@ static hid_keyboard_report_t s_sentKbd;
 static uint8_t s_sentButtons;
 static int8_t s_wheelPending;
 
+static KbmDiag s_diag;
+
 static void save()
 {
 	const uint8_t set = hostSetting(), det = hostDetectedKind();
@@ -49,6 +51,7 @@ static void save()
 		f.write(b, sizeof b);
 		f.close();
 	}
+	s_diag.saves++;
 	s_saved[0] = set;
 	s_saved[1] = det;
 }
@@ -160,8 +163,6 @@ static void merge(hid_keyboard_report_t &kb, uint8_t &buttons)
 	}
 }
 
-static KbmDiag s_diag;
-
 void kbmFwDiag(KbmDiag *out)
 {
 	*out = s_diag;
@@ -179,6 +180,12 @@ void kbmFwTxStats(UsbTxStats *wake, UsbTxStats *kbd)
 
 static void sendState()
 {
+	// reports only change on a button edge: once per millisecond is more than the USB frame rate needs
+	static uint32_t lastMs = ~0u;
+	const uint32_t ms = millis();
+	if (ms == lastMs)
+		return;
+	lastMs = ms;
 	const bool allowed = modeHasKbm(g_usbMode) && hostIsPc();
 	if (allowed)
 		s_diag.allowedTrue++;
@@ -233,6 +240,7 @@ void kbmFwTask()
 		s_diffSinceMs = now;
 	} else if ((uint32_t)(now - s_diffSinceMs) >= KBD_SETTLE_MS) {
 		s_diff = false;
+		s_diag.reenums++;
 		usbReenumerate(g_usbMountCount);
 	}
 }
