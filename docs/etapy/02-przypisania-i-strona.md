@@ -111,6 +111,7 @@ Test i wydanie
 - Copy w karcie Version kopiuje build firmware (wersja albo hash, zależnie od tego, co wpisał `gen_version.sh`) i protokół statusu.
 - Test 2026-11-22 (główny PC): Play on puck gra melodię z aktuatora; raport 0x83 HAPTIC_LFO_TONE (side 0 i 1, bez LFO) jest słyszalny.
 - Limit melodii zostaje 32 pozycje (nuty i pauzy) po 30-5000 ms, 8 melodii: użytkownik nie potrzebuje dłuższych utworów.
+- Import melodii tylko z MIDI (bez RTTTL, MusicXML, audio): użytkownikowi wystarcza.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
