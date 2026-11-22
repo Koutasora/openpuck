@@ -124,3 +124,18 @@ Punkty §9-11 bez osobnego testu ręcznego odhaczone na podstawie testów automa
 - [x] Zmiana trybu skrótu (np. back4 + X na PS5) od razu przenosi jego melodię na rodzinę tego trybu (PlayStation, Xbox, Switch, other); gdy kilka skrótów ma tę samą rodzinę, pod listą jest "shared with ..."; skrót ustawiony na None ma "-" zamiast melodii
 - [x] Save to device pod tabelą zapisuje przypisanie melodii (ten sam zapis co z karty Sounds); przy błędnej melodii przycisk jest nieaktywny i podaje powód
 - [x] Stałe skróty (Power and slots, Lizard) są pod tabelą jako tekst; bez pucka (strona startowa) karta pokazuje sam arkusz jak dawniej; Save as PNG zawiera kolumnę melodii, gdy puck jest połączony
+
+### 12. Nacisk analogowy w trybach PS3 i OG Xbox (etap 04, wymaga firmware z protokołem statusu 28)
+Do sprawdzenia ręcznie na głównym PC (pad + puck z nowym firmware).
+- [ ] Pomiar spustu: Mapping -> Live view, wiersz "Triggers L / R": zapisz wartość procentową przy pełnym wciśnięciu spustu i w chwili, gdy przy "Triggers L / R" pojawia się "(L click)" / "(R click)" (osobno LT i RT)
+- [ ] Mapping -> Mapping, karta DS4: wiersz "PS3 mode: analog pressure" z przełącznikiem, wyborem spustu (Left / Right trigger) i przycisku (Square, Triangle, Circle, Cross, L1, R1, D-pad); karta Xbox: "OG Xbox mode: analog pressure" (A, B, X, Y, White, Black); domyślnie wyłączone
+- [ ] Puck ze starszym firmware (protokół poniżej 28): obu wierszy nie widać
+- [ ] PS3, nacisk włączony (spust LT, przycisk Square): lekki ruch spustu daje rosnący nacisk Square (np. w MGS2 celowanie bez strzału), pełne wciśnięcie daje strzał; fizyczny przycisk Square dalej daje pełny nacisk
+- [ ] PS3: bit cyfrowy Square włącza się już przy lekkim nacisku (próg 10 z 255), bez szumu przy spuście w spoczynku
+- [ ] PS3, nacisk włączony: ten spust nie daje L2/R2 (ani bitu, ani nacisku), drugi spust działa jak zawsze; tylny przycisk przypisany na L2/R2 dalej działa
+- [ ] PS3, nacisk wyłączony: spusty działają jak dawniej (L2/R2)
+- [ ] OG Xbox, nacisk włączony (np. RT -> A): spust daje płynny nacisk A (0-255), fizyczne A daje 255, ten spust nie daje LT/RT, tylny przycisk na LT/RT dalej działa
+- [ ] OG Xbox, nacisk wyłączony: spusty LT/RT jak dawniej (kliknięcie nadal daje 255; do decyzji po pomiarze, czy to zmienić)
+- [ ] Kliknięcie spustu w trybie z naciskiem nie wymusza 255 przed końcem ruchu
+- [ ] Ustawienia zostają po odłączeniu zasilania; stary `cfg.bin` (po wgraniu nowego firmware na puck ze starym ustawieniem) wczytuje się bez utraty trybu, przypisań i skrótów, nacisk wyłączony
+- [ ] Kopia zapasowa (Export) zawiera ustawienia nacisku, Import przywraca je na puck z protokołem 28; kopia z poprzedniej wersji (bez pól nacisku) nie zmienia ustawień nacisku
