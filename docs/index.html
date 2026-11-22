@@ -161,6 +161,16 @@
   .kprev{flex:1 1 100%;color:var(--mut);font-size:12px}
   .kprev b{color:var(--fg)}
   .bnote{flex:1 1 100%;margin:0}
+  #hostSel{flex:0 0 220px}
+  .sc-cols{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:0 24px}
+  @media(max-width:760px){.sc-cols{grid-template-columns:1fr}}
+  .sc-group{margin:0 0 14px}
+  .sc-group h3{font-size:13px;margin:0 0 2px}
+  .sc-group .sub2{color:var(--mut);font-size:12px;margin:0 0 4px}
+  .sc-row{display:grid;grid-template-columns:minmax(120px,210px) 1fr;gap:2px 14px;padding:6px 8px;border-top:1px solid #232a3a;outline-offset:-2px}
+  .sc-row:hover,.sc-row:focus,.sc-row.sel{background:#0e1017;outline:1px solid var(--acc2)}
+  .sc-row .k{font:600 13px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+  @media(max-width:520px){.sc-row{grid-template-columns:1fr}}
   .evlog{font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:8px;margin:8px 0 0;min-height:90px;white-space:pre-wrap}
   .stat .v.sm{font-size:13px;word-break:break-word}
   .foot{color:var(--mut);font-size:12px;margin:18px 0 0}
@@ -188,6 +198,21 @@
 
   <!-- holds the clone section while no OpenPuck is connected (the Backup & clone card is hidden then) -->
   <div class="card" id="cloneHome"><h2>Clone pairings from an official puck</h2></div>
+
+  <div class="card" id="shortcutsCard">
+    <h2>Shortcuts</h2>
+    <p class="note" id="scNote" style="margin-top:0"></p>
+    <div class="sc-cols">
+      <div id="scList"></div>
+      <div class="figs" id="scFigs" style="grid-template-columns:1fr;align-content:start"></div>
+    </div>
+    <div class="row" style="margin:10px 0 0">
+      <label>Sheet background</label>
+      <select id="scTheme" style="flex:0 0 200px"><option value="light">Light (for printing)</option><option value="dark">Dark</option></select>
+      <button id="scSave" class="primary">Save as PNG</button>
+      <span class="note" id="scMsg" style="margin:0"></span>
+    </div>
+  </div>
 
   <div id="panel" class="hide">
     <div class="slot-tabs" id="mainTabs">
@@ -1697,6 +1722,7 @@ function applyBlob(p){
   $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
   bindsOnBlob(p);
+  if(scReady) scUpdate();
 }
 function fmtSlider(id,v){ return id==="hapBlockS" ? v+" s" : ""+v; }
 function setSlider(id,v){ const el=$("#"+id); if(document.activeElement!==el){ el.value=v; } $("#"+id+"V").textContent=fmtSlider(id,el.value); }
@@ -1974,6 +2000,7 @@ function cloneLoad(){
   catch(e){ return []; }
 }
 function cloneRender(){
+  if(scReady) scUpdate();
   // Inside the Backup & clone card while an OpenPuck is connected; standalone above the (hidden) panel otherwise,
   // so step 1 still works with only the official puck plugged in.
   const home=dev ? $("#backupCard") : $("#cloneHome"), sec=$("#cloneSec");
@@ -3663,7 +3690,7 @@ function hostInfoRender(){
   const row=$("#hostRow"); row.classList.toggle("hide",!hostCap);
   if(hostCap){
     const sel=$("#hostSel"); if(document.activeElement!==sel) sel.value=(live.host>>2)&3;
-    $("#hostNote").textContent="Now: "+hostText(live.host)+" ("+(HOST_WHY[(live.host>>4)&15]||"nothing seen yet")+"). Keyboard and mouse actions work on a PC host only.";
+    $("#hostNote").textContent="Keyboard and mouse actions work on a PC host only. Detected from: "+(HOST_WHY[(live.host>>4)&15]||"nothing seen yet")+".";
   }
 }
 async function hostSet(v){
@@ -3776,6 +3803,156 @@ function bindsOnBlob(p){
   bindsInited=true;
   figLabels(); macroRender();
   liveLoop();
+})();
+
+// ===================== Shortcuts card =====================
+// Everything the firmware does on a chord. Mode chords come from the status blob (defaults mirror config.cpp).
+var scReady=false;
+const SC_SHORT=["Steam","Xbox 360","Switch HORI","Lizard","Switch Pro","PS5","DS4 gyro","PS5 clean","DS4 clean","PS3","Xbox OG","DirectInput","SInput","PS5 console"];
+const SC_BACK4=0x60180; // L4 R4 L5 R5
+let scKey="", scFigs=[];
+function scChord(){
+  const p=dev&&lastP;
+  return {live:!!p,
+    btn:(p&&p.length>25)?[p[23],p[24],p[25]]:[3,1,4],
+    dpad:(p&&p[0]>=18&&p.length>183)?[p[180],p[181],p[182],p[183]]:[9,8,7,2]};
+}
+// rows: k = what to press, tb = highlighted buttons, x = result
+function scGroups(c){
+  const M=m=>MODE_NAMES[m]||("mode "+m), ro=(k,tb,x)=>({k,tb,x});
+  return [
+    {t:"Switch USB mode",sub:"Hold all four back paddles (L4 R4 L5 R5), then press",rows:[
+      ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode."),
+      ro("back4 + B",SC_BACK4|0x2,M(c.btn[0])),ro("back4 + X",SC_BACK4|0x4,M(c.btn[1])),ro("back4 + Y",SC_BACK4|0x8,M(c.btn[2])),
+      ro("back4 + D-pad left",SC_BACK4|0x1000,M(c.dpad[0])),ro("back4 + D-pad up",SC_BACK4|0x2000,M(c.dpad[1])),
+      ro("back4 + D-pad right",SC_BACK4|0x800,M(c.dpad[2])),ro("back4 + D-pad down",SC_BACK4|0x400,M(c.dpad[3]))]},
+    {t:"Profiles",sub:"Hold all four back paddles, then press. The pad buzzes N times for profile N. Emulated modes only.",rows:[
+      ro("back4 + RB",SC_BACK4|0x200,"Next profile"),ro("back4 + LB",SC_BACK4|0x80000,"Previous profile")]},
+    {t:"Power and slots",rows:[
+      ro("Steam + Y, hold 2 s",0x10000|0x8,"Turn the controller off. Works in every mode."),
+      ro("RB + A + Steam, controller off",0x200|0x1|0x10000,"Turn on and connect as slot 1"),
+      ro("LB + A + Steam, controller off",0x80000|0x1|0x10000,"Turn on and connect as slot 2")]},
+    {t:"Lizard (always) mode",sub:"Defaults, editable in Lizard / desktop mapping",rows:[
+      ro("Steam + L5",0x10000|0x40000,"Volume down"),ro("Steam + R5",0x10000|0x100,"Volume up"),
+      ro("Steam + L4",0x10000|0x20000,"Ctrl+Alt+Delete"),ro("Steam + X",0x10000|0x4,"Win+Ctrl+O (on-screen keyboard)"),
+      ro("LB, RB",0x80000|0x200,"Held as Ctrl and Alt, so RB + View is Alt+Tab")]}];
+}
+function scHl(tb){ for(const f of scFigs) figHighlight(f,0,tb); }
+function scUpdate(){
+  const card=$("#shortcutsCard"), c=scChord();
+  if(dev){ const z=$("#lizardCard"); if(z && z.previousElementSibling!==card) z.parentNode.insertBefore(card,z); }
+  else { const h=$("#cloneHome"); if(h.nextElementSibling!==card) h.after(card); }
+  const key=JSON.stringify(c);
+  if(key===scKey) return;
+  scKey=key;
+  $("#scNote").textContent=c.live?"Mode chords are this puck's current assignments (set in Back4 chords). The rest is fixed in the firmware.":
+    "Showing the firmware defaults for the mode chords. Connect a puck to see its own assignments. The rest is fixed in the firmware.";
+  const list=$("#scList"); list.textContent="";
+  for(const g of scGroups(c)){
+    const d=document.createElement("div"); d.className="sc-group";
+    const h=document.createElement("h3"); h.textContent=g.t; d.appendChild(h);
+    if(g.sub){ const sp=document.createElement("p"); sp.className="sub2"; sp.textContent=g.sub; d.appendChild(sp); }
+    for(const r of g.rows){
+      const row=document.createElement("div"); row.className="sc-row"; row.tabIndex=0;
+      const k=document.createElement("span"); k.className="k"; k.textContent=r.k;
+      const x=document.createElement("span"); x.textContent=r.x;
+      row.append(k,x);
+      const on=()=>scHl(r.tb), off=()=>scHl(0);
+      row.onmouseenter=on; row.onmouseleave=off; row.onfocus=on; row.onblur=off;
+      d.appendChild(row);
+    }
+    list.appendChild(d);
+  }
+}
+// ---- PNG sheet: pad drawing annotated with the mode chords, the other shortcuts as text ----
+const SC_SCALE=2;
+function scLoadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error("cannot load "+src)); i.src=src; }); }
+function scWrap(ctx,text,maxW){
+  const out=[]; let line="";
+  for(const w of text.split(" ")){ const t=line?line+" "+w:w; if(line && ctx.measureText(t).width>maxW){ out.push(line); line=w; } else line=t; }
+  if(line) out.push(line); return out;
+}
+function scPath(ctx,h,S,ox,oy){
+  ctx.beginPath();
+  if(h.s==="c") ctx.arc(ox+h.x*S,oy+h.y*S,h.r*S,0,Math.PI*2);
+  else if(h.s==="e") ctx.ellipse(ox+h.x*S,oy+h.y*S,h.rx*S,h.ry*S,0,0,Math.PI*2);
+  else if(ctx.roundRect) ctx.roundRect(ox+h.x*S,oy+h.y*S,h.w*S,h.h*S,(h.rx||4)*S);
+  else ctx.rect(ox+h.x*S,oy+h.y*S,h.w*S,h.h*S);
+}
+function scDraw(ctx,imgs,col,dark,c,W){
+  ctx.fillStyle=col.bg; ctx.fillRect(0,0,W,4000);
+  const font=(w,px,mono)=>(w+" "+px+"px "+(mono?"ui-monospace,Menlo,Consolas,monospace":"-apple-system,Segoe UI,Roboto,sans-serif"));
+  ctx.textBaseline="middle"; ctx.fillStyle=col.fg; ctx.textAlign="left";
+  ctx.font=font(700,30); ctx.fillText("OpenPuck shortcuts",40,44);
+  ctx.font=font(400,16); ctx.fillStyle=col.mut;
+  ctx.fillText(c.live?"Mode chords: this puck's assignments":"Mode chords: firmware defaults (connect a puck to see its own)",40,78);
+  const img=(im,x,y,w,h)=>{ ctx.filter=dark?"invert(.88)":"none"; ctx.drawImage(im,x,y,w,h); ctx.filter="none"; };
+  // front: drawing units (u,v) -> canvas (ox+u*S, oy+v*S)
+  const S=0.8, ox=140, oy=150;
+  img(imgs.front,ox,oy,960*S,660*S);
+  const hot=[0x1,0x2,0x4,0x8,0x2000,0x400,0x1000,0x800,0x80000,0x200];
+  ctx.lineWidth=2.5; ctx.strokeStyle=col.acc; ctx.fillStyle=col.acc;
+  for(const h of FIG.front.hs){ if(!hot.includes(h.tb)) continue;
+    scPath(ctx,h,S,ox,oy); ctx.globalAlpha=.3; ctx.fill(); ctx.globalAlpha=1; ctx.stroke(); }
+  const sh=m=>SC_SHORT[m]||("mode "+m);
+  const lab=(u,v,al,t)=>{ ctx.textAlign=al; ctx.font=font(700,15); ctx.lineJoin="round"; ctx.lineWidth=5; ctx.strokeStyle=col.bg; ctx.strokeText(t,ox+u*S,oy+v*S); ctx.fillStyle=col.fg; ctx.fillText(t,ox+u*S,oy+v*S); };
+  lab(790,105,"left","Y  "+sh(c.btn[2])); lab(842,158,"left","B  "+sh(c.btn[0]));
+  lab(662,158,"right","X  "+sh(c.btn[1])); lab(751,252,"center","A  Steam");
+  lab(142,112,"right","Up  "+sh(c.dpad[1])); lab(142,205,"right","Down  "+sh(c.dpad[3]));
+  lab(120,158,"right","Left  "+sh(c.dpad[0])); lab(280,158,"left","Right  "+sh(c.dpad[2]));
+  lab(146,27,"right","LB  previous profile"); lab(806,27,"left","RB  next profile");
+  ctx.textAlign="center"; ctx.font=font(400,16); ctx.fillStyle=col.mut;
+  ctx.fillText("Hold all four back paddles (L4 R4 L5 R5) and press the marked button",ox+480*S,oy+660*S+34);
+  // back
+  const S2=0.5, bx=40, by=oy+660*S+100;
+  ctx.textAlign="left"; ctx.font=font(700,18); ctx.fillStyle=col.fg; ctx.fillText("Back, the four paddles",bx,by-18);
+  img(imgs.back,bx,by,930*S2,710*S2);
+  ctx.strokeStyle=col.acc; ctx.fillStyle=col.acc;
+  BACK_POS.forEach((b,i)=>{ ctx.beginPath(); ctx.ellipse(bx+b.x*S2,by+b.y*S2,b.rx*S2,b.ry*S2,0,0,Math.PI*2);
+    ctx.globalAlpha=.35; ctx.fill(); ctx.globalAlpha=1; ctx.stroke();
+    ctx.font=font(700,15); ctx.fillStyle=col.fg; ctx.textAlign="center"; ctx.fillText(BACK_LABELS[i].split(" ")[0],bx+b.x*S2,by+b.y*S2); ctx.fillStyle=col.acc; });
+  // other shortcuts as text, right of the back view
+  const tx=bx+930*S2+36, kw=250, xw=W-40-(tx+kw);
+  let y=by+4;
+  for(const g of scGroups(c).slice(1)){
+    ctx.textAlign="left"; ctx.fillStyle=col.fg; ctx.font=font(700,18); ctx.fillText(g.t,tx,y+10); y+=26;
+    if(g.sub){ ctx.fillStyle=col.mut; ctx.font=font(400,13); for(const l of scWrap(ctx,g.sub,W-40-tx)){ ctx.fillText(l,tx,y+8); y+=18; } }
+    ctx.font=font(400,15);
+    for(const r of g.rows){
+      const ls=scWrap(ctx,r.x,xw), ks=scWrap(ctx,r.k,kw-12), n=Math.max(ls.length,ks.length);
+      ctx.strokeStyle=col.line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(tx,y); ctx.lineTo(W-40,y); ctx.stroke();
+      ctx.font=font(700,14,true); ctx.fillStyle=col.fg; ks.forEach((l,i)=>ctx.fillText(l,tx,y+12+i*19));
+      ctx.font=font(400,15); ctx.fillStyle=col.fg; ls.forEach((l,i)=>ctx.fillText(l,tx+kw,y+12+i*19));
+      y+=n*19+8;
+    }
+    y+=12;
+  }
+  return Math.max(y,by+710*S2)+30;
+}
+async function scSheet(dark){
+  const col=dark?{bg:"#11131a",fg:"#e7ecf3",mut:"#9aa3b6",acc:"#5b9bd6",line:"#313a4f"}:{bg:"#ffffff",fg:"#0b0f17",mut:"#4a5468",acc:"#1a5fa0",line:"#c9d0dc"};
+  const imgs={front:await scLoadImg(FIG.front.src),back:await scLoadImg(FIG.back.src)}, c=scChord(), W=1100;
+  const probe=document.createElement("canvas").getContext("2d");
+  const H=Math.ceil(scDraw(probe,imgs,col,dark,c,W));
+  const cv=document.createElement("canvas"); cv.width=W*SC_SCALE; cv.height=H*SC_SCALE;
+  const ctx=cv.getContext("2d"); ctx.scale(SC_SCALE,SC_SCALE);
+  scDraw(ctx,imgs,col,dark,c,W);
+  return cv;
+}
+async function scSave(){
+  const msg=$("#scMsg"); msg.textContent="";
+  try{
+    const cv=await scSheet($("#scTheme").value==="dark");
+    const blob=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error("PNG export failed")),"image/png"));
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="openpuck-shortcuts.png";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  }catch(e){ msg.textContent=e.name==="SecurityError"?"The browser blocks the drawings when the page is opened from a file. Open it over http(s).":e.message; }
+}
+(function scInit(){
+  scFigs.push(makeFig("front",{}),makeFig("back",{}));
+  for(const f of scFigs){ const w=document.createElement("div"); w.appendChild(f.box); $("#scFigs").appendChild(w); }
+  $("#scSave").onclick=scSave;
+  scReady=true; scUpdate();
 })();
 </script>
 </body>
