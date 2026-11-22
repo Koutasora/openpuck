@@ -74,6 +74,8 @@ Test i wydanie
 - Strona do testu uruchamiana lokalnie (`python -m http.server -d docs`): repo prywatne, GitHub Pages wymaga płatnego planu; sposób publikacji do ustalenia przy wydaniu.
 - Podgląd na żywo i nasze odczyty WebUSB wstrzymane w trakcie aktualizacji firmware (uwaga managera: równoległy odczyt gubił potwierdzenia aktualizacji).
 - clang-format 18 z pip w venv (przenośnie), uruchamiany tylko na plikach zmienionych w gałęzi: CI autora blokuje PR bez formatowania.
+- Użytkownik (po nocy): klawiatura/mysz także w trybie Xbox na PC (gra w trybie Xbox, push-to-talk na F13), o ile konsola Xbox 360 zostaje bez zmian; kopia zapasowa obejmuje przypisania, makra, host i nazwy makr; publikacja strony po teście.
+- F13-F24 na stronie z notką: gry przełączają się w tryb klawiatura/mysz na każdy klawisz lub klik (problem użytkownika z Mouse 3 na pucku Valve), F13-F24 zwykle ignorują.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
