@@ -77,6 +77,7 @@ Test i wydanie
 - Użytkownik (po nocy): klawiatura/mysz także w trybie Xbox na PC (gra w trybie Xbox, push-to-talk na F13), o ile konsola Xbox 360 zostaje bez zmian; kopia zapasowa obejmuje przypisania, makra, host i nazwy makr; publikacja strony po teście.
 - F13-F24 na stronie z notką: gry przełączają się w tryb klawiatura/mysz na każdy klawisz lub klik (problem użytkownika z Mouse 3 na pucku Valve), F13-F24 zwykle ignorują.
 - Tryby PS5 DualSense i HID gyro (DS4): bcdUSB 2.10 zamiast 2.00 (test użytkownika: Windows przy 2.00 nie czyta MS OS 2.0, brak WinUSB, panel się nie łączy, host nierozpoznany); nierozpoznany host w tych trybach = PC, bo konsola bez adaptera ich nie przyjmuje. Tryby clean bez zmian.
+- Test 2026-11-22 (główny PC, PS5 DualSense): klik lewy/prawy i klawisz z łopatek działają. Na LAB przez RDP nie działały: fizyczna mysz/klawiatura trafia do sesji konsoli, nie RDP (diagnostyka 0xB4 pokazała wysłane raporty). Diagnostyka (Copy diagnostics, 0x2C/0xB4) zostaje w panelu.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

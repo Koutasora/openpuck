@@ -13,13 +13,13 @@ Gotowe i zbudowane na LAB, testy bez sprzętu przechodzą:
 - [x] Panel autora (`docs/index.html`) z rozszerzeniami: profile, akcje Button/Combo/Macro/Key/Mouse, rysunki Valve, Macros, Live view, Shortcuts, bateria, host; sprawdzony na atrapie pucka w Chromium
 
 ### 1. Wgranie i strona
-- [ ] Wgraj `build/openpuck/OpenPuck.uf2` przez zakładkę Firmware update panelu (tak jak w etapie 01); pad łączy się bez ponownego parowania
+- [x] Wgraj `build/openpuck/OpenPuck.uf2` przez zakładkę Firmware update panelu (tak jak w etapie 01); pad łączy się bez ponownego parowania
 - [ ] Uruchom stronę lokalnie: w folderze repo `python -m http.server 8000 -d docs`, otwórz `http://localhost:8000` w Chrome, Connect
-- [ ] Pasek u góry pokazuje wersję z commitem (nie "unknown"), baterię pada i host
+- [x] Pasek u góry pokazuje wersję z commitem (nie "unknown"), baterię pada i host
 - [ ] Stare ustawienia (tryby, kombinacje back4, przypisania łopatek) zostały po wgraniu
 
 ### 2. Przypisania pada (tryb PS5 i tryb Xbox, tester pada: joy.cpl albo gamepad-tester.com)
-- [ ] Button: łopatka daje wybrany przycisk
+- [x] Button: łopatka daje wybrany przycisk
 - [ ] Combo: łopatka daje kilka przycisków naraz (np. L1 + R1)
 - [ ] Macro: łopatka odtwarza makro raz do końca; puszczenie w trakcie nie przerywa
 - [ ] Profile: przełączenie na stronie i na padzie (4 łopatki + RB następny, + LB poprzedni), liczba wibracji = numer profilu; LB/RB w tym czasie nie dochodzą do gry
@@ -27,6 +27,7 @@ Gotowe i zbudowane na LAB, testy bez sprzętu przechodzą:
 - [ ] Live view: lewa strona reaguje na pad (przyciski, drążki, triggery), prawa pokazuje to, co dostaje komputer
 
 ### 3. Klawiatura i mysz na PC (tryb PS5 z panelem, potem DS4-gyro)
+Testować przy komputerze, do którego puck jest podłączony fizycznie: przez pulpit zdalny (RDP) Windows kieruje fizyczną mysz i klawiaturę do sesji konsoli, nie do sesji zdalnej.
 Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po wykryciu PC puck raz się ponownie wylicza (pad znika na chwilę).
 - [ ] Po ok. 10 s Menedżer urządzeń pokazuje pad, "Klawiatura HID" i "Mysz zgodna z HID"; na stronie "Host: PC"
 - [ ] Key: łopatka wpisuje literę w Notatniku, przytrzymana powtarza; Ctrl+Shift+C działa (np. narzędzia w przeglądarce); przycisk Record na stronie ustawia skrót naciśnięty na klawiaturze
