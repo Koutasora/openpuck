@@ -56,6 +56,12 @@ Test i wydanie
 - Profile: back4 + LB/RB (do tej pory wolne), potwierdzenie wibracją.
 - Test logiki na LAB przez przenośny w64devkit 2.11.0 (GCC 16.2, bez instalatora, jak arduino-cli).
 - Gałąź autora `copilot/170-add-controller-mapping` pominięta: jej kombinacje back4 + D-pad są już w `main` (`g_chordDpad`).
+- Dźwięki: najkrótsza nuta i pauza to 30 ms (firmware, strona, import MIDI łączy krótsze segmenty z poprzednią nutą): nuta to 2 raporty 0x83 na pada, a kolejka przekaźnika (32 wpisy, ~1 wpis na cykl) przy krótszych zalewała i wypychała inne ramki.
+- Dźwięki: kolejna nuta czeka, gdy kolejka slotu ma więcej niż 4 wpisy (`relayDepth`); po 1 s bez opróżnienia melodia się kończy. Wolimy opóźnić nutę niż wypchnąć cudze ramki.
+- Flaga zmiany trybu (`/sndmode.bin`) usuwana zaraz po odczycie przy starcie (żyje tylko w RAM do pierwszego połączenia); przy odtwarzaniu ponownie sprawdzane `confirm & SC_SOUND`.
+- Confirmations = Both: impulsy wibracji najpierw, melodia po ostatnim impulsie (zerowe 0x80 melodii ucinały impuls).
+- Melodie NIE respektują `g_rumble` (wyłączona wibracja dla typu pada): dźwięk to osobne ustawienie Confirmations.
+- Strona: zmiana głośności/potwierdzeń zapisuje tylko te pola na bazie ostatnio odczytanego/zapisanego bloku (bez niezapisanych edycji melodii); zapis w trakcie zapisu jest kolejkowany; import przypisań czeka na trwający zapis.
 - Dawne etapy 02-05 połączone w jeden: użytkownik chce w openpuck jednej gałęzi bez pośrednich PR i jednego testu na sprzęcie na końcu.
 - Bateria w poleceniu stanu na żywo: firmware już czyta `g_battery`/`g_batteryState`, strona tylko je pokazuje.
 - Plik `binds.bin`: magic 0xB1, suma kontrolna, 1079 B; zły plik = wartości domyślne. Wersja 2 dodaje akcje Key/Mouse w tym samym układzie; wersja 1 nadal się wczytuje.

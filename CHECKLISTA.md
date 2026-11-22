@@ -53,11 +53,12 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Wgraj nowy `build/openpuck/OpenPuck.uf2` przez Firmware update -> local file; pad łączy się bez ponownego parowania, ustawienia zostają
 - [ ] Sounds: Play on puck - z aktuatora pada słychać ton (czy w ogóle słychać)
 - [ ] Sounds: zapis melodii na padzie, po odłączeniu zasilania pucka melodia zostaje
-- [ ] Zmiana profilu na padzie (back4 + LB/RB): potwierdzenie Vibration / Sound / Both / Off działa zgodnie z ustawieniem
+- [ ] Zmiana profilu na padzie (back4 + LB/RB): potwierdzenie Vibration / Sound / Both / Off działa zgodnie z ustawieniem; przy Both impulsy i melodia po kolei, impuls nieucięty
 - [ ] Głośność dźwięków: zmiana suwaka słychać
 - [ ] Melodia po zmianie trybu (back4 + przycisk) osobno dla rodzin PlayStation, Xbox, Switch i other
 - [ ] Melodia przy połączeniu pada, najwyżej raz na 20 s (szybkie wyłączenie i włączenie pada nie gra jej drugi raz)
 - [ ] Import pliku MIDI i odsłuch zaimportowanej melodii
+- [ ] Szybka melodia (import MIDI z krótkimi nutami) gra płynnie, pad nie gubi połączenia ani ustawień
 - [ ] Zaznaczanie tekstu na stronie nie znika (strona nie przebudowuje kart w trakcie)
 - [ ] Przycisk Copy w polu Version kopiuje wersję
 - [ ] Profile: zmiana nazwy, kopiowanie i reset profilu
