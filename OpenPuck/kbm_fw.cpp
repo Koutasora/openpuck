@@ -179,7 +179,8 @@ void kbmFwTask()
 {
 	const uint32_t now = millis();
 	hostTick(now);
-	if (hostDetectedFresh() &&
+	// console modes only note the host, they never touch flash for it
+	if (modeHasKbm(g_usbMode) && hostDetectedFresh() &&
 	    (s_saved[0] != hostSetting() || s_saved[1] != hostDetectedKind()))
 		save();
 	sendState();

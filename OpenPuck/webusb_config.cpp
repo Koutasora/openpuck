@@ -846,7 +846,9 @@ static void webusbSendBindsAck(uint8_t op, bool ok)
 static void webusbSendLive(uint8_t slot)
 {
 	if (slot >= NSLOT)
-		slot = (g_curSlot >= 0 && g_curSlot < NSLOT) ? (uint8_t)g_curSlot : 0;
+		slot = (g_curSlot >= 0 && g_curSlot < NSLOT) ?
+			       (uint8_t)g_curSlot :
+			       0;
 	uint8_t f[2 + 25];
 	const PuckInput &in = g_in[slot];
 	const uint32_t raw = g_rawButtons[slot], out = in.buttons;
@@ -867,7 +869,9 @@ static void webusbSendLive(uint8_t slot)
 	f[21] = slot;
 	f[22] = g_etype;
 	f[23] = (g_slot[slot].used && g_connReplyMs[slot] != 0 &&
-		 (millis() - g_connReplyMs[slot]) < 300u) ? 1 : 0;
+		 (millis() - g_connReplyMs[slot]) < 300u) ?
+			1 :
+			0;
 	f[24] = g_battery[slot];
 	f[25] = g_batteryState[slot];
 	f[26] = kbmFwHostByte();
@@ -912,7 +916,8 @@ void webusbPoll()
 				}
 			}
 			// 0x28 (binds chunk) carries its length at [2]; same one-byte-resync gate as 0x21.
-			if (op == 0x28 && n >= 3 && (buf[2] == 0 || buf[2] > BINDS_CHUNK)) {
+			if (op == 0x28 && n >= 3 &&
+			    (buf[2] == 0 || buf[2] > BINDS_CHUNK)) {
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -930,8 +935,11 @@ void webusbPoll()
 					       2 :
 				(op == 0x0A) ? 4 :
 				(op == 0x25) ? 5 :
-				(op == 0x26 || op == 0x27 || op == 0x2A || op == 0x2B) ? 2 :
-				(op == 0x28) ? (uint8_t)(3 + (n >= 3 ? buf[2] : 0)) :
+				(op == 0x26 || op == 0x27 || op == 0x2A ||
+				 op == 0x2B) ?
+					       2 :
+				(op == 0x28) ? (uint8_t)(3 + (n >= 3 ? buf[2] :
+								       0)) :
 				(op == 0x20) ? 9 :
 				(op == 0x21) ? (uint8_t)(6 + (n >= 6 ? buf[5] :
 								       0)) :
@@ -1192,15 +1200,19 @@ void webusbPoll()
 			} else if (op == 0x27) {
 				webusbSendLive(buf[1]);
 			} else if (op == 0x28) {
-				webusbSendBindsAck(op, bindsFwStageChunk(buf[1], buf + 3, buf[2]));
+				webusbSendBindsAck(
+					op, bindsFwStageChunk(buf[1], buf + 3,
+							      buf[2]));
 			} else if (op == 0x29) {
 				webusbSendBindsAck(op, bindsFwStageCommit());
 			} else if (op == 0x2A) {
-				webusbSendBindsAck(op, bindsFwSetProfile(buf[1]));
+				webusbSendBindsAck(op,
+						   bindsFwSetProfile(buf[1]));
 				g_blobRequest = true;
 				// 0x2B <0 auto|1 PC|2 console>: manual host setting, saved (host.bin), acked with 0xB3
 			} else if (op == 0x2B) {
-				webusbSendBindsAck(op, kbmFwSetHostSetting(buf[1]));
+				webusbSendBindsAck(op,
+						   kbmFwSetHostSetting(buf[1]));
 			} else if (op == 0x02) {
 				uint8_t f = buf[1], v = buf[2];
 
@@ -1218,7 +1230,8 @@ void webusbPoll()
 					if (et < ET_COUNT) {
 						if (k < 4)
 							// BUTTON action in the active profile
-							bindsFwSetButton(et, k, v);
+							bindsFwSetButton(et, k,
+									 v);
 						else if (k == 4)
 							g_type[et].qamMap = v;
 						else if (k == 5)
@@ -1264,7 +1277,9 @@ void webusbPoll()
 				case 7:
 				case 8:
 					if (g_etype < ET_COUNT) {
-						bindsFwSetButton(g_etype, (uint8_t)(f - 5), v);
+						bindsFwSetButton(
+							g_etype,
+							(uint8_t)(f - 5), v);
 						applyActiveType();
 					}
 					break;

@@ -24,7 +24,8 @@
 // BindAction.type
 // arg = button code 0..BINDS_CODE_MAX (see TypeCfg in config.h), 0 = none
 #define BA_BUTTON 0
-#define BA_COMBO 1 // mask = TB_* bits pressed together
+// mask = TB_* bits pressed together; paddle bits (CHORD_BACK4) are refused everywhere
+#define BA_COMBO 1
 #define BA_MACRO 2 // arg = macro index
 // arg = HID keyboard usage BINDS_KEY_MIN..BINDS_KEY_MAX, mask = modifier byte (KM_*); held while the paddle is held
 #define BA_KEY 3
@@ -128,8 +129,8 @@ bool bindsSetMacro(BindsCfg &c, uint8_t idx, const MacroStep *steps, uint8_t n);
 #define BINDS_VERSION 2
 #define BINDS_ACTION_BYTES 6
 #define BINDS_STEP_BYTES 6
-#define BINDS_PAYLOAD_BYTES                                                    \
-	(1 + BINDS_PROFILES * ET_COUNT * BINDS_BACKS * BINDS_ACTION_BYTES +    \
+#define BINDS_PAYLOAD_BYTES                                                 \
+	(1 + BINDS_PROFILES * ET_COUNT * BINDS_BACKS * BINDS_ACTION_BYTES + \
 	 BINDS_MACROS * (2 + BINDS_STEPS * BINDS_STEP_BYTES))
 #define BINDS_BLOB_BYTES (4 + BINDS_PAYLOAD_BYTES + 2)
 

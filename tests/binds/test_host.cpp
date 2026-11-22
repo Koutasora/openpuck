@@ -3,13 +3,13 @@
 #include <stdio.h>
 
 static int g_fail = 0, g_n = 0;
-#define CHECK(c)                                                               \
-	do {                                                                   \
-		g_n++;                                                         \
-		if (!(c)) {                                                    \
-			g_fail++;                                              \
-			printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #c);    \
-		}                                                              \
+#define CHECK(c)                                                            \
+	do {                                                                \
+		g_n++;                                                      \
+		if (!(c)) {                                                 \
+			g_fail++;                                           \
+			printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #c); \
+		}                                                           \
 	} while (0)
 
 static void testStartsUnknown()

@@ -18,8 +18,7 @@ template <typename F> static void update(F f)
 {
 	uint32_t old = __atomic_load_n(&s_state, __ATOMIC_RELAXED);
 	while (!__atomic_compare_exchange_n(&s_state, &old, f(old), true,
-					    __ATOMIC_ACQ_REL,
-					    __ATOMIC_RELAXED))
+					    __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
 		;
 }
 

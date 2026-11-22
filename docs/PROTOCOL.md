@@ -633,8 +633,8 @@ Steam / Lizard (Steam does its own keyboard and mouse).
   interfaces and before WebUSB. HID instance numbers follow descriptor order, so the keyboard takes the pool object
   right after the mounted pads and that object gets its pad role back on the next re-enumeration. It is present
   only while the host is a PC and fewer than 4 pads are mounted. The USB serial carries a `k` suffix then, so hosts
-  do not reuse a cached configuration. 3 pads + wake mouse + keyboard + WebUSB use 6 IN endpoints, as many as the
-  existing 4 pads + wake mouse + WebUSB; a 4th pad plus the keyboard would need 7, the nRF52840 maximum.
+  do not reuse a cached configuration. With 4 pads mounted there is no keyboard: the pool has
+  4 objects, so `kbdCarrier(k)` is null for `k` = 4 and no free object is left to carry it.
 - The puck starts **without** the keyboard unless the host was a PC last time. When the host turns out to be a PC
   (or the setting forces it), the device re-enumerates once (detach / attach, no reboot, RF links stay up) after the
   result has held for 1.5 s; when it turns out to be a console it re-enumerates back without it.

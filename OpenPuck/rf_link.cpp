@@ -3568,13 +3568,18 @@ uint8_t rfConnTx(uint8_t ch, uint8_t s1, const uint8_t *payload, uint8_t plen,
 						// Decode the report into the shared g_in (one source, read by every IController).
 						// Back-paddle actions (binds.h): combo/macro bits land in g_in AND in rep, so stream modes (g_in)
 						// and push modes (btnsOf(rep)) both see them. Chord detection below keeps using the raw `bb`.
-						const uint32_t ob =
-							bindsFwFilter((uint8_t)g_curSlot, bb);
+						const uint32_t ob = bindsFwFilter(
+							(uint8_t)g_curSlot, bb);
 						g_in[g_curSlot].buttons = ob;
 						if (ob != bb)
-							for (int k = 0; k < 4; k++)
-								((uint8_t *)rep)[2 + k] =
-									(uint8_t)(ob >> (8 * k));
+							for (int k = 0; k < 4;
+							     k++)
+								((uint8_t *)
+									 rep)[2 +
+									      k] =
+									(uint8_t)(ob >>
+										  (8 *
+										   k));
 						// Global power-off chord: Steam + Y held 2 s -> shut the controller down (any mode). Detect on the raw
 						// `bb` (pre-mask), time-based (poll rate varies), fires once per hold, re-arms only after release. While
 						// held, mask Steam+Y out of g_in[g_curSlot].buttons so the press doesn't leak to the host -- in EVERY mode except
@@ -3768,13 +3773,19 @@ uint8_t rfConnTx(uint8_t ch, uint8_t s1, const uint8_t *payload, uint8_t plen,
 						}
 						// Profile chord (back4 + RB next / LB previous): switch on the raw state and keep LB/RB away from
 						// the host while it is held (stream modes read g_in, push modes read rep).
-						if (bindsFwProfileChord((uint8_t)g_curSlot, bb)) {
-							g_in[g_curSlot].buttons &=
-								~(uint32_t)(TB_LB | TB_RB);
-							((uint8_t *)rep)[3] &=
-								~(uint8_t)(TB_RB >> 8);
-							((uint8_t *)rep)[4] &=
-								~(uint8_t)(TB_LB >> 16);
+						if (bindsFwProfileChord(
+							    (uint8_t)g_curSlot,
+							    bb)) {
+							g_in[g_curSlot]
+								.buttons &= ~(
+								uint32_t)(TB_LB |
+									  TB_RB);
+							((uint8_t *)rep)[3] &= ~(
+								uint8_t)(TB_RB >>
+									 8);
+							((uint8_t *)rep)[4] &= ~(
+								uint8_t)(TB_LB >>
+									 16);
 						}
 						// Hand the report to the active controller. STREAM modes ignore it (they emit from task() reading
 						// g_in); PUSH modes (Xbox, puck/lizard) build + send their host report here.

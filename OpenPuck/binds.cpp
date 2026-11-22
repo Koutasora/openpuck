@@ -61,6 +61,8 @@ bool bindsSetAction(BindsCfg &c, uint8_t profile, uint8_t etype, uint8_t i,
 		a.mask = 0;
 		break;
 	case BA_COMBO:
+		if (mask & CHORD_BACK4)
+			return false;
 		a.arg = 0;
 		a.mask = mask;
 		break;
@@ -94,6 +96,9 @@ bool bindsSetMacro(BindsCfg &c, uint8_t idx, const MacroStep *steps, uint8_t n)
 	if (idx >= BINDS_MACROS || n > BINDS_STEPS || (n && !steps))
 		return false;
 	MacroDef &m = c.macro[idx];
+	for (int k = 0; k < n; k++)
+		if (steps[k].mask & CHORD_BACK4)
+			return false;
 	memset(&m, 0, sizeof m);
 	m.count = n;
 	for (int k = 0; k < n; k++)
@@ -140,9 +145,8 @@ static void kbmAdd(BindsKbm &k, const BindAction &a, bool rising, bool held,
 			k.buttons |= (uint8_t)(1u << (a.arg - 1));
 		return;
 	}
-	const int8_t dir = (a.arg == BMO_WHEEL_UP || a.arg == BMO_WHEEL_UP_REP) ?
-				   1 :
-				   -1;
+	const int8_t dir =
+		(a.arg == BMO_WHEEL_UP || a.arg == BMO_WHEEL_UP_REP) ? 1 : -1;
 	const bool rep = a.arg >= BMO_WHEEL_UP_REP;
 	bool notch = rising;
 	if (rising)
@@ -184,14 +188,14 @@ uint32_t bindsApply(uint8_t slot, uint32_t raw, uint8_t etype, uint32_t nowMs,
 			const MacroDef &m = g_binds.macro[r.idx];
 			macroAdvance(r, m, nowMs);
 			if (r.run && !chord)
-				out |= m.step[r.step].mask;
+				out |= m.step[r.step].mask & ~CHORD_BACK4;
 		}
 		if (chord)
 			continue;
 		if (a.type == BA_COMBO) {
 			out &= ~PADDLE_BIT[i];
 			if (held & PADDLE_BIT[i])
-				out |= a.mask;
+				out |= a.mask & ~CHORD_BACK4;
 		} else if (a.type == BA_MACRO) {
 			out &= ~PADDLE_BIT[i];
 		} else if (a.type == BA_KEY || a.type == BA_MOUSE) {
@@ -301,6 +305,9 @@ bool bindsDeserialize(BindsCfg &c, const uint8_t *buf, size_t len)
 			return false;
 		for (int k = 0; k < BINDS_STEPS; k++) {
 			d.step[k].mask = get32(p);
+			// paddle bits would feed the mode chord
+			if (d.step[k].mask & CHORD_BACK4)
+				return false;
 			d.step[k].ms = (uint16_t)(p[0] | (p[1] << 8));
 			p += 2;
 		}

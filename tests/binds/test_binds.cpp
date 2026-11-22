@@ -4,13 +4,13 @@
 #include <string.h>
 
 static int g_fail = 0, g_n = 0;
-#define CHECK(c)                                                               \
-	do {                                                                   \
-		g_n++;                                                         \
-		if (!(c)) {                                                    \
-			g_fail++;                                              \
-			printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #c);    \
-		}                                                              \
+#define CHECK(c)                                                            \
+	do {                                                                \
+		g_n++;                                                      \
+		if (!(c)) {                                                 \
+			g_fail++;                                           \
+			printf("FAIL %s:%d  %s\n", __FILE__, __LINE__, #c); \
+		}                                                           \
 	} while (0)
 
 static void fresh()
@@ -56,7 +56,8 @@ static void testCombo()
 static void testComboTriggersAndVirtual()
 {
 	fresh();
-	bindsSetAction(g_binds, 0, ET_DS5, 0, BA_COMBO, 0, TB_L2 | TB_TOUCH | TB_MUTE);
+	bindsSetAction(g_binds, 0, ET_DS5, 0, BA_COMBO, 0,
+		       TB_L2 | TB_TOUCH | TB_MUTE);
 	CHECK(bindsApply(0, TB_L4, ET_DS5, 0) == (TB_L2 | TB_TOUCH | TB_MUTE));
 }
 
@@ -135,9 +136,11 @@ static void testSerialization()
 	CHECK(back.active == 2);
 	CHECK(back.act[1][ET_DS5][3].type == BA_COMBO &&
 	      back.act[1][ET_DS5][3].mask == (TB_LB | TB_RB));
-	CHECK(back.act[2][ET_XBOX][0].type == BA_MACRO && back.act[2][ET_XBOX][0].arg == 7);
+	CHECK(back.act[2][ET_XBOX][0].type == BA_MACRO &&
+	      back.act[2][ET_XBOX][0].arg == 7);
 	CHECK(back.macro[7].count == 2 && back.macro[7].step[0].ms == 1234 &&
-	      back.macro[7].step[1].ms == 65535 && back.macro[7].step[0].mask == TB_A);
+	      back.macro[7].step[1].ms == 65535 &&
+	      back.macro[7].step[0].mask == TB_A);
 	uint8_t buf2[BINDS_BLOB_BYTES];
 	CHECK(bindsSerialize(back, buf2, sizeof buf2) == BINDS_BLOB_BYTES);
 	CHECK(memcmp(buf, buf2, sizeof buf) == 0);
@@ -149,7 +152,10 @@ static void testCorrupt()
 	uint8_t buf[BINDS_BLOB_BYTES];
 	bindsSerialize(g_binds, buf, sizeof buf);
 	static const uint8_t DEFBACK[ET_COUNT][BINDS_BACKS] = {
-		{ 1, 2, 3, 4 }, { 5, 6, 7, 8 }, { 9, 10, 11, 12 }, { 13, 14, 15, 16 }
+		{ 1, 2, 3, 4 },
+		{ 5, 6, 7, 8 },
+		{ 9, 10, 11, 12 },
+		{ 13, 14, 15, 16 }
 	};
 	BindsCfg c;
 	// every kind of damage -> defaults built from the supplied table
@@ -158,11 +164,21 @@ static void testCorrupt()
 		memcpy(bad, buf, sizeof buf);
 		size_t len = sizeof bad;
 		switch (kind) {
-		case 0: bad[0] ^= 0xFF; break; // magic
-		case 1: bad[1] = 99; break; // version
-		case 2: bad[3] ^= 1; break; // length field
-		case 3: bad[40] ^= 0x10; break; // payload bit flip -> checksum
-		case 4: len -= 1; break; // truncated
+		case 0:
+			bad[0] ^= 0xFF;
+			break; // magic
+		case 1:
+			bad[1] = 99;
+			break; // version
+		case 2:
+			bad[3] ^= 1;
+			break; // length field
+		case 3:
+			bad[40] ^= 0x10;
+			break; // payload bit flip -> checksum
+		case 4:
+			len -= 1;
+			break; // truncated
 		case 5: // out-of-range value with a fixed-up checksum
 			bad[4 + 1 + 0] = 9; // type 9
 			{
@@ -170,14 +186,16 @@ static void testCorrupt()
 				for (int i = 0; i < BINDS_PAYLOAD_BYTES; i++)
 					s = (uint16_t)(s + bad[4 + i]);
 				bad[4 + BINDS_PAYLOAD_BYTES] = (uint8_t)s;
-				bad[4 + BINDS_PAYLOAD_BYTES + 1] = (uint8_t)(s >> 8);
+				bad[4 + BINDS_PAYLOAD_BYTES + 1] =
+					(uint8_t)(s >> 8);
 			}
 			break;
 		}
 		memset(&c, 0x77, sizeof c);
 		CHECK(!bindsLoad(c, bad, len, DEFBACK));
 		CHECK(c.active == 0 && c.act[2][ET_DS5][3].type == BA_BUTTON &&
-		      c.act[2][ET_DS5][3].arg == 16 && c.act[0][ET_XBOX][0].arg == 1);
+		      c.act[2][ET_DS5][3].arg == 16 &&
+		      c.act[0][ET_XBOX][0].arg == 1);
 		CHECK(c.macro[0].count == 0);
 	}
 	CHECK(!bindsLoad(c, nullptr, 0, nullptr)); // missing file
@@ -230,8 +248,8 @@ static void testKeyDuplicates()
 	fresh();
 	BindsKbm k;
 	for (int i = 0; i < BINDS_BACKS; i++)
-		CHECK(bindsSetAction(g_binds, 0, ET_DS4, (uint8_t)i, BA_KEY, 0x04,
-				     KM_LALT));
+		CHECK(bindsSetAction(g_binds, 0, ET_DS4, (uint8_t)i, BA_KEY,
+				     0x04, KM_LALT));
 	bindsApply(0, CHORD_BACK4 & ~TB_R5, ET_DS4, 0, &k);
 	CHECK(k.keys[0] == 0x04 && k.keys[1] == 0 && k.mods == KM_LALT);
 }
@@ -263,7 +281,8 @@ static void testWheel()
 	fresh();
 	BindsKbm k;
 	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_WHEEL_UP, 0));
-	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 1, BA_MOUSE, BMO_WHEEL_DOWN, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 1, BA_MOUSE, BMO_WHEEL_DOWN,
+			     0));
 	// one notch on the press, none while held, one more per new press
 	bindsApply(0, TB_L4, ET_DS5, 1000, &k);
 	CHECK(k.wheel == 1);
@@ -287,8 +306,8 @@ static void testWheelRepeat()
 {
 	fresh();
 	BindsKbm k;
-	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_WHEEL_DOWN_REP,
-			     0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE,
+			     BMO_WHEEL_DOWN_REP, 0));
 	bindsApply(0, TB_L4, ET_DS5, 2000, &k);
 	CHECK(k.wheel == -1);
 	bindsApply(0, TB_L4, ET_DS5, 2050, &k);
@@ -333,7 +352,8 @@ static void testKbmChordAndPlainCalls()
 static void testMigrationV1()
 {
 	fresh();
-	CHECK(bindsSetAction(g_binds, 1, ET_SWITCH, 2, BA_COMBO, 0, TB_A | TB_B));
+	CHECK(bindsSetAction(g_binds, 1, ET_SWITCH, 2, BA_COMBO, 0,
+			     TB_A | TB_B));
 	CHECK(bindsSetAction(g_binds, 2, ET_XBOX, 3, BA_BUTTON, 14, 0));
 	const MacroStep s[2] = { { TB_A, 30 }, { 0, 40 } };
 	CHECK(bindsSetMacro(g_binds, 3, s, 2));
@@ -350,12 +370,14 @@ static void testMigrationV1()
 	CHECK(bindsDeserialize(c, v1, sizeof v1));
 	CHECK(c.act[1][ET_SWITCH][2].type == BA_COMBO &&
 	      c.act[1][ET_SWITCH][2].mask == (TB_A | TB_B));
-	CHECK(c.act[2][ET_XBOX][3].type == BA_BUTTON && c.act[2][ET_XBOX][3].arg == 14);
+	CHECK(c.act[2][ET_XBOX][3].type == BA_BUTTON &&
+	      c.act[2][ET_XBOX][3].arg == 14);
 	CHECK(c.act[1][ET_XBOX][0].type == BA_MACRO && c.macro[3].count == 2);
 	// re-saved, it is a version 2 blob with identical content
 	uint8_t again[BINDS_BLOB_BYTES];
 	CHECK(bindsSerialize(c, again, sizeof again) == BINDS_BLOB_BYTES);
-	CHECK(again[1] == 2 && memcmp(again + 2, blob + 2, BINDS_BLOB_BYTES - 2) == 0);
+	CHECK(again[1] == 2 &&
+	      memcmp(again + 2, blob + 2, BINDS_BLOB_BYTES - 2) == 0);
 	// version 1 cannot hold KEY / MOUSE, version 3 does not exist
 	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x04, 0));
 	bindsSerialize(g_binds, blob, sizeof blob);
@@ -372,19 +394,49 @@ static void testSerializeKeyMouse()
 	fresh();
 	CHECK(bindsSetAction(g_binds, 2, ET_DS4, 1, BA_KEY, 0x52,
 			     KM_LGUI | KM_RALT));
-	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 3, BA_MOUSE, BMO_WHEEL_UP_REP, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 3, BA_MOUSE, BMO_WHEEL_UP_REP,
+			     0));
 	static uint8_t blob[BINDS_BLOB_BYTES];
 	CHECK(bindsSerialize(g_binds, blob, sizeof blob) == BINDS_BLOB_BYTES);
 	BindsCfg c;
 	memset(&c, 0, sizeof c);
 	CHECK(bindsDeserialize(c, blob, sizeof blob));
-	CHECK(c.act[2][ET_DS4][1].type == BA_KEY && c.act[2][ET_DS4][1].arg == 0x52 &&
+	CHECK(c.act[2][ET_DS4][1].type == BA_KEY &&
+	      c.act[2][ET_DS4][1].arg == 0x52 &&
 	      c.act[2][ET_DS4][1].mask == (KM_LGUI | KM_RALT));
 	CHECK(c.act[0][ET_DS5][3].type == BA_MOUSE &&
 	      c.act[0][ET_DS5][3].arg == BMO_WHEEL_UP_REP);
 	// a damaged KEY (mask above 8 bits, fixed-up checksum) is rejected whole
 	const int off = 4 + 1 + ((2 * ET_COUNT + ET_DS4) * BINDS_BACKS + 1) * 6;
 	blob[off + 3] = 1;
+	uint16_t s = 0;
+	for (int i = 0; i < BINDS_PAYLOAD_BYTES; i++)
+		s = (uint16_t)(s + blob[4 + i]);
+	blob[4 + BINDS_PAYLOAD_BYTES] = (uint8_t)s;
+	blob[4 + BINDS_PAYLOAD_BYTES + 1] = (uint8_t)(s >> 8);
+	CHECK(!bindsDeserialize(c, blob, sizeof blob));
+}
+
+static void testPaddleBitsRefused()
+{
+	fresh();
+	CHECK(!bindsSetAction(g_binds, 0, ET_XBOX, 0, BA_COMBO, 0,
+			      TB_A | TB_L4));
+	CHECK(!bindsSetAction(g_binds, 0, ET_XBOX, 0, BA_COMBO, 0,
+			      CHORD_BACK4));
+	CHECK(bindsSetAction(g_binds, 0, ET_XBOX, 0, BA_COMBO, 0, TB_A));
+	const MacroStep bad[2] = { { TB_A, 10 }, { TB_R5, 10 } };
+	CHECK(bindsSetMacro(g_binds, 1, bad, 1));
+	CHECK(!bindsSetMacro(g_binds, 1, bad, 2));
+	CHECK(g_binds.macro[1].count == 1); // a refused call leaves it alone
+	// a blob with paddle bits in a macro step is rejected whole
+	static uint8_t blob[BINDS_BLOB_BYTES];
+	bindsSerialize(g_binds, blob, sizeof blob);
+	BindsCfg c;
+	const int macroOff =
+		4 + 1 + BINDS_PROFILES * ET_COUNT * BINDS_BACKS * 6;
+	// macro 1, step 0, mask byte 1 = 0x01 -> TB_R5
+	blob[macroOff + (2 + BINDS_STEPS * 6) + 2 + 1] = 0x01;
 	uint16_t s = 0;
 	for (int i = 0; i < BINDS_PAYLOAD_BYTES; i++)
 		s = (uint16_t)(s + blob[4 + i]);
@@ -412,6 +464,7 @@ int main()
 	testKbmChordAndPlainCalls();
 	testMigrationV1();
 	testSerializeKeyMouse();
+	testPaddleBitsRefused();
 	printf("%d checks, %d failed\n", g_n, g_fail);
 	return g_fail ? 1 : 0;
 }

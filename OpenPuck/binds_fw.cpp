@@ -67,8 +67,8 @@ static void syncBack()
 {
 	for (int e = 0; e < ET_COUNT; e++)
 		for (int i = 0; i < BINDS_BACKS; i++)
-			g_type[e].back[i] = bindsBackCode(g_binds, (uint8_t)e,
-							  (uint8_t)i);
+			g_type[e].back[i] =
+				bindsBackCode(g_binds, (uint8_t)e, (uint8_t)i);
 	applyActiveType();
 }
 
@@ -128,7 +128,7 @@ uint32_t bindsFwFilter(uint8_t slot, uint32_t raw)
 	if (g_etype < ET_COUNT && (raw & CHORD_BACK4) == CHORD_BACK4)
 		held |= (uint8_t)(1u << slot);
 	else
-		held &= (uint8_t)~(1u << slot);
+		held &= (uint8_t) ~(1u << slot);
 	if (held != before && g_etype < ET_COUNT) {
 		for (int i = 0; i < BINDS_BACKS; i++)
 			g_back[i] = held ? 0 : g_type[g_etype].back[i];
