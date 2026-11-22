@@ -549,6 +549,54 @@ function smfTracks(format,tracks,us){
   await sleep(600);
   await ev(()=>{ ({send,soundsWrite,bindsXfer,soundsRead,readBlob,lastP}=window.__keep); dev=null; scKey=""; scUpdate(); });
 
+  // ---- Analog pressure (protocol 28): PS3 on the DS4 tab, Original Xbox on the Xbox tab ----
+  const press=await ev(()=>{
+    const keep={send,readBlob,lastP}; const wr=[]; send=async b=>{ wr.push(Array.from(b)); }; readBlob=async()=>null;
+    const mk=(ver,len)=>{ const q=new Array(len).fill(0); q[0]=ver; q[1]=9; return q; };
+    const wrapHidden=()=>[typeEls[2].press,typeEls[0].press].map(x=>x.wrap.classList.contains("hide"));
+    const o={};
+    o.rows=[typeEls.map(r=>!!r.press),typeEls[2].press.wrap.textContent,typeEls[0].press.wrap.textContent];
+    o.opts=[[...typeEls[2].press.tgt.options].map(x=>x.textContent).join(","),[...typeEls[0].press.tgt.options].map(x=>x.textContent).join(",")];
+    applyBlob(mk(27,196)); o.old=wrapHidden();
+    applyBlob(mk(28,196)); o.short=wrapHidden();
+    const p=mk(28,202); p[196]=1; p[197]=1; p[198]=6; p[201]=5; // PS3 on, RT, D-pad Up; Xbox off, LT, Black
+    applyBlob(p); o.on=wrapHidden();
+    const u=r=>({on:r.press.on.textContent,act:r.press.on.classList.contains("active"),src:r.press.src.value,tgt:r.press.tgt.value});
+    o.ps3=u(typeEls[2]); o.xog=u(typeEls[0]);
+    applyBlob(mk(28,202));
+    wr.length=0;
+    typeEls[2].press.on.click();
+    const s1=wr.splice(0);
+    typeEls[2].press.src.value="1"; typeEls[2].press.src.dispatchEvent(new Event("change"));
+    typeEls[2].press.tgt.value="9"; typeEls[2].press.tgt.dispatchEvent(new Event("change"));
+    typeEls[0].press.on.click();
+    typeEls[0].press.src.value="1"; typeEls[0].press.src.dispatchEvent(new Event("change"));
+    typeEls[0].press.tgt.value="5"; typeEls[0].press.tgt.dispatchEvent(new Event("change"));
+    o.writes=s1.concat(wr);
+    // on -> a click on the active button writes 0
+    wr.length=0; applyBlob(p); typeEls[2].press.on.click(); o.off=wr.slice();
+    // backup carries the six bytes only from protocol 28
+    const bp=new Array(100).fill(0);
+    o.bk=[buildBackup(p,bp).config.pressure,buildBackup(mk(27,196),bp).config.pressure,buildBackup(mk(28,196),bp).config.pressure];
+    ({send,readBlob,lastP}=keep);
+    return o;
+  });
+  check("pressure rows exist only on the DS4 and Xbox tabs",same(press.rows[0],[true,false,true,false])&&/PS3 mode: analog pressure/.test(press.rows[1])&&/OG Xbox mode: analog pressure/.test(press.rows[2])&&/no longer works as L2\/R2/.test(press.rows[1])&&/no longer works as LT\/RT/.test(press.rows[2]),press.rows);
+  check("pressure buttons: PS3 has 10 targets, Original Xbox 6",press.opts[0]==="Square,Triangle,Circle,Cross,L1,R1,D-pad Up,D-pad Right,D-pad Down,D-pad Left"&&press.opts[1]==="A,B,X,Y,White,Black",press.opts);
+  check("pressure rows are hidden below protocol 28 and on a blob without the bytes",same(press.old,[true,true])&&same(press.short,[true,true])&&same(press.on,[false,false]),press);
+  check("pressure rows show the blob bytes",same(press.ps3,{on:"on",act:true,src:"1",tgt:"6"})&&same(press.xog,{on:"off",act:false,src:"0",tgt:"5"}),[press.ps3,press.xog]);
+  check("pressure writes: PS3 on/trigger/button = fields 88/89/90, Original Xbox = 91/92/93",same(press.writes,[[2,88,1],[2,89,1],[2,90,9],[2,91,1],[2,92,1],[2,93,5]]),press.writes);
+  check("switching pressure off writes 0",same(press.off,[[2,88,0]]),press.off);
+  check("backup carries the pressure bytes from protocol 28 only",same(press.bk[0],[[1,1,6],[0,0,5]])&&press.bk[1]===undefined&&press.bk[2]===undefined,press.bk);
+  const lvTr=await ev(()=>{
+    const keepLive=[live,liveVisible]; const out=[];
+    liveVisible=true;
+    const base={out:0,lx:0,ly:0,rx:0,ry:0,profile:0,slot:0,et:0,link:1,batt:0,charge:0,host:null};
+    for(const raw of [0,0x8000000,0x800000,0x8800000]){ live=Object.assign({raw,lt:40,rt:255},base); try{ liveRender(); }catch(e){ out.push("err "+e.message); } out.push($("#lvTr").textContent); }
+    [live,liveVisible]=keepLive; return out;
+  });
+  check("Live shows the trigger click next to Triggers L / R",lvTr.length===4&&lvTr[0]==="16% / 100%"&&lvTr[1]==="16% / 100%  (L click)"&&lvTr[2]==="16% / 100%  (R click)"&&lvTr[3]==="16% / 100%  (L click, R click)",lvTr);
+
   check("no page errors, console errors or failed requests",errors.length===0,errors);
   await browser.close(); server.close();
   console.log(fails?"\n"+fails+" check(s) FAILED":"\nall checks passed");

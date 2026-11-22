@@ -1000,6 +1000,14 @@ const typeEls = []; // one entry per TYPE_DEFS: {sec, tab, activeDot, back[], qa
 // stick re-centers, and an untouched mapped pad leaves the physical stick in control.
 const PAD_STICK_FIELD0 = 80;
 const PAD_STICK_OPTS = [[0,"Off (touchpad)"],[1,"Left stick"],[2,"Right stick"]];
+// Analog pressure (protocol 28): in the PS3 and Original Xbox modes a trigger sets how hard one button is pressed.
+// Field id = PRESS_FIELD0 + mode*3 + k (mode 0 = PS3, 1 = Original Xbox; k 0 on, 1 trigger, 2 button). The button
+// list mirrors PRESS_PS3_* / PRESS_XOG_* in pressure.h. PRESS_BLOB0 = index of the six bytes in the status blob.
+const PRESS_FIELD0 = 88, PRESS_BLOB0 = 196, PRESS_BLOB_LEN = 202;
+const PRESS_MODES = [
+  {et:2, name:"PS3 mode: analog pressure", off:"L2/R2", btns:["Square","Triangle","Circle","Cross","L1","R1","D-pad Up","D-pad Right","D-pad Down","D-pad Left"]},
+  {et:0, name:"OG Xbox mode: analog pressure", off:"LT/RT", btns:["A","B","X","Y","White","Black"]},
+];
 const PAD_STICK_LABELS = ["Left trackpad \u2192 stick","Right trackpad \u2192 stick"];
 function mkSelect(def, includeNone){
   const sel=document.createElement("select");
@@ -1029,7 +1037,7 @@ function setTab(et){
     tab.onclick=()=>setTab(et); bar.appendChild(tab);
     // panel
     const sec=document.createElement("div"); sec.style.cssText="background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:12px 14px;display:none";
-    const rec={sec,tab,activeDot:tab.querySelector(".active-dot"),back:[],qam:null,abSwap:null,pad:null,led:null,ledV:null,rumble:null,padStick:[]};
+    const rec={sec,tab,activeDot:tab.querySelector(".active-dot"),back:[],qam:null,abSwap:null,pad:null,led:null,ledV:null,rumble:null,padStick:[],press:null};
     // A/B swap + trackpad haptics + rumble toggles
     const tog=document.createElement("div"); tog.className="row";
     tog.innerHTML='<label>A/B + X/Y swap</label>';
@@ -1077,6 +1085,32 @@ function setTab(et){
       sel.addEventListener("change",()=>setField(PAD_STICK_FIELD0+et*2+pad, +sel.value));
       rec.padStick.push(sel);
     }
+    // analog pressure: only the PS3 mode (DS4 tab) and the Original Xbox mode (Xbox tab) have pressure bytes
+    PRESS_MODES.forEach((pm,mode)=>{
+      if(pm.et!==et) return;
+      const wrap=document.createElement("div");
+      const r1=document.createElement("div"); r1.className="row";
+      const lab=document.createElement("label"); lab.textContent=pm.name; r1.appendChild(lab);
+      const on=document.createElement("button"); on.textContent="off"; r1.appendChild(on); wrap.appendChild(r1);
+      const r2=document.createElement("div"); r2.className="row";
+      const l2=document.createElement("label"); l2.textContent="Trigger"; r2.appendChild(l2);
+      const src=document.createElement("select");
+      for(const [v,t] of [[0,"Left trigger"],[1,"Right trigger"]]){ const o=document.createElement("option"); o.value=v; o.textContent=t; src.appendChild(o); }
+      r2.appendChild(src); wrap.appendChild(r2);
+      const r3=document.createElement("div"); r3.className="row";
+      const l3=document.createElement("label"); l3.textContent="Button"; r3.appendChild(l3);
+      const tgt=document.createElement("select");
+      pm.btns.forEach((t,v)=>{ const o=document.createElement("option"); o.value=v; o.textContent=t; tgt.appendChild(o); });
+      r3.appendChild(tgt); wrap.appendChild(r3);
+      const note=document.createElement("div"); note.className="note";
+      note.textContent="The trigger sets how hard the button is pressed; it no longer works as "+pm.off+".";
+      wrap.appendChild(note);
+      on.onclick=()=>setField(PRESS_FIELD0+mode*3, on.classList.contains("active")?0:1);
+      src.addEventListener("change",()=>setField(PRESS_FIELD0+mode*3+1, +src.value));
+      tgt.addEventListener("change",()=>setField(PRESS_FIELD0+mode*3+2, +tgt.value));
+      sec.appendChild(wrap);
+      rec.press={mode,wrap,on,src,tgt};
+    });
     host.appendChild(sec); typeEls.push(rec);
   });
   setTab(0);
@@ -1932,6 +1966,7 @@ function applyBlob(p){
 
   // per-type trackpad->stick mapping (blob v20, firmware p[187..194] -> JS p[185..192])
   const padStickCap=(p[0]>=20 && p.length>192);
+  const pressCap=(p[0]>=28 && p.length>=PRESS_BLOB_LEN);
   const gitDirty=(p.length>38?p[38]:0); let buildId="";
   for(let i=39;i<51 && i<p.length && p[i];i++) buildId+=String.fromCharCode(p[i]);
   $("#stBuild").innerHTML = buildId
@@ -1962,6 +1997,16 @@ function applyBlob(p){
         sel.parentNode.classList.toggle("hide", !padStickCap);
         if(padStickCap && document.activeElement!==sel) sel.value=p[185+et*2+pad];
       });
+      if(rec.press){
+        // hidden on firmware older than protocol 28, so the panel never shows a dead control
+        const pr=rec.press, o=PRESS_BLOB0+pr.mode*3;
+        pr.wrap.classList.toggle("hide", !pressCap);
+        if(pressCap){
+          pr.on.textContent=p[o]?"on":"off"; pr.on.classList.toggle("active",!!p[o]);
+          if(document.activeElement!==pr.src) pr.src.value=p[o+1];
+          if(document.activeElement!==pr.tgt) pr.tgt.value=p[o+2];
+        }
+      }
       // dot marks the type matching the current puck mode
       rec.activeDot.style.display = (et===activeEt) ? "" : "none";
     });
@@ -2108,6 +2153,8 @@ function buildBackup(p, bp){
   if(p[0]>=18 && p.length>183) cfg.chordD=[p[180],p[181],p[182],p[183]];
   if(p[0]>=19 && p.length>184) cfg.swGyroLegacy=p[184];
   if(p[0]>=21 && p.length>179) cfg.emulateSteamMachine=p[179];
+  // analog pressure (protocol 28): omitted on older pucks, and a backup without it leaves the setting alone on restore
+  if(p[0]>=28 && p.length>=PRESS_BLOB_LEN) cfg.pressure=[0,1].map(m=>p.slice(PRESS_BLOB0+m*3,PRESS_BLOB0+m*3+3));
   // version 2: include the lizard map so it survives a backup/restore cycle.
   // Guard on !lizardBusy to avoid a race with the one-shot lazy load (lizardExchange sets
   // lizardBusy while the initial 0x11 fetch is in flight); if the load is still pending the
@@ -2232,7 +2279,8 @@ async function importBackup(file){
   const lizardN=(Array.isArray(c.lizardMap) && lizardCapable())?Math.min(c.lizardMap.length,LZ_MAX):0;
   const baseN=6 + (Array.isArray(c.chordD)?4:0) + (c.swGyroLegacy!==undefined?1:0);
   const padStickN=Array.isArray(c.types)?c.types.slice(0,typeN).filter(t=>Array.isArray(t.padStick)).length*2:0;
-  const total=baseN + typeN*9 + padStickN + lizardN + 4 + 1 + (obj.panel?1:0);
+  const pressOk=Array.isArray(c.pressure) && lastP && lastP[0]>=28;
+  const total=baseN + typeN*9 + padStickN + (pressOk?6:0) + lizardN + 4 + 1 + (obj.panel?1:0);
   let step=0, stage="";
   const tick=()=>modalStage(stage, Math.min(99,Math.floor(step*100/total)));
   try{
@@ -2262,6 +2310,8 @@ async function importBackup(file){
     // removed settings; those fields no longer exist on the puck, so they are not replayed.
     if(c.swGyroLegacy!==undefined) await sf(38, c.swGyroLegacy?1:0);
     if(c.emulateSteamMachine!==undefined) await sf(29, c.emulateSteamMachine==0xEE?1:0);
+    // analog pressure: only to a puck that speaks protocol 28 (an older one would drop the fields)
+    if(pressOk) for(let m=0;m<2;m++) if(Array.isArray(c.pressure[m])) for(let k=0;k<3;k++) await sf(PRESS_FIELD0+m*3+k, c.pressure[m][k]);
     
     // c.types is absent in some very old backups created before per-type paddle/haptic config
     // was added to the panel export; guard so a missing field never crashes the import mid-flight.
@@ -4397,6 +4447,9 @@ function liveRender(){
   const pc=(v,m)=>Math.round(v/m*100)+"%";
   const setPct=(id,a,b,m)=>{ const e=$(id); e.textContent=pc(a,m)+(id==="#lvTr"?" / ":", ")+pc(b,m); e.title="raw: "+a+(id==="#lvTr"?" / ":", ")+b; };
   setPct("#lvLs",L.lx,L.ly,32767); setPct("#lvRs",L.rx,L.ry,32767); setPct("#lvTr",L.lt,L.rt,255);
+  // the full-pull click bits (raw L2 / R2) next to the analog values: where on the pull the trigger clicks
+  { const cl=[(L.raw&0x8000000)?"L click":"",(L.raw&0x800000)?"R click":""].filter(Boolean).join(", ");
+    if(cl) $("#lvTr").textContent+="  ("+cl+")"; }
   $("#lvProf").textContent=profName(L.profile)+(et>=0?" · "+TYPE_DEFS[et].name:" · Steam");
   $("#lvLink").textContent=(L.link?"up":"down")+" · slot "+(L.slot+1);
   $("#lvBatt").textContent=L.batt?(L.batt+"%"+(L.charge===2?" charging":L.charge===4?" charged":"")):"—";
