@@ -449,9 +449,9 @@ Messages:
   - `0x12 <idx> <16-byte binding>`: set one lizard binding (see below)
   - `0x14`: commit the edited lizard map to flash (device echoes `0xAA`)
   - `0x15`: reset the lizard map to built-in defaults (device echoes `0xAA`)
-  - `0x26 <idx>`: read chunk `idx` of the back-paddle binds blob (reply `0xAE`). **Requires status-blob version ≥ 23**
+  - `0x26 <idx>`: read chunk `idx` of the back-paddle binds blob (reply `0xB2`). **Requires status-blob version ≥ 23**
     (older firmware drops `0x26`–`0x2A` silently). See §10.2.
-  - `0x27 <slot>`: live state of `slot` (`0xFF` = current slot), reply `0xAC`; the panel may poll it at ~30 Hz
+  - `0x27 <slot>`: live state of `slot` (`0xFF` = current slot), reply `0xB0`; the panel may poll it at ~30 Hz
   - `0x28 <idx> <len> <data>`: stage binds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks must be in order)
   - `0x29`: validate + apply + save the staged blob (`binds.bin`)
   - `0x2A <profile>`: set active profile 0..2 (saved, confirmation buzz of profile+1 pulses)
@@ -467,9 +467,9 @@ Messages:
   - `0xA9 ...`: live wedge report
   - `0xAA <count> <count×16-byte bindings>`: lizard binding map
   - `0xAB 5 <status> <nextOff u32 LE>`: firmware-update ack
-  - `0xAC 24 <payload>`: live state (§10.2)
-  - `0xAE <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
-  - `0xAF 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` (`ok` 1 = done)
+  - `0xB0 24 <payload>`: live state (§10.2)
+  - `0xB2 <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
+  - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` (`ok` 1 = done)
 
 Lizard binding wire format (16 bytes), matching `LizardBinding` in `lizard_map.h`:
 
@@ -568,7 +568,7 @@ then 8 macros `{flags (0), count 0..16, 16 x {mask u32 LE, ms u16 LE}}`. Macros 
 fires on the paddle press and plays once to the end. A bad blob is rejected whole (`0x29` acks `ok = 0`). Stored in
 `binds.bin`; `cfg.bin` is unchanged.
 
-Live state `0xAC` payload (24 bytes): `[0..3]` raw buttons u32 LE (before binds), `[4..7]` buttons after binds
+Live state `0xB0` payload (24 bytes): `[0..3]` raw buttons u32 LE (before binds), `[4..7]` buttons after binds
 (what the emulation modes see), `[8]` LT, `[9]` RT (0..255), `[10..17]` left X, left Y, right X, right Y (s16 LE),
 `[18]` active profile, `[19]` slot, `[20]` emulated type (0xFF = Steam/Lizard), `[21]` link up (1/0),
 `[22]` battery % (0 = no reading), `[23]` charge state (`EChargeState`: 2 charging, 4 charge complete, anything else discharging).

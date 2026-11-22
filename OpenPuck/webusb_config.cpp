@@ -797,16 +797,16 @@ static void webusbDrainCapture()
 }
 #endif // OPK_LOG
 // ---- binds frames (loop context; drop-on-full like the other panel frames, the panel retries) ----
-//   0xAE <2+n> <idx> <total> <n data>      blob chunk (BINDS_CHUNK bytes per chunk, last one shorter)
-//   0xAF 3 <op> <ok 1/0> <profile>         ack for 0x28 / 0x29 / 0x2A
-//   0xAC 24 <payload>                      live state, see docs/PROTOCOL.md
+//   0xB2 <2+n> <idx> <total> <n data>      blob chunk (BINDS_CHUNK bytes per chunk, last one shorter)
+//   0xB3 3 <op> <ok 1/0> <profile>         ack for 0x28 / 0x29 / 0x2A
+//   0xB0 24 <payload>                      live state, see docs/PROTOCOL.md
 static void webusbSendBindsChunk(uint8_t idx)
 {
 	static uint8_t f[4 + BINDS_CHUNK];
 	uint8_t n = bindsFwReadChunk(idx, f + 4);
 	if (!n || !usb_web.connected() || tud_vendor_write_available() < 4u + n)
 		return;
-	f[0] = 0xAE;
+	f[0] = 0xB2;
 	f[1] = (uint8_t)(2 + n);
 	f[2] = idx;
 	f[3] = BINDS_CHUNKS;
@@ -815,7 +815,7 @@ static void webusbSendBindsChunk(uint8_t idx)
 }
 static void webusbSendBindsAck(uint8_t op, bool ok)
 {
-	uint8_t f[5] = { 0xAF, 3, op, (uint8_t)(ok ? 1 : 0), g_binds.active };
+	uint8_t f[5] = { 0xB3, 3, op, (uint8_t)(ok ? 1 : 0), g_binds.active };
 	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
 		usb_web.write(f, sizeof f);
 		usb_web.flush();
@@ -828,7 +828,7 @@ static void webusbSendLive(uint8_t slot)
 	uint8_t f[2 + 24];
 	const PuckInput &in = g_in[slot];
 	const uint32_t raw = g_rawButtons[slot], out = in.buttons;
-	f[0] = 0xAC;
+	f[0] = 0xB0;
 	f[1] = 24;
 	for (int k = 0; k < 4; k++) {
 		f[2 + k] = (uint8_t)(raw >> (8 * k));
@@ -1161,9 +1161,9 @@ void webusbPoll()
 				fwupAckPost(FWUP_OK);
 
 				// ---- back-paddle binds (binds.h), protocol v23 ----
-				// 0x26 <idx>: read blob chunk idx -> 0xAE. 0x27 <slot|0xFF>: live state -> 0xAC.
+				// 0x26 <idx>: read blob chunk idx -> 0xB2. 0x27 <slot|0xFF>: live state -> 0xB0.
 				// 0x28 <idx> <len> <data>: stage blob chunk (idx 0 restarts). 0x29: validate + apply + save the staged
-				// blob. 0x2A <profile>: set active profile (+ confirm buzz). 0x28/0x29/0x2A are acked with 0xAF.
+				// blob. 0x2A <profile>: set active profile (+ confirm buzz). 0x28/0x29/0x2A are acked with 0xB3.
 			} else if (op == 0x26) {
 				webusbSendBindsChunk(buf[1]);
 			} else if (op == 0x27) {
