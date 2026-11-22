@@ -30,6 +30,7 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - [x] 12. Testy: `tests/sounds` (v2, wczytanie v1, 4 głosy), build firmware z RAM/flash przed i po, clang-format 18 i lint, `tests/sounds-web` (tory).
 - [x] 13. `docs/PROTOCOL.md`, README, CHECKLISTA; test użytkownika: wgranie UF2, zapis i granie 4 głosów z pucka.
 - [x] 14. `docs/index.html`, `tests/sounds-web/run.js`, CHECKLISTA: import MIDI do 4 torów naraz: lista źródła przy każdym torze (ścieżka, kanał ścieżki z kilkoma kanałami, Keep current, Empty), domyślnie źródła bez perkusji od najwyższej średniej wysokości na LT, RT, LG, RG (jedno źródło: tylko LT), liczba pozycji przy każdym, jeden Import, BPM z pliku.
+- [ ] 15. `docs/index.html`, `tests/sounds-web/run.js`, README, CHECKLISTA: jedna tabela w Mapping > Shortcuts: na górze Confirm with i głośność, wiersz na każdy skrót (back4 + A/B/X/Y/D-pad: tryb i melodia rodziny trybu z dopiskiem, gdy dzielona; back4 + RB/LB: melodie profili 1-3; połączenie pada: melodia), stałe skróty pod spodem, Save as PNG zostaje; karty Back4 chords, Confirmations i Events usunięte (bez powtórzeń); melodie przygaszone z podpowiedzią przy Confirm with = Vibration; firmware bez zmian.
 - Sprawdzenie: test Playwright z kroku 7, przegląd managera, test użytkownika na padzie.
 
 ## Decyzje
@@ -62,6 +63,8 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 
 - Test 2026-11-22 (główny PC, firmware z protokołem 27): po wgraniu UF2 piano roll, import MIDI do torów, odsłuch na padzie i melodie z pucka grają tak, jak użytkownik chciał ("gra idealnie").
 - Porządki przed zamknięciem: `readVoice` nie przesuwa wskaźnika poza krótki bufor podglądu (0x31); 5 długich komentarzy na końcu linii w `webusb_config.cpp` (sprzed etapu) przeniesionych nad instrukcje, lint komentarzy czysty.
+
+- Porządek na stronie (użytkownik 2026-11-22): skróty, tryby, melodie i dźwięk/wibracja w jednej tabeli w Mapping > Shortcuts zamiast trzech kart; melodie dalej per rodzina trybów (firmware bez zmian), wiersz pokazuje, gdy melodia jest wspólna z innym skrótem.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
