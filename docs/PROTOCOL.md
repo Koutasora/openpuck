@@ -449,6 +449,22 @@ Messages:
   - `0x12 <idx> <16-byte binding>`: set one lizard binding (see below)
   - `0x14`: commit the edited lizard map to flash (device echoes `0xAA`)
   - `0x15`: reset the lizard map to built-in defaults (device echoes `0xAA`)
+  - `0x26 <idx>`: read chunk `idx` of the back-paddle binds blob (reply `0xB2`). **Requires status-blob version ≥ 23**
+    (older firmware drops `0x26`–`0x2A` silently). See §10.2.
+  - `0x27 <slot>`: live state of `slot` (`0xFF` = current slot), reply `0xB0`; the panel may poll it at ~30 Hz
+  - `0x28 <idx> <len> <data>`: stage binds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks must be in order)
+  - `0x29`: validate + apply + save the staged blob (`binds.bin`)
+  - `0x2A <profile>`: set active profile 0..2 (saved, confirmation buzz of profile+1 pulses)
+  - `0x2B <setting>`: manual host setting, `0` auto, `1` always PC, `2` always console (saved in `host.bin`),
+    acked with `0xB3`. **Requires status-blob version ≥ 24.** See §10.3.
+  - `0x2C`: diagnostics, reply `0xB4` (§10.4). Sent only while the panel is connected.
+  - `0x2D <idx>`: read chunk `idx` of the sounds blob (reply `0xB5`). **Requires status-blob version ≥ 25** (older
+    firmware drops `0x2D`–`0x31` silently). See §10.5. For `idx` out of range (or a full TX buffer) there is no `0xB5`
+    reply; the host retries.
+  - `0x2E <idx> <len> <data>`: stage sounds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks in order)
+  - `0x2F`: validate + apply + save the staged blob (`sounds.bin`)
+  - `0x30 <n>`: play stored melody `n` (0..7) now
+  - `0x31 <count> <count x 4 bytes>`: play the given melody now, not stored
   - `0x20`–`0x24`: staged firmware update (begin/data/end/reboot/abort), acked with `0xAB` frames
   - `0x25 0x57 0x49 0x50 0x45`: **full board wipe** (`"WIPE"` magic, debug panel only). Erases the app
     region + LittleFS (settings + bonds) + bootloader-settings page and reboots app-less, so the board mounts
@@ -461,6 +477,14 @@ Messages:
   - `0xA9 ...`: live wedge report
   - `0xAA <count> <count×16-byte bindings>`: lizard binding map
   - `0xAB 5 <status> <nextOff u32 LE>`: firmware-update ack
+  - `0xB0 25 <payload>`: live state (§10.2)
+  - `0xB2 <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
+  - `0xB4 119 <payload>`: diagnostics (§10.4)
+  - `0xB5 <2+n> <idx> <total> <n bytes>`: sounds blob chunk (§10.5)
+  - `0xB6 3 <op> <ok> 0`: ack for `0x2E` / `0x2F` / `0x30` / `0x31` (`ok` 1 = done; for `0x30` / `0x31` 0 also means no
+    controller was linked and ready, so nothing played)
+  - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` / `0x2B` (`ok` 1 = done); for `0x2B` the last byte
+    is the host byte of §10.3 instead of the profile
 
 Lizard binding wire format (16 bytes), matching `LizardBinding` in `lizard_map.h`:
 
@@ -544,6 +568,238 @@ acked with a status blob so the host's read-after-write keeps the OUT pipe flowi
 reboot regenerates the session addresses from the new UUIDs and the restored puck reproduces both the pairings
 and all settings. Other settings (mouse, chords, per-type button maps, Switch Pro gyro mapping) ride in the
 backup file as plain `0x02` field values, not in the bond commands.
+
+
+### 10.2 Back-paddle binds (blob version 2, status blob 24)
+
+Status blob byte `p[197]` = active profile (0..2). Old fields `5..8` and `40+et*9+k` (k < 4) now set a plain
+button action in the active profile; `g_type[].back` / blob `p[8..11]` always show the button code of the active
+profile (0 for a combo or macro paddle).
+
+Binds blob (`binds.h`, 1079 bytes, read/written in 96-byte chunks, 12 chunks): `[0xB1][version][payload length u16 LE]`,
+payload, `u16 LE` sum of the payload bytes. Payload: `active`, then actions `[profile 3][type 4: xbox, switch, ds4, ds5][paddle 4: L4 R4 L5 R5]`
+each `{kind, arg, mask u32 LE}`, then 8 macros `{flags (0), count 0..16, 16 x {mask u32 LE, ms u16 LE}}`.
+Macros are shared by all profiles; a macro fires on the paddle press and plays once to the end. A bad blob is
+rejected whole (`0x29` acks `ok = 0`). Stored in `binds.bin`; `cfg.bin` is unchanged.
+
+Action kinds:
+
+| kind | name | `arg` | `mask` |
+|---|---|---|---|
+| 0 | button | button code 0..20 | 0 |
+| 1 | combo | 0 | `TB_*` bits pressed together |
+| 2 | macro | macro 0..7 | 0 |
+| 3 | key (version 2) | HID keyboard usage `0x04..0xE7` | modifier byte, bits 8..31 must be 0 |
+| 4 | mouse (version 2) | mouse code 1..9 (below) | 0 |
+
+Modifier byte of a key action = the HID keyboard modifier byte: `0x01` left Ctrl, `0x02` left Shift, `0x04` left Alt,
+`0x08` left Win, `0x10` right Ctrl, `0x20` right Shift, `0x40` right Alt, `0x80` right Win. The key (and its
+modifiers) is held while the paddle is held. `arg` is a usage from the HID "Keyboard/Keypad" page (`0x04` = A,
+`0x1E` = 1, `0x28` = Enter, `0x2C` = Space, `0x3A` = F1, `0x4F` = Right arrow, `0xE1` = Left Shift as a key, ...);
+`0x00..0x03` (rollover/error codes) are rejected.
+
+Mouse codes of a mouse action:
+
+| code | action |
+|---|---|
+| 1 | left button (held with the paddle) |
+| 2 | right button |
+| 3 | middle button |
+| 4 | back button (button 4) |
+| 5 | forward button (button 5) |
+| 6 | wheel up, one notch per press |
+| 7 | wheel down, one notch per press |
+| 8 | wheel up, one notch per press, repeated every 100 ms while held |
+| 9 | wheel down, repeated every 100 ms while held |
+
+Version 2 has exactly the layout of version 1 (same length, same checksum rule); it only allows kinds 3 and 4. A
+version 1 blob is still accepted (and rejected whole if it contains kind 3 or 4); the firmware always writes and
+sends version 2. A page that edits the blob must keep the version byte it read, or write 2 when it uses kinds 3/4.
+Key and mouse actions only act on a PC host in the modes listed in §10.3; in every other mode the paddle simply
+does nothing. Macro steps stay gamepad-only (no key steps).
+
+Live state `0xB0` payload (25 bytes since status blob version 24; a parser that reads the length byte ignores
+what it does not know): `[0..3]` raw buttons u32 LE (before binds), `[4..7]` buttons after binds
+(what the emulation modes see), `[8]` LT, `[9]` RT (0..255), `[10..17]` left X, left Y, right X, right Y (s16 LE),
+`[18]` active profile, `[19]` slot, `[20]` emulated type (0xFF = Steam/Lizard), `[21]` link up (1/0),
+`[22]` battery % (0 = no reading), `[23]` charge state (`EChargeState`: 2 charging, 4 charge complete, anything else discharging),
+`[24]` host byte (§10.3).
+
+Profile switch on the pad: all four paddles + RB = next, + LB = previous (cyclic, emulated modes only), N short buzzes = profile N.
+
+
+### 10.3 Keyboard and mouse on a PC host
+
+Goal: on a PC the puck shows the gamepad **and** a keyboard **and** a mouse as separate devices (Windows Device
+Manager: the pad, "HID Keyboard Device", "HID-compliant mouse"), and a back paddle can be a key or a mouse
+action (§10.2). On a console nothing changes: it must see the descriptor it always saw.
+
+Modes with keyboard / mouse: `MODE_PS5` (DualSense with panel) and `MODE_HIDGYRO` (DS4 + gyro). Everything else
+is untouched: the clean PlayStation modes, PS3, PS5 console via auth adapter, Switch, Xbox 360, Original Xbox
+(console personalities, or deliberately single-interface), DInput / SInput (no paddle actions at all) and
+Steam / Lizard (Steam does its own keyboard and mouse).
+
+**Xbox 360 mode (`MODE_XBOX`) was examined for a PC keyboard and deliberately left out.** Findings:
+
+- The personality is static and exact: `xi_open` accepts only the four XInput / XSM3 interfaces byte for byte, the
+  descriptor builder reserves IN/OUT endpoints 1..6, and `usbIdentity()` sets the *device* class to `0xFF/0xFF/0xFF`
+  like a real pad. Only IN endpoint 7 (`0x87`) is left, so at most **one** extra HID interface fits: keyboard and
+  mouse would have to share it (two report IDs, which Windows still shows as two devices).
+- With device class `0xFF` Windows binds the XInput driver to the whole device and does not load the composite
+  parent driver (`usbccgp`), so an added HID interface would most likely never be enumerated. Making it appear
+  means changing the device class (0 or EF/02/01 with IAD), i.e. a different descriptor than a real Xbox 360 pad,
+  which the console's XSM3 check and the PC XInput driver binding both depend on. This cannot be verified without
+  a Windows PC and an Xbox 360 console, and the requirement is that the console is not affected.
+- The mode has no WebUSB / BOS, so Windows' MS OS 2.0 request never arrives; `GET_DESCRIPTOR(string 0xEE)` does
+  arrive once per machine and is then cached by Windows, so it cannot drive auto detection. Console side the
+  only signal would be the XSM3 requests (`0x81 0x82 0x83 0x84 0x86 0x87`). Linux (`xpad`) and macOS give nothing.
+- The Xbox mode has no config channel (no WebUSB, no CDC), so the manual setting could only be made in another
+  mode (`HOST P` in the debug console) before switching.
+
+Alternative for push-to-talk and similar on a PC: use `MODE_PS5` or `MODE_HIDGYRO` (keyboard / mouse work there),
+or a Steam / Lizard binding. If Xbox 360 + keyboard is still wanted, the experiment would be an opt-in, manual-only
+setting (never auto, never remembered) that switches the device class to composite and adds one combined HID
+interface on endpoint `0x87`, tested first on a PC with the real XInput driver and only then offered.
+
+- **Mouse** = the existing wake-mouse interface (boot mouse, 5 buttons + wheel), present in both modes already, so
+  the descriptor does not change. Mouse actions are sent on it only while the host is a PC.
+- **Keyboard** = one more HID interface (non-boot keyboard descriptor, 6 keys + modifiers), placed after the pad
+  interfaces and before WebUSB. HID instance numbers follow descriptor order, so the keyboard takes the pool object
+  right after the mounted pads and that object gets its pad role back on the next re-enumeration. It is present
+  only while the host is a PC and fewer than 4 pads are mounted. The USB serial carries a `k` suffix then, so hosts
+  do not reuse a cached configuration. With 4 pads mounted there is no keyboard: the pool has
+  4 objects, so `kbdCarrier(k)` is null for `k` = 4 and no free object is left to carry it.
+- The puck starts **without** the keyboard unless the host was a PC last time. When the host turns out to be a PC
+  (or the setting forces it), the device re-enumerates once (detach / attach, no reboot, RF links stay up) after the
+  result has held for 1.5 s; when it turns out to be a console it re-enumerates back without it.
+
+Detection (`host_detect.cpp`; nothing here is certain, so every result carries its reason):
+
+| signal | result | reason code |
+|---|---|---|
+| host fetches the MS OS 2.0 descriptor (vendor request 2, `wIndex` 7) | PC (Windows) | 1 |
+| host fetches the WebUSB landing page (vendor request 1) or connects the panel (class request `0x22`, `wValue` ≠ 0) | PC (a browser, any OS) | 2 |
+| pad identity feature reports read (DualSense `0x05 0x09 0x20`, DS4 `0x02 0x12 0x81 0xA3`) and 5 s later no auth report | PC (Linux / macOS / SDL), weak | 3 |
+| feature report `0xF0..0xF3` GET or SET on the pad interface (Sony auth) | console (PS4 / PS5) | 4 |
+| setting forced by hand | as set | 5 |
+| nothing new yet, result of the previous session (stored in `host.bin`) | as stored | 6 |
+| nothing seen, nothing stored | unknown (= no keyboard, no mouse actions) | 0 |
+
+A strong signal (1, 2, 4) beats a weak one; between two strong ones the latest wins. The Switch modes
+raise the Windows / browser signals too (shown, not acted on); a Switch console gives no signal and stays
+"unknown". The Xbox modes report nothing at all. Where it can be wrong: a PC that never asks for the MS OS descriptor again (Windows caches it) and
+never probes the pad shows "unknown" until a probe or the panel opens (the remembered result covers the next
+boots); a console that does not run the Sony auth in these modes looks like "PC" after 5 s of probes. The manual
+setting fixes both.
+
+Manual setting (`0` auto, `1` always PC, `2` always console), saved with the last auto result in `host.bin`
+(`[0xB7][setting][detected][setting ^ detected ^ 0xA5]`, 4 bytes; a bad file = auto). Set it with WebUSB `0x2B`
+or the serial console `HOST A|P|C` (`HOST` alone prints the state; the console exists on the debug-CDC boot, then
+restart into the mode: the setting is saved).
+
+Host byte (live state `0xB0` payload `[24]`, and the last byte of the `0xB3` ack for `0x2B`):
+
+```text
+bits 0-1  detected / effective host: 0 unknown, 1 PC, 2 console
+bits 2-3  manual setting: 0 auto, 1 PC, 2 console
+bits 4-7  reason code (table above)
+```
+
+Serial console (CDC): `BA <p> <et> <i> K<usage hex>[:<mods hex>]` (e.g. `BA 1 3 0 K06:03` = Ctrl+Shift+C),
+`BA <p> <et> <i> Mo<name>` with `L R M` buttons, `B` back, `F` forward, `U` / `D` wheel per press, `U+` / `D+`
+wheel repeating while held; `BL` lists them as `K06:03` / `MoU+`; `HOST [A|P|C]`.
+
+### 10.4 Diagnostics frame `0xB4`
+
+Request `0x2C` (no argument). Reply: `0xB4`, length byte `119`, then 119 payload bytes. All counters are `u32` little
+endian, counted since boot. Use it to find where a back-paddle action is lost: raw buttons seen, binds output,
+`allowed`, queued reports, USB endpoint results.
+
+| offset | size | field |
+|---|---|---|
+| 0 | 1 | layout version (1) |
+| 1 | 1 | `g_usbMode` |
+| 2 | 1 | `g_etype` (0xFF none) |
+| 3 | 1 | active profile |
+| 4 | 1 | host kind (0 unknown, 1 PC, 2 console) |
+| 5 | 1 | host reason (§10.3) |
+| 6 | 1 | host setting |
+| 7 | 1 | flags: bit0 keyboard in descriptor, bit1 keyboard add failed, bit2 wake mouse present, bit3 wake mouse ready, bit4 USB mounted, bit5 suspended |
+| 8 | 1 | mounted pads (`g_usbMountCount`) |
+| 9 | 1 | pad pool size (`maxSlots`) |
+| 10 | 4 | `bindsFwFilter` calls |
+| 14 | 4 | last raw buttons (any slot) |
+| 18 | 4 | last buttons after binds |
+| 22 | 4 | calls with a non-empty key / mouse state |
+| 26 | 1 | last non-empty state: keyboard modifiers |
+| 27 | 6 | its key usages |
+| 33 | 1 | its mouse buttons |
+| 34 | 1 | its wheel (s8) |
+| 35 | 4 | `sendState` passes with `allowed` true |
+| 39 | 4 | passes with `allowed` false |
+| 43 | 4 | mouse reports accepted (`wakeHidMouse` true) |
+| 47 | 4 | mouse reports refused (not ready) |
+| 51 | 4 | keyboard reports queued |
+| 55 | 1 | last mouse buttons sent |
+| 56 | 1 | last keyboard modifiers sent |
+| 57 | 6 | last keyboard usages sent |
+| 63 | 20 | wake mouse USB channel: `enqueued, sent, sendFail, dropped, notReady` (5 x u32) |
+| 83 | 20 | keyboard channel, same fields, counted since the keyboard took the interface |
+| 103 | 4 | every raw button bit ever seen (OR) |
+| 107 | 4 | every button bit ever seen after binds (OR) |
+| 111 | 4 | re-enumerations requested by the keyboard logic |
+| 115 | 4 | `host.bin` flash writes |
+
+`dropped` = oldest report discarded because the ring was full, `notReady` = drain passes that found a report waiting
+and the endpoint not ready, `sendFail` = `sendReport` refused on a ready endpoint. Button bit numbers are the `TB_*`
+bits of §8.1 (paddles: R4 `0x80`, R5 `0x100`, L4 `0x20000`, L5 `0x40000`).
+
+The `0xB0` live state with slot `0xFF` now picks a linked controller that has input in hand (else the first linked
+one) instead of the slot the poll happened to be on.
+
+### 10.5 Melodies (sounds blob version 1, status blob 25)
+
+The puck can play short melodies through the controller's actuator: each note is a `HAPTIC_LFO_TONE` OUTPUT report
+`0x83` (§ "Two different `0x8x` id spaces") relayed like rumble, once per side (0 and 1), with `gain_db` = the volume
+setting and no LFO (the report layout comes from SDL; its audibility and the meaning of `side` were not checked on hardware yet). The sequencer runs in `loop()` without blocking; every rest and the end of a melody send the zero
+`0x80` rumble report, so the actuator cannot stay latched if a tone ignores its duration.
+
+Sounds blob (`sounds.h`, 1048 bytes, read/written in 96-byte chunks, 11 chunks): `[0xB8][version 1][payload length u16 LE]`,
+payload, `u16 LE` sum of the payload bytes. Payload (1042 bytes):
+
+| offset | size | field |
+|---|---|---|
+| 0 | 1 | confirmations: `0` off, `1` vibration, `2` sound, `3` both |
+| 1 | 1 | volume = `gain_db`, signed, `-60..0` (`0` loudest), default `-6` |
+| 2 | 8 | melody index (0..7) per event, `0xFF` = no melody |
+| 10 | 8 x 129 | melodies: `{count 0..32, 32 x {freq u16 LE, ms u16 LE}}`; notes past `count` are ignored |
+
+Events (index into the event table): `0` profile 1, `1` profile 2, `2` profile 3, `3` mode change to a PlayStation mode
+(PS5, PS5 game, PS5 auth, HID gyro/DS4, DS4 game, PS3), `4` mode change to Xbox (Xbox, Xbox OG), `5` mode change to Switch
+(HORI, Pro), `6` mode change to any other mode (Steam, Lizard, DirectInput, SInput), `7` a controller connected.
+Notes: `freq` 0 = rest, otherwise `1..4000` Hz; `ms` is `30..5000`. A bad blob is rejected whole (`0x2F` acks `ok = 0`) and a
+bad or missing `sounds.bin` means the defaults (own short motifs, melody `i` for event `i`, confirmations = vibration).
+
+The 30 ms minimum protects the relay queue: a note is two `0x83` entries per controller and the relay sends about one
+entry per poll cycle (~4 ms), so shorter notes would flood the 32-entry queue and push out other frames. The sequencer
+also holds the next note while a linked slot has more than 4 entries queued (the note is late, not dropped; a queue
+that does not drain for 1 s ends the melody). With confirmation "both", the melody of a profile switch starts after the
+last vibration pulse. Melodies do not follow the per-type rumble setting: sound is its own setting (confirmations).
+
+The confirmations setting decides how a profile switch is confirmed (vibration = N pulses as before, sound = the
+profile's melody). The melodies of the other events play only when it includes sound. A mode change plays the melody
+of the new mode's family on the first connection after the reboot (a flag file lives across the reboot); a connection
+plays the connect melody once per 20 s per controller. A melody starts only for controllers that are linked. The
+preview commands `0x30` / `0x31` play whatever the setting is.
+
+`0x31` payload is the melody as in the blob without padding: `[count][count x {freq u16 LE, ms u16 LE}]`, `count` 0..32.
+
+Console: `SNL` list, `SNP <n>` play melody n, `SNE <e>` play the melody of event e, `SNM <0..3>` confirmations,
+`SNG <-60..0>` volume.
+
+### 10.6 Back4 chords set to None (status blob 26)
+
+The back4 + B/X/Y chords (fields `17..19`, blob `p[25..27]`) and back4 + D-pad chords (fields `34..37`, blob `p[182..185]`) take a mode number or `0xFE` = None: the combination does nothing. From status blob version 26; older firmware rejects `0xFE`. back4 + A (always Steam) and back4 + LB/RB (profiles) are not configurable.
 
 ## 11. Timing notes
 

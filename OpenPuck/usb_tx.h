@@ -25,6 +25,22 @@ class Adafruit_USBD_HID;
 void usbTxHid(Adafruit_USBD_HID *hid, uint8_t rid, const void *data,
 	      uint16_t len);
 
+// Per-destination counters since boot (or since usbTxStatsReset), for the WebUSB diagnostics frame.
+struct UsbTxStats {
+	uint32_t enqueued; // reports queued by usbTxHid
+	uint32_t sent; // sendReport accepted
+	uint32_t sendFail; // sendReport refused although the endpoint was ready
+	uint32_t dropped; // oldest report discarded, ring full
+	uint32_t notReady; // drain passes that found a report waiting but the endpoint not ready
+};
+// false when `hid` never queued anything (no channel yet)
+bool usbTxStats(Adafruit_USBD_HID *hid, UsbTxStats *out);
+void usbTxStatsReset(Adafruit_USBD_HID *hid);
+
+// Drop everything still queued for `hid` (its interface changes role across a re-enumeration, a stale report of
+// the old role must not reach the new one). Loop context.
+void usbTxClear(Adafruit_USBD_HID *hid);
+
 // Kept for call-site stability; no longer does anything (the drain runs from loop() via usbTxPump). Call once.
 void usbTxBegin(void);
 

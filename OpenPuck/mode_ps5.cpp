@@ -6,6 +6,7 @@
 #include "bonds.h"
 #include "usb_mount.h"
 #include "usb_tx.h"
+#include "host_detect.h"
 #include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
 #include <string.h>
@@ -81,6 +82,10 @@ static uint16_t ps5GetCommon(uint8_t slot, uint8_t rid, hid_report_type_t type,
 	(void)slot;
 	if (type != HID_REPORT_TYPE_FEATURE || !buf || reqlen == 0)
 		return 0;
+	if (rid >= 0xF0 && rid <= 0xF3)
+		hostEvent(HE_AUTH, millis());
+	else if (rid == 0x05 || rid == 0x09 || rid == 0x20)
+		hostEvent(HE_PROBE, millis());
 	memset(buf, 0, reqlen);
 	switch (rid) {
 	// capabilities: identify as DualSense-capable (SDL-only probe; hid-playstation never reads 0x03)
@@ -117,6 +122,8 @@ static uint16_t ps5GetCommon(uint8_t slot, uint8_t rid, hid_report_type_t type,
 static void ps5SetCommon(uint8_t slot, uint8_t rid, hid_report_type_t type,
 			 uint8_t const *b, uint16_t n)
 {
+	if (type == HID_REPORT_TYPE_FEATURE && rid >= 0xF0 && rid <= 0xF3)
+		hostEvent(HE_AUTH, millis());
 	if (type != HID_REPORT_TYPE_OUTPUT || !b || n < 1)
 		return;
 	uint8_t id;
@@ -244,7 +251,10 @@ uint8_t Ps5Controller::maxSlots() const
 void Ps5Controller::usbIdentity()
 {
 	USBDevice.setID(0x054C, 0x0CE6);
-	USBDevice.setVersion(0x0200);
+	// bcdUSB 2.10 makes Windows read the BOS / MS OS 2.0 descriptor, which binds
+	// WinUSB to the panel interface; at 2.00 Windows never asks and the panel
+	// cannot connect. Consoles do not accept this mode without an adapter.
+	USBDevice.setVersion(modeIsCleanPS(g_usbMode) ? 0x0200 : 0x0210);
 	USBDevice.setDeviceVersion(0x0110);
 	USBDevice.setManufacturerDescriptor("Sony Interactive Entertainment");
 	USBDevice.setProductDescriptor("DualSense Wireless Controller");
@@ -255,12 +265,22 @@ void Ps5Controller::beginPool()
 	initPs5Macs();
 	uint8_t pool = maxSlots();
 	for (uint8_t s = 0; s < pool; s++) {
-		g_ps5[s].enableOutEndpoint(true);
-		g_ps5[s].setReportCallback(PS5_GETCB[s], PS5_SETCB[s]);
-		g_ps5[s].setReportDescriptor(PS5_HID_DESC, sizeof PS5_HID_DESC);
-		g_ps5[s].setPollInterval(1);
+		padRole(s);
 		g_ps5[s].begin();
 	}
+}
+void Ps5Controller::padRole(uint8_t s)
+{
+	if (s >= NSLOT)
+		return;
+	g_ps5[s].enableOutEndpoint(true);
+	g_ps5[s].setReportCallback(PS5_GETCB[s], PS5_SETCB[s]);
+	g_ps5[s].setReportDescriptor(PS5_HID_DESC, sizeof PS5_HID_DESC);
+	g_ps5[s].setPollInterval(1);
+}
+Adafruit_USBD_HID *Ps5Controller::kbdCarrier(uint8_t k)
+{
+	return k < maxSlots() ? &g_ps5[k] : nullptr;
 }
 void Ps5Controller::mountSlots(uint8_t k)
 {

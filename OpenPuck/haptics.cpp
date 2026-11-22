@@ -1,4 +1,5 @@
 #include "haptics.h"
+#include "sounds_fw.h"
 #include "bonds.h"
 #include "config.h"
 #include "rf_link.h"
@@ -110,6 +111,13 @@ bool relayPending()
 	// check the current slot's queue; called from rfConnQueueHapticRelay which runs with g_curSlot set
 	int cur = (g_curSlot >= 0 && g_curSlot < NSLOT) ? g_curSlot : 0;
 	return g_rqHead[cur] != g_rqTail[cur];
+}
+uint8_t relayDepth(uint8_t slot)
+{
+	if (slot >= NSLOT)
+		return 0;
+	return (uint8_t)((g_rqHead[slot] + RELAY_QLEN - g_rqTail[slot]) %
+			 RELAY_QLEN);
 }
 bool relayEnqueue(uint8_t rid, const uint8_t *payload, uint8_t plen,
 		  bool isHaptic, uint8_t slot, bool expectReply)
@@ -688,6 +696,7 @@ void hapticOnReconnect(int slot)
 	// Scrub haptics queued before the link came up (stale across the reconnect) -- this slot only.
 	hapticCancelPendingOn(slot);
 	imuForceRaw(slot);
+	soundsFwOnConnect(slot);
 	// NO automatic haptic re-init. hapticReinit lands 0x81 (CLEAR DIGITAL MAPPINGS -- rid < 0x87 so it
 	// EXECUTES even on legacy framing). 0x81 is NON-IDEMPOTENT (ibex FUN_0001f554): EVERY call re-runs the
 	// lizard-disable event + func_0x0001bbf0 (a hardware peripheral re-arm unique to the 0x81 path) -- so

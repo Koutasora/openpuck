@@ -71,6 +71,15 @@ static inline bool modeIsCleanPS(uint8_t m)
 	       m == MODE_PS5_AUTH;
 }
 
+// Modes whose gamepad may be joined by a USB keyboard (and mouse actions on the wake mouse) when the host is a
+// PC (host_detect.h). Both are already composite (wake mouse + WebUSB) and answer no console auth, so a console
+// gains nothing from them; the console modes keep their descriptors untouched. MODE_XBOX is static and
+// deliberately single-interface (Xbox 360 console), Switch modes are console-first: left out.
+static inline bool modeHasKbm(uint8_t m)
+{
+	return m == MODE_PS5 || m == MODE_HIDGYRO;
+}
+
 static inline bool modeIsPuck(uint8_t m)
 {
 	return m == MODE_STEAM || m == MODE_LIZARD;
@@ -120,6 +129,13 @@ extern uint8_t g_usbMode; // loaded from flash at boot
 
 // true for all non-puck presentations (cached !modeIsPuck(g_usbMode))
 extern bool g_xbox;
+// Chord value "None": the combination does nothing. Outside the mode range and not 0xFF, which means "no
+// value" in cfg.bin (short file) and in rf_link's chord debounce.
+#define CHORD_NONE 0xFE
+static inline bool chordValid(uint8_t m)
+{
+	return modeValid(m) || m == CHORD_NONE;
+}
 extern uint8_t g_chordBtn[3]; // back4+B/X/Y -> these modes (A always STEAM)
 
 // back4+D-pad -> these modes, indexed CHD_LEFT/UP/RIGHT/DOWN. Same deal as g_chordBtn: configurable from the

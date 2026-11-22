@@ -221,12 +221,12 @@ void loadCfg()
 							      MODE_XBOX,
 							      MODE_SW_PRO };
 			for (int i = 0; i < 3; i++)
-				g_chordBtn[i] = modeValid(c.chordBtn[i]) ?
+				g_chordBtn[i] = chordValid(c.chordBtn[i]) ?
 							c.chordBtn[i] :
 							CHORD_DEF[i];
 			// D-pad chords: 0xFF (short pre-tail file) or any invalid mode keeps the compiled default.
 			for (int i = 0; i < 4; i++)
-				if (modeValid(c.chordDpad[i]))
+				if (chordValid(c.chordDpad[i]))
 					g_chordDpad[i] = c.chordDpad[i];
 			// Pad->stick mapping: 0xFF (a file predating this tail field) or an out-of-range
 			// value keeps the compiled default (off).

@@ -1,0 +1,26 @@
+sc-front.svg, sc-back.svg and sc-top.svg are derived from "steam_controller_reference_20260429.pdf"
+(Steam Controller reference drawing) published by Valve Corporation.
+
+Changes: the front view (sheet 1), the underside view and the top view (sheet 2)
+were cut out and converted to SVG. Removed: the sheet frame, title block,
+dimensions, arrows, keep-out areas, notes, engraved legends, bolts, the thin
+surface lines and duplicate rim contours. The shoulders of the underside view
+and the bumpers of the top view were redrawn as single smooth contours; the
+right half of the top view is the mirrored left half.
+
+The derived files are distributed under the same license as the original:
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+(http://creativecommons.org/licenses/by-nc-sa/4.0/). Not endorsed by Valve.
+
+Original license notice from Valve (SteamController-main/license.txt):
+
+# License 
+
+Valve Corporation (“Valve”) has released the digital plans and drawings distributed with this document (the “Materials”) under the Creative Commons Attribution-NonCommercial-Sharealike 4.0 International license (http://creativecommons.org/licenses/by-nc-sa/4.0/). You are free to use and modify the Materials in accordance with this license e.g. for printing or 3D printing your own skins, accessories or other modifications, provide you give proper attribution to Valve, do not claim or imply association with or endorsement by Valve and do not use it for commercial purposes. 
+
+If you are interested in creating a commercial product based on the Materials, please get in touch with Valve. 
+
+Furthermore, please be aware that opening the outside enclosure of your Steam hardware will void a warranty you may otherwise enjoy (https://support.steampowered.com/kb_article.php?ref=4577-TUJV-6223). 
+
+
+Copyright 2026 Valve Corporation

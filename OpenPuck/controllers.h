@@ -18,6 +18,8 @@
 #pragma once
 #include <stdint.h>
 
+class Adafruit_USBD_HID;
+
 class IController {
     public:
 	virtual ~IController()
@@ -82,6 +84,19 @@ class IController {
 	}
 	// (Re)add the first k slot interfaces (a dense prefix of the pool) to the freshly-cleared config descriptor.
 	virtual void mountSlots(uint8_t k)
+	{
+		(void)k;
+	}
+	// The USB keyboard rides on the pool object right after the k mounted pads (HID instances are numbered by
+	// descriptor order, so only that object has the instance the keyboard gets). nullptr = this mode has none /
+	// the pool is used up.
+	virtual Adafruit_USBD_HID *kbdCarrier(uint8_t k)
+	{
+		(void)k;
+		return nullptr;
+	}
+	// Give pool object k its gamepad configuration back (before mountSlots, after it served as keyboard).
+	virtual void padRole(uint8_t k)
 	{
 		(void)k;
 	}

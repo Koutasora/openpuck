@@ -13,6 +13,12 @@
 #include "fw_update.h"
 #include "usb_tx.h"
 #include "usb_mount.h" // modeSwitchReboot()
+#include "binds_fw.h"
+#include "sounds_fw.h"
+#include "kbm_fw.h"
+#include "wake_hid.h"
+#include "controllers.h"
+#include "host_detect.h"
 #include "xinput_auth.h"
 #include <Arduino.h>
 #include <string.h>
@@ -33,6 +39,21 @@ extern "C" bool
 __wrap_tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage,
 				  const tusb_control_request_t *request)
 {
+	// What the host asks of us tells PC from console (host_detect.h): Windows fetches the MS OS 2.0 descriptor,
+	// a browser the WebUSB landing page / connects the panel. Xbox modes answer these requests themselves.
+	if (stage == CONTROL_STAGE_SETUP && g_usbMode != MODE_XBOX &&
+	    g_usbMode != MODE_XBOX_OG) {
+		if (request->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR) {
+			if (request->bRequest == 2 && request->wIndex == 7)
+				hostEvent(HE_MSOS2, millis());
+			else if (request->bRequest == 1)
+				hostEvent(HE_WEBUSB, millis());
+		} else if (request->bmRequestType_bit.type ==
+				   TUSB_REQ_TYPE_CLASS &&
+			   request->bRequest == 0x22 && request->wValue) {
+			hostEvent(HE_WEBUSB, millis());
+		}
+	}
 	if (g_usbMode == MODE_XBOX)
 		return xinputAuthControl(rhport, stage, request);
 	if (g_usbMode == MODE_XBOX_OG &&
@@ -105,7 +126,12 @@ static bool boardCommand(uint8_t op)
 //                [v21: p[53] rumble strength as PERCENT/2 (field 22, revived); p[195] rumble style
 //                 (field 39, RUMBLE_STYLE_* in haptics.h)]
 //                [v22: p[196] RF recovery status/journal transport capability marker (0x52)]
-#define WB_PAYLEN 195
+//                [v23: p[197] active binds profile 0..2 (back-paddle actions, binds.h; commands 0x26..0x2A)]
+//                [v24: command 0x2B <0 auto|1 PC|2 console> = manual host setting (kbm_fw.h); live state 0xB0 grows
+//                 to 25 bytes, the last one = detected host]
+//                [v25: commands 0x2D..0x31 = melodies (sounds.h)]
+//                [v26: chord bytes may be 0xFE = None (the combination does nothing)]
+#define WB_PAYLEN 196
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
 // panel / stale mappings). The Makefile sets -DCFG_TUD_VENDOR_TX_BUFSIZE=256; guard it here so a build without
@@ -132,7 +158,15 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (21 = +rumble style (field 39, blob p[195]) and the REVIVED rumble-strength field 22 at blob p[53], 
+	// (26 = back4 chord bytes (p[25..27], p[182..185]) may be 0xFE = None (CHORD_NONE): the panel offers it
+	// only from 26, older firmware would reject the write;
+	// 25 = +melody ops 0x2D..0x31 (sounds.h) -- the panel MUST see >=25 before sending them, older firmware
+	// drops them silently;
+	// 24 = +op 0x2B (manual host setting) and the host byte at the end of the 0xB0 live state -- the panel MUST
+	// see >=24 before sending 0x2B, older firmware drops it silently;
+	// 23 = +active binds profile at blob p[197] and the binds/live-state ops 0x26..0x2A -- the panel MUST see >=23
+	// before sending those, older firmware drops them silently;
+	// 21 = +rumble style (field 39, blob p[195]) and the REVIVED rumble-strength field 22 at blob p[53], 
 	// now carrying percent/2; 
 	// 22 = +RF recovery capability marker at blob p[196];
 	// 20 = +per-type trackpad->stick mapping (fields 80..87, blob p[187..194]); 
@@ -154,7 +188,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 22;
+	p[2] = 26;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -340,6 +374,8 @@ static void webusbSendBlob()
 	// v22: append-only RF recovery transport capability. p[181] remains the
 	// upstream Steam Machine toggle; older RF builds used that byte for 0x52.
 	p[196] = 0x52;
+	// v23: active back-paddle profile
+	p[197] = g_binds.active;
 	// CRITICAL: usb_web.write() SPINS (`while (remain && _connected) yield();`) until the IN FIFO drains or the
 	// panel disconnects. If the panel holds the WebUSB interface open but stops reading its IN endpoint -- a
 	// backgrounded tab, or the host briefly not servicing transferIn under load -- the FIFO never empties and
@@ -790,6 +826,181 @@ static void webusbDrainCapture()
 		webusbCapEnd();
 }
 #endif // OPK_LOG
+// ---- binds frames (loop context; drop-on-full like the other panel frames, the panel retries) ----
+//   0xB2 <2+n> <idx> <total> <n data>      blob chunk (BINDS_CHUNK bytes per chunk, last one shorter)
+//   0xB3 3 <op> <ok 1/0> <profile>         ack for 0x28 / 0x29 / 0x2A / 0x2B (0x2B: last byte = host byte)
+//   0xB0 25 <payload>                      live state, see docs/PROTOCOL.md
+static void webusbSendBindsChunk(uint8_t idx)
+{
+	static uint8_t f[4 + BINDS_CHUNK];
+	uint8_t n = bindsFwReadChunk(idx, f + 4);
+	if (!n || !usb_web.connected() || tud_vendor_write_available() < 4u + n)
+		return;
+	f[0] = 0xB2;
+	f[1] = (uint8_t)(2 + n);
+	f[2] = idx;
+	f[3] = BINDS_CHUNKS;
+	usb_web.write(f, (uint16_t)(4 + n));
+	usb_web.flush();
+}
+//   0xB5 <2+n> <idx> <total> <n data>      sounds blob chunk (SOUNDS_CHUNK bytes per chunk, last one shorter)
+//   0xB6 3 <op> <ok 1/0> 0                 ack for 0x2E / 0x2F / 0x30 / 0x31
+static void webusbSendSoundsChunk(uint8_t idx)
+{
+	static uint8_t f[4 + SOUNDS_CHUNK];
+	uint8_t n = soundsFwReadChunk(idx, f + 4);
+	if (!n || !usb_web.connected() || tud_vendor_write_available() < 4u + n)
+		return;
+	f[0] = 0xB5;
+	f[1] = (uint8_t)(2 + n);
+	f[2] = idx;
+	f[3] = SOUNDS_CHUNKS;
+	usb_web.write(f, (uint16_t)(4 + n));
+	usb_web.flush();
+}
+static void webusbSendSoundsAck(uint8_t op, bool ok)
+{
+	uint8_t f[5] = { 0xB6, 3, op, (uint8_t)(ok ? 1 : 0), 0 };
+	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
+		usb_web.write(f, sizeof f);
+		usb_web.flush();
+	}
+}
+static void webusbSendBindsAck(uint8_t op, bool ok)
+{
+	uint8_t f[5] = { 0xB3, 3, op, (uint8_t)(ok ? 1 : 0),
+			 op == 0x2B ? kbmFwHostByte() : g_binds.active };
+	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
+		usb_web.write(f, sizeof f);
+		usb_web.flush();
+	}
+}
+// Diagnostics frame 0xB4, layout in docs/PROTOCOL.md. Static buffer: this runs on the loop task, but a 100-byte
+// frame on any small stack is not worth the risk.
+static void put32(uint8_t *&q, uint32_t v)
+{
+	for (int k = 0; k < 4; k++)
+		*q++ = (uint8_t)(v >> (8 * k));
+}
+static void putTx(uint8_t *&q, const UsbTxStats &s)
+{
+	put32(q, s.enqueued);
+	put32(q, s.sent);
+	put32(q, s.sendFail);
+	put32(q, s.dropped);
+	put32(q, s.notReady);
+}
+static void webusbSendDiag()
+{
+	static uint8_t f[2 + 119];
+	if (!usb_web.connected() || tud_vendor_write_available() < sizeof f)
+		return;
+	KbmDiag kd;
+	UsbTxStats wake, kbd;
+	kbmFwDiag(&kd);
+	kbmFwTxStats(&wake, &kbd);
+	uint8_t *q = f;
+	*q++ = 0xB4;
+	*q++ = 119;
+	*q++ = 1; // layout version
+	*q++ = g_usbMode;
+	*q++ = g_etype;
+	*q++ = g_binds.active;
+	*q++ = hostKind();
+	*q++ = hostWhy();
+	*q++ = hostSetting();
+	*q++ = (uint8_t)((kd.flags & 3) | (wakeHidPresent() ? 4 : 0) |
+			 (wakeHidReady() ? 8 : 0) |
+			 (USBDevice.mounted() ? 16 : 0) |
+			 (USBDevice.suspended() ? 32 : 0));
+	*q++ = g_usbMountCount;
+	*q++ = g_active ? g_active->maxSlots() : 0;
+	put32(q, g_bindsDiag.calls);
+	put32(q, g_bindsDiag.lastRaw);
+	put32(q, g_bindsDiag.lastOut);
+	put32(q, g_bindsDiag.nonZero);
+	*q++ = g_bindsDiag.lastNonZero.mods;
+	for (int k = 0; k < BINDS_KEYS_MAX; k++)
+		*q++ = g_bindsDiag.lastNonZero.keys[k];
+	*q++ = g_bindsDiag.lastNonZero.buttons;
+	*q++ = (uint8_t)g_bindsDiag.lastNonZero.wheel;
+	put32(q, kd.allowedTrue);
+	put32(q, kd.allowedFalse);
+	put32(q, kd.mouseOk);
+	put32(q, kd.mouseFail);
+	put32(q, kd.kbdQueued);
+	*q++ = kd.lastButtons;
+	*q++ = kd.lastMods;
+	for (int k = 0; k < 6; k++)
+		*q++ = kd.lastKeys[k];
+	putTx(q, wake);
+	putTx(q, kbd);
+	put32(q, g_bindsDiag.rawSeen);
+	put32(q, g_bindsDiag.outSeen);
+	put32(q, kd.reenums);
+	put32(q, kd.saves);
+	usb_web.write(f, (uint16_t)(q - f));
+	usb_web.flush();
+}
+
+static void webusbSendLive(uint8_t slot)
+{
+	if (slot >= NSLOT) {
+		// 0xFF = the controller in use. g_curSlot is only the slot the poll happens to be on and cycles
+		// through every linked one, so pick a linked slot with input in hand, else the first linked one.
+		slot = (g_curSlot >= 0 && g_curSlot < NSLOT) ?
+			       (uint8_t)g_curSlot :
+			       0;
+		bool found = false;
+		for (uint8_t i = 0; i < NSLOT; i++) {
+			if (!g_slot[i].used || !g_connReplyMs[i] ||
+			    (millis() - g_connReplyMs[i]) >= 300u)
+				continue;
+			const PuckInput &p = g_in[i];
+			const bool busy = g_rawButtons[i] || p.lt || p.rt ||
+					  abs(p.lx) > 3000 ||
+					  abs(p.ly) > 3000 ||
+					  abs(p.rx) > 3000 || abs(p.ry) > 3000;
+			if (!found || busy) {
+				slot = i;
+				found = true;
+			}
+			if (busy)
+				break;
+		}
+	}
+	uint8_t f[2 + 25];
+	const PuckInput &in = g_in[slot];
+	const uint32_t raw = g_rawButtons[slot], out = in.buttons;
+	f[0] = 0xB0;
+	f[1] = 25;
+	for (int k = 0; k < 4; k++) {
+		f[2 + k] = (uint8_t)(raw >> (8 * k));
+		f[6 + k] = (uint8_t)(out >> (8 * k));
+	}
+	f[10] = in.lt;
+	f[11] = in.rt;
+	const int16_t st[4] = { in.lx, in.ly, in.rx, in.ry };
+	for (int k = 0; k < 4; k++) {
+		f[12 + k * 2] = (uint8_t)st[k];
+		f[13 + k * 2] = (uint8_t)((uint16_t)st[k] >> 8);
+	}
+	f[20] = g_binds.active;
+	f[21] = slot;
+	f[22] = g_etype;
+	f[23] = (g_slot[slot].used && g_connReplyMs[slot] != 0 &&
+		 (millis() - g_connReplyMs[slot]) < 300u) ?
+			1 :
+			0;
+	f[24] = g_battery[slot];
+	f[25] = g_batteryState[slot];
+	f[26] = kbmFwHostByte();
+	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
+		usb_web.write(f, sizeof f);
+		usb_web.flush();
+	}
+}
+
 void webusbPoll()
 {
 	// 160 B holds the largest command: a firmware-update data chunk 0x21 = [op][off u32][len][<=128 data]
@@ -811,7 +1022,7 @@ void webusbPoll()
 			// 0x16 = test rumble (v21); extend this range whenever a new opcode is added, or the
 			// parser drops it as garbage and the handler below never runs.
 			if ((op < 0x01 || op > 0x1A) &&
-			    (op < 0x20 || op > 0x25)) { // resync: drop one byte
+			    (op < 0x20 || op > 0x31)) { // resync: drop one byte
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -823,6 +1034,19 @@ void webusbPoll()
 					memmove(buf, buf + 1, --n);
 					continue;
 				}
+			}
+			// 0x28 (binds chunk) carries its length at [2]; same one-byte-resync gate as 0x21.
+			if (op == 0x28 && n >= 3 &&
+			    (buf[2] == 0 || buf[2] > BINDS_CHUNK)) {
+				memmove(buf, buf + 1, --n);
+				continue;
+			}
+			// 0x2E (sounds chunk) and 0x31 (preview melody) carry a length too: [2] bytes, [1] notes.
+			if ((op == 0x2E && n >= 3 &&
+			     (buf[2] == 0 || buf[2] > SOUNDS_CHUNK)) ||
+			    (op == 0x31 && n >= 2 && buf[1] > SOUNDS_NOTES)) {
+				memmove(buf, buf + 1, --n);
+				continue;
 			}
 			// Command length (fixed per opcode). 0x0D = write-one-bond-slot (27 B); 0x12 = set-one-lizard-
 			// binding (18 B); 0x05/0x0E/0x0F/0x10/0x13 carry one value byte; 0x02 a field+value; 0x0A a
@@ -838,10 +1062,24 @@ void webusbPoll()
 					       2 :
 				(op == 0x0A) ? 4 :
 				(op == 0x25) ? 5 :
+				(op == 0x26 || op == 0x27 || op == 0x2A ||
+				 op == 0x2B) ?
+					       2 :
+				(op == 0x28) ? (uint8_t)(3 + (n >= 3 ? buf[2] :
+								       0)) :
 				(op == 0x20) ? 9 :
 				(op == 0x21) ? (uint8_t)(6 + (n >= 6 ? buf[5] :
 								       0)) :
 					       1;
+			// melody ops (sounds.h): 0x2D / 0x30 take one byte, 0x2E a chunk, 0x31 [count] + count notes
+			if (op == 0x2D || op == 0x30)
+				need = 2;
+			else if (op == 0x2E)
+				need = (uint8_t)(3 + (n >= 3 ? buf[2] : 0));
+			else if (op == 0x31)
+				need = (uint8_t)(2 +
+						 SOUNDS_NOTE_BYTES *
+							 (n >= 2 ? buf[1] : 0));
 			if (n < need)
 				break; // wait for more bytes
 			if (boardCommand(op)) {
@@ -1089,6 +1327,52 @@ void webusbPoll()
 				fwupAbort();
 				fwupAckPost(FWUP_OK);
 
+				// ---- back-paddle binds (binds.h), protocol v23 ----
+				// 0x26 <idx>: read blob chunk idx -> 0xB2. 0x27 <slot|0xFF>: live state -> 0xB0.
+				// 0x28 <idx> <len> <data>: stage blob chunk (idx 0 restarts). 0x29: validate + apply + save the staged
+				// blob. 0x2A <profile>: set active profile (+ confirm buzz). 0x28/0x29/0x2A are acked with 0xB3.
+			} else if (op == 0x26) {
+				webusbSendBindsChunk(buf[1]);
+			} else if (op == 0x27) {
+				webusbSendLive(buf[1]);
+			} else if (op == 0x28) {
+				webusbSendBindsAck(
+					op, bindsFwStageChunk(buf[1], buf + 3,
+							      buf[2]));
+			} else if (op == 0x29) {
+				webusbSendBindsAck(op, bindsFwStageCommit());
+			} else if (op == 0x2A) {
+				webusbSendBindsAck(op,
+						   bindsFwSetProfile(buf[1]));
+				g_blobRequest = true;
+				// 0x2B <0 auto|1 PC|2 console>: manual host setting, saved (host.bin), acked with 0xB3
+			} else if (op == 0x2C) {
+				webusbSendDiag();
+			} else if (op == 0x2B) {
+				webusbSendBindsAck(op,
+						   kbmFwSetHostSetting(buf[1]));
+				// ---- melodies (sounds.h), protocol v25 ----
+				// 0x2D <idx>: read sounds blob chunk -> 0xB5. 0x2E <idx> <len> <data>: stage chunk (idx 0 restarts).
+				// 0x2F: validate + apply + save. 0x30 <n>: play stored melody n. 0x31 <count> <notes>: play a
+				// melody that is not stored. 0x2E..0x31 are acked with 0xB6.
+			} else if (op == 0x2D) {
+				webusbSendSoundsChunk(buf[1]);
+			} else if (op == 0x2E) {
+				webusbSendSoundsAck(
+					op, soundsFwStageChunk(buf[1], buf + 3,
+							       buf[2]));
+			} else if (op == 0x2F) {
+				webusbSendSoundsAck(op, soundsFwStageCommit());
+			} else if (op == 0x30) {
+				webusbSendSoundsAck(op,
+						    soundsFwPlaySlot(buf[1]));
+			} else if (op == 0x31) {
+				webusbSendSoundsAck(
+					op,
+					soundsFwPlayRaw(
+						buf + 1,
+						(uint8_t)(1 + SOUNDS_NOTE_BYTES *
+								      buf[1])));
 			} else if (op == 0x02) {
 				uint8_t f = buf[1], v = buf[2];
 
@@ -1105,7 +1389,9 @@ void webusbPoll()
 						k = (uint8_t)((f - 40) % 9);
 					if (et < ET_COUNT) {
 						if (k < 4)
-							g_type[et].back[k] = v;
+							// BUTTON action in the active profile
+							bindsFwSetButton(et, k,
+									 v);
 						else if (k == 4)
 							g_type[et].qamMap = v;
 						else if (k == 5)
@@ -1151,7 +1437,9 @@ void webusbPoll()
 				case 7:
 				case 8:
 					if (g_etype < ET_COUNT) {
-						g_type[g_etype].back[f - 5] = v;
+						bindsFwSetButton(
+							g_etype,
+							(uint8_t)(f - 5), v);
 						applyActiveType();
 					}
 					break;
@@ -1195,7 +1483,7 @@ void webusbPoll()
 				case 17:
 				case 18:
 				case 19:
-					if (modeValid(v))
+					if (chordValid(v))
 						g_chordBtn[f - 17] = v;
 					break;
 
@@ -1204,7 +1492,7 @@ void webusbPoll()
 				case 35:
 				case 36:
 				case 37:
-					if (modeValid(v))
+					if (chordValid(v))
 						g_chordDpad[f - 34] = v;
 					break;
 

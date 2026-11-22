@@ -21,6 +21,11 @@ void wakeHidBegin()
 	g_wakeHidPresent = true;
 }
 
+Adafruit_USBD_HID *wakeHidObject()
+{
+	return &g_wakeHid;
+}
+
 bool wakeHidPresent()
 {
 	return g_wakeHidPresent;
@@ -43,6 +48,17 @@ bool wakeHidMove(int8_t dx, int8_t dy)
 	m.y = dy;
 	m.wheel = 0;
 	m.pan = 0;
+	usbTxHid(&g_wakeHid, 0, &m, sizeof m);
+	return true;
+}
+
+bool wakeHidMouse(uint8_t buttons, int8_t wheel)
+{
+	if (!wakeHidReady())
+		return false;
+	hid_mouse_report_t m = {};
+	m.buttons = buttons;
+	m.wheel = wheel;
 	usbTxHid(&g_wakeHid, 0, &m, sizeof m);
 	return true;
 }
