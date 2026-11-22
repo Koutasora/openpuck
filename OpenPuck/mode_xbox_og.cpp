@@ -1,6 +1,7 @@
 #include "mode_xbox_og.h"
 #include "triton.h"
 #include "gamepad_util.h"
+#include "pressure.h"
 #include "config.h"
 #include "haptics.h"
 #include "bonds.h"
@@ -668,8 +669,12 @@ static void xboxOgBuildReport(XboxOgInputReport &report, const uint8_t *raw)
 	if (buttons & TB_RB)
 		report.black = 0xFF;
 
-	report.left_trigger = trigU8(u16off(raw, 4));
-	report.right_trigger = trigU8(u16off(raw, 6));
+	uint8_t lt = trigU8(u16off(raw, 4)), rt = trigU8(u16off(raw, 6));
+	// The trigger set as the pressure source is not LT/RT any more (a paddle remapped to LT/RT below still is).
+	const uint8_t pv =
+		pressureTake(&g_pressCfg[PRESS_XOG], &buttons, &lt, &rt);
+	report.left_trigger = lt;
+	report.right_trigger = rt;
 	if (buttons & TB_L2)
 		report.left_trigger = 0xFF;
 	if (buttons & TB_R2)
@@ -682,6 +687,10 @@ static void xboxOgBuildReport(XboxOgInputReport &report, const uint8_t *raw)
 			xboxOgApplyRemap(report, g_back[i]);
 	if ((buttons & TB_QAM) && g_qamMap)
 		xboxOgApplyRemap(report, g_qamMap);
+	uint8_t *const face[PRESS_XOG_COUNT] = { &report.a,	&report.b,
+						 &report.x,	&report.y,
+						 &report.white, &report.black };
+	pressureXogApply(&g_pressCfg[PRESS_XOG], pv, face);
 
 	// Raw-report offsets, not slotSticks(): like mode_xinput this mode decodes 0x45 in place and never
 	// touches g_in. 16/18 = left pad X/Y, 22/24 = right pad X/Y.
