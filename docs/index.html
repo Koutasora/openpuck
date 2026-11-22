@@ -17,7 +17,7 @@
   .topbar .brand small{color:var(--mut);font-weight:400;font-size:11px;margin-left:6px}
   .topbar .spacer{flex:1 1 16px}
   .topbar button{padding:7px 12px}
-  .wrap{max-width:980px;margin:0 auto;padding:20px}
+  .wrap{width:100%;max-width:980px;margin:0 auto;padding:20px}
   /* cards stack in one column; width comes from the wider wrap + grids/rows filling it horizontally */
   .card{background:var(--card);border:1px solid #272d3d;border-radius:3px;padding:16px 18px;margin:0 0 16px}
   /* ReversePuck dongle: hide every puck-only Controller card, keep just the paired-pucks card (this leaves
@@ -51,6 +51,10 @@
   .stat .k{color:var(--mut);font-size:12px}
   .stat .v{font-size:18px;margin-top:2px}
   .modes{display:flex;gap:10px;flex-wrap:wrap}
+  .modebtn{text-align:left}
+  .modebtn small{display:block;font-size:11px;font-weight:400;color:var(--mut)}
+  .modebtn.active small{color:#06121f}
+  .modegroup{margin:0 0 12px}
   /* back4 chords: face buttons in the left column, D-pad in the right; auto-fit collapses to one column on a
      narrow viewport, and also when the D-pad column is hidden on pre-v18 firmware (display:none drops the item) */
   .chord-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 24px}
@@ -259,21 +263,8 @@
 
     <div class="card">
       <h2>USB mode</h2>
-      <div class="modes" style="flex-wrap:wrap">
-        <button data-mode="0" class="modebtn">Steam (puck)</button>
-        <button data-mode="1" class="modebtn">Xbox 360</button>
-        <button data-mode="2" class="modebtn">Switch (HORIPAD)</button>
-        <button data-mode="3" class="modebtn">Lizard (always)</button>
-        <button data-mode="4" class="modebtn">Switch Pro + gyro</button>
-        <button data-mode="5" class="modebtn">PS5 DualSense</button>
-        <button data-mode="6" class="modebtn">HID gyro (DS4)</button>
-        <button data-mode="9" class="modebtn">PS3 (DualShock 3)</button>
-        <button data-mode="10" class="modebtn">Original Xbox</button>
-        <button data-mode="11" class="modebtn">DirectInput (sims)</button>
-        <button data-mode="12" class="modebtn">SInput (SDL native)</button>
-        <button data-mode="13" class="modebtn">PS5 console (auth adapter)</button>
-      </div>
-      <p class="note">Switching reboots the copycat and re-enumerates USB (~2 s). WebUSB works in every mode, including Steam/Lizard with Steam running (Chrome claims the vendor interface; Steam keeps the HID slots). Switch HORIPAD + WebUSB is PC-only. Original Xbox emulates one Microsoft Controller S and uses the Xbox mapping tab; LB/RB become White/Black. It's for a real Original Xbox console — a PC needs a driver for the original Xbox controller to see it as a gamepad.</p>
+      <p class="note" id="curMode" style="margin-top:0"></p>
+      <div id="modeGroups"></div>      <p class="note">Switching reboots the copycat and re-enumerates USB (~2 s). WebUSB works in every mode, including Steam/Lizard with Steam running (Chrome claims the vendor interface; Steam keeps the HID slots). Switch HORIPAD + WebUSB is PC-only. Original Xbox emulates one Microsoft Controller S and uses the Xbox mapping tab; LB/RB become White/Black. It's for a real Original Xbox console — a PC needs a driver for the original Xbox controller to see it as a gamepad.</p>
       <p class="note"><b>DirectInput</b> is for flight/space sims: every analog input is live at once, split over two joysticks (#1 sticks + triggers + 26 buttons, #2 trackpads + gyro). Trackpad axes hold their last position and re-centre on a pad click. <b>SInput</b> is the open SDL-native protocol — SDL3 / Steam Input read sticks, both analog triggers, gyro, both trackpads and battery from it natively, with rumble back from the host.</p>
       <div class="row"><label>Persist last mode</label>
         <button id="persistMode">off</button>
@@ -283,7 +274,7 @@
 
     <div class="card">
       <h2>Back4 chords (face + D-pad)</h2>
-      <p class="note" style="margin-top:0">Hold all four back paddles (L4+R4+L5+R5) plus a face button or D-pad direction to switch mode without the WebUI. <strong>A is always Steam</strong> — that is the way back out of any mode. B / X / Y and all four D-pad directions are configurable below (defaults: B=Lizard, X=Xbox, Y=Switch Pro).</p>
+      <p class="note" style="margin-top:0">Hold all four back paddles (L4+R4+L5+R5) plus a face button or D-pad direction to switch mode without the WebUI. In modes marked "no panel" this page cannot connect; come back with back4 + A. <strong>A is always Steam</strong> — that is the way back out of any mode. B / X / Y and all four D-pad directions are configurable below (defaults: B=Lizard, X=Xbox, Y=Switch Pro).</p>
       <div class="chord-cols">
         <div>
           <div class="colhead">Face buttons</div>
@@ -616,6 +607,14 @@
 
 <script>
 const MODE_NAMES = ["Steam (puck)","Xbox 360","Switch (HORIPAD)","Lizard (always)","Switch Pro + gyro","PS5 DualSense","HID gyro (DS4)","PS5 (game/clean)","DS4 (game/clean)","PS3 (DualShock 3)","Original Xbox","DirectInput (sims)","SInput (SDL native)","PS5 console (auth adapter)"];
+// What each mode is for: target host, whether the WebUSB panel exists in it (OpenPuck.ino: clean PS modes and
+// Xbox 360 drop WebUSB), keyboard/mouse (config.h modeHasKbm; Lizard is keyboard + mouse by design).
+const MODE_INFO = [["Steam",1],["PC / Xbox 360 console",0],["Switch / PC",1],["PC",1,"keyboard/mouse"],["Switch / PC",1],
+  ["PC",1,"keyboard/mouse"],["PC",1,"keyboard/mouse"],["PC games",0],["PC games",0],["PS3 console",0],["Original Xbox console",1],
+  ["PC sims",1],["PC / SDL",1],["PS5 console",0]];
+const modePanel=i=>!MODE_INFO[i]||!!MODE_INFO[i][1];
+function modeDesc(i){ const m=MODE_INFO[i]; return m?[m[0],m[1]?"panel":"no panel",...(m[2]?[m[2]]:[])].join(" · "):""; }
+function modeFull(i){ return (MODE_NAMES[i]||("mode "+i))+" — "+modeDesc(i); }
 const CHORD_FIELD = [17, 18, 19];          // back4 + B/X/Y
 const CHORD_DPAD_FIELD = [34, 35, 36, 37]; // back4 + D-pad left/up/right/down (firmware protocol >= 18)
 const CHORD_DPAD_DEF = [9, 8, 7, 2];       // firmware defaults: PS3, DS4 game, PS5 game, Switch HORIPAD
@@ -908,13 +907,13 @@ function setTab(et){
 })();
 for(const sel of document.querySelectorAll("select.chord")){
   MODE_NAMES.forEach((n,i)=>{ if(i===7||i===8) return;
-    const o=document.createElement("option"); o.value=i; o.textContent=n; sel.appendChild(o); });
+    const o=document.createElement("option"); o.value=i; o.textContent=modeFull(i); sel.appendChild(o); });
 }
 // D-pad chords offer EVERY mode, including the game/clean ones the face selects skip: those modes drop WebUSB,
 // so a chord is the only way into them, and back4+A still gets you back to Steam.
 for(const sel of document.querySelectorAll("select.chordD")){
   MODE_NAMES.forEach((n,i)=>{
-    const o=document.createElement("option"); o.value=i; o.textContent=n; sel.appendChild(o); });
+    const o=document.createElement("option"); o.value=i; o.textContent=modeFull(i); sel.appendChild(o); });
 }
 { const sel=document.getElementById("swGyroMap");
   for(const [lbl,v] of [["Corrected (default)",0],["Legacy (untrimmed)",1]]){
@@ -1551,6 +1550,7 @@ function applyBlob(p){
   const logEnabled=(p.length>35?p[35]:0);
   for(const el of document.querySelectorAll(".logonly")) el.style.display = logEnabled ? "" : "none";
   for(const b of document.querySelectorAll(".modebtn")) b.classList.toggle("active", +b.dataset.mode===mode);
+  $("#curMode").textContent="Current mode: "+modeFull(mode);
   $("#mouseCard").style.opacity = (mode===1||mode===3)?1:0.5;
   // The custom map applies ONLY to pure Lizard (always) mode. Steam-mode seamless lizard keeps
   // the built-in default behavior, so the editor is shown only when the device is in Lizard mode.
@@ -3158,10 +3158,28 @@ for(const sel of document.querySelectorAll("select.chord")){
 for(const sel of document.querySelectorAll("select.chordD")){
   sel.addEventListener("change", ()=>setField(CHORD_DPAD_FIELD[+sel.dataset.i], +sel.value));
 }
+// USB mode card: modes with the config panel first, console / no-panel modes in their own group
+{
+  const host=$("#modeGroups");
+  for(const [title,list,note] of [["With config panel",[0,3,5,6,4,2,10,11,12],""],
+    ["Console / no panel",[1,9,13],"This page cannot connect in these modes. To come back: hold all four back paddles + A (Steam mode)."]]){
+    const g=document.createElement("div"); g.className="modegroup";
+    const h=document.createElement("div"); h.className="colhead"; h.textContent=title; h.style.marginBottom="6px"; g.appendChild(h);
+    const row=document.createElement("div"); row.className="modes";
+    for(const m of list){
+      const b=document.createElement("button"); b.className="modebtn"; b.dataset.mode=m;
+      b.appendChild(document.createTextNode(MODE_NAMES[m]));
+      const sm=document.createElement("small"); sm.textContent=modeDesc(m); b.appendChild(sm); row.appendChild(b);
+    }
+    g.appendChild(row);
+    if(note){ const p=document.createElement("p"); p.className="note"; p.style.margin="6px 0 0"; p.textContent=note; g.appendChild(p); }
+    host.appendChild(g);
+  }
+}
 for(const b of document.querySelectorAll(".modebtn")){
   b.onclick=()=>{ const m=+b.dataset.mode;
-    const clean=(m===7||m===8||m===9||m===13);
-    const msg="Switch to "+MODE_NAMES[m]+"? The copycat will reboot."+(clean?"\n\nNOTE: the game/clean PlayStation modes (and PS3 / PS5 console) drop WebUSB + host-wake, so THIS PANEL WILL DISCONNECT and can't reach the device while it's in this mode. To get back, chord on the controller: hold all four back paddles (L4+R4+L5+R5) + A to return to Steam mode. The back4+D-pad chords are how you get back INTO these modes without the panel — check their assignments in the chords card first.":"");
+    const clean=!modePanel(m);
+    const msg="Switch to "+MODE_NAMES[m]+"? The copycat will reboot."+(clean?"\n\nNOTE: this page cannot connect in this mode (no WebUSB panel, no host-wake), so THIS PANEL WILL DISCONNECT and can't reach the device while it's in this mode. To get back, chord on the controller: hold all four back paddles (L4+R4+L5+R5) + A to return to Steam mode. The back4+D-pad chords are how you get back INTO these modes without the panel — check their assignments in the chords card first.":"");
     if(confirm(msg)){ send([0x03, m]); log("mode switch requested — device will reboot"); } };
 }
 updateUf2UI();
@@ -3646,7 +3664,7 @@ function bindsFocusRow(i){
 // ---- mapping rows ----
 function bindsDecorateRows(){
   typeEls.forEach((rec,et)=>{
-    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[]; rec.gnote=[]; rec.keyg=[]; rec.ksel=[]; rec.mcb=[]; rec.kprev=[]; rec.msel=[];
+    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[]; rec.keyg=[]; rec.ksel=[]; rec.mcb=[]; rec.kprev=[]; rec.msel=[];
     for(let i=0;i<BIND_BACKS;i++){
       const sel=rec.back[i], row=sel.parentNode;
       const kind=document.createElement("select"); kind.className="bkind bind";
@@ -3686,11 +3704,12 @@ function bindsDecorateRows(){
       for(const [c,n] of MOUSE_ACTS){ const o=document.createElement("option"); o.value=c; o.textContent=n; msel.appendChild(o); }
       msel.onchange=()=>{ const a=binds.act[binds.active][et][i]; a.k=4; a.arg=+msel.value; a.mask=0; bindsCommit(); bindsRender(); };
       row.appendChild(msel);
-      const gnote=document.createElement("p"); gnote.className="note bnote bind"; gnote.style.margin="0";
-      gnote.textContent="Games may switch to keyboard/mouse mode on any key or click. F13-F24 are usually ignored by games: use them for Discord push-to-talk.";
-      row.appendChild(gnote);
       if(i===BIND_BACKS-1){
         const nt=document.createElement("p"); nt.className="note bnote bind"; row.parentNode.insertBefore(nt,row.nextSibling); rec.kbmNote=nt;
+        // shown once per controller type, only while some paddle sends a key or a mouse action
+        const gn=document.createElement("p"); gn.className="note bnote bind";
+        gn.textContent="Games may switch to keyboard/mouse mode on any key or click. F13-F24 are usually ignored by games: use them for Discord push-to-talk.";
+        row.parentNode.insertBefore(gn,nt.nextSibling); rec.gameNote=gn;
       }
       kind.onchange=()=>{
         const a=binds.act[binds.active][et][i], k=+kind.value, was=a.k;
@@ -3704,7 +3723,7 @@ function bindsDecorateRows(){
       // the Button select above writes the active profile directly (field 40+et*9+i); re-read afterwards
       sel.addEventListener("change",()=>setTimeout(bindsRead,300));
       rec.kind.push(kind); rec.macro.push(macro); rec.combo.push(combo); rec.cbs.push(cbs);
-      rec.gnote.push(gnote); rec.keyg.push(keyg); rec.ksel.push(ksel); rec.mcb.push(mcb); rec.kprev.push(prev); rec.msel.push(msel);
+      rec.keyg.push(keyg); rec.ksel.push(ksel); rec.mcb.push(mcb); rec.kprev.push(prev); rec.msel.push(msel);
     }
   });
 }
@@ -3744,7 +3763,6 @@ function bindsRender(){
       rec.combo[i].style.display=(a.k===1)?"":"none";
       rec.keyg[i].style.display=(a.k===3)?"":"none";
       rec.msel[i].style.display=(a.k===4)?"":"none";
-      rec.gnote[i].style.display=(a.k===3||a.k===4)?"":"none";
       for(const o of rec.kind[i].options) if(o.value==="3"||o.value==="4") o.disabled=!kbmOk(et)&&+o.value!==a.k;
       if(a.k===3){
         if(document.activeElement!==rec.ksel[i]) rec.ksel[i].value=a.arg;
@@ -3758,6 +3776,7 @@ function bindsRender(){
     }
   });
   typeEls.forEach((rec,et)=>{
+    rec.gameNote.style.display=binds.act[binds.active][et].some(a=>a.k===3||a.k===4)?"":"none";
     rec.kbmNote.textContent=!kbmCap?"Key and Mouse actions need a firmware with status protocol 24 or newer.":
       et<2?"PC keyboard/mouse: PS5 and DS4-gyro modes only.":
       "Key and Mouse act on a PC host in "+(et===2?"HID gyro (DS4)":"PS5 DualSense")+" mode only.";
@@ -4062,7 +4081,7 @@ function scChord(){
 }
 // rows: k = what to press, tb = highlighted buttons, x = result
 function scGroups(c){
-  const M=m=>MODE_NAMES[m]||("mode "+m), ro=(k,tb,x)=>({k,tb,x});
+  const M=m=>modeFull(m), ro=(k,tb,x)=>({k,tb,x});
   return [
     {t:"Switch USB mode",sub:"Hold all four back paddles (L4 R4 L5 R5), then press",rows:[
       ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode."),
@@ -4137,7 +4156,7 @@ function scDraw(ctx,imgs,col,dark,c,W){
   ctx.lineWidth=2.5; ctx.strokeStyle=col.acc; ctx.fillStyle=col.acc;
   for(const h of FIG.front.hs){ if(!hot.includes(h.tb)) continue;
     scPath(ctx,h,S,ox,oy); ctx.globalAlpha=.3; ctx.fill(); ctx.globalAlpha=1; ctx.stroke(); }
-  const sh=m=>SC_SHORT[m]||("mode "+m);
+  const sh=m=>(SC_SHORT[m]||("mode "+m))+(modePanel(m)?"":"*");
   const lab=(u,v,al,t)=>{ ctx.textAlign=al; ctx.font=font(700,15); ctx.lineJoin="round"; ctx.lineWidth=5; ctx.strokeStyle=col.bg; ctx.strokeText(t,ox+u*S,oy+v*S); ctx.fillStyle=col.fg; ctx.fillText(t,ox+u*S,oy+v*S); };
   lab(790,105,"left","Y  "+sh(c.btn[2])); lab(842,158,"left","B  "+sh(c.btn[0]));
   lab(662,158,"right","X  "+sh(c.btn[1])); lab(751,252,"center","A  Steam");
@@ -4146,6 +4165,7 @@ function scDraw(ctx,imgs,col,dark,c,W){
   lab(146,27,"right","LB  previous profile"); lab(806,27,"left","RB  next profile");
   ctx.textAlign="center"; ctx.font=font(400,16); ctx.fillStyle=col.mut;
   ctx.fillText("Hold all four back paddles (L4 R4 L5 R5) and press the marked button",ox+480*S,oy+660*S+34);
+  if([...c.btn,...c.dpad].some(m=>!modePanel(m))) ctx.fillText("* no config panel in this mode: come back with all four back paddles + A",ox+480*S,oy+660*S+58);
   // back
   const S2=0.5, bx=40, by=oy+660*S+100;
   ctx.textAlign="left"; ctx.font=font(700,18); ctx.fillStyle=col.fg; ctx.fillText("Back, the four paddles",bx,by-18);
