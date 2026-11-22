@@ -3953,6 +3953,9 @@ uint8_t rfConnTx(uint8_t ch, uint8_t s1, const uint8_t *payload, uint8_t plen,
 							 TB_DDN)
 							want = g_chordDpad
 								[CHD_DOWN];
+						// "None": same as no chord, so it never reaches the debounce
+						if (want == CHORD_NONE)
+							want = 0xFF;
 					}
 					if (want != 0xFF &&
 					    want == chWant[g_curSlot]) {

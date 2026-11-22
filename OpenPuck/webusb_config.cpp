@@ -130,6 +130,7 @@ static bool boardCommand(uint8_t op)
 //                [v24: command 0x2B <0 auto|1 PC|2 console> = manual host setting (kbm_fw.h); live state 0xB0 grows
 //                 to 25 bytes, the last one = detected host]
 //                [v25: commands 0x2D..0x31 = melodies (sounds.h)]
+//                [v26: chord bytes may be 0xFE = None (the combination does nothing)]
 #define WB_PAYLEN 196
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
@@ -157,7 +158,9 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (25 = +melody ops 0x2D..0x31 (sounds.h) -- the panel MUST see >=25 before sending them, older firmware
+	// (26 = back4 chord bytes (p[25..27], p[182..185]) may be 0xFE = None (CHORD_NONE): the panel offers it
+	// only from 26, older firmware would reject the write;
+	// 25 = +melody ops 0x2D..0x31 (sounds.h) -- the panel MUST see >=25 before sending them, older firmware
 	// drops them silently;
 	// 24 = +op 0x2B (manual host setting) and the host byte at the end of the 0xB0 live state -- the panel MUST
 	// see >=24 before sending 0x2B, older firmware drops it silently;
@@ -185,7 +188,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 25;
+	p[2] = 26;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -1480,7 +1483,7 @@ void webusbPoll()
 				case 17:
 				case 18:
 				case 19:
-					if (modeValid(v))
+					if (chordValid(v))
 						g_chordBtn[f - 17] = v;
 					break;
 
@@ -1489,7 +1492,7 @@ void webusbPoll()
 				case 35:
 				case 36:
 				case 37:
-					if (modeValid(v))
+					if (chordValid(v))
 						g_chordDpad[f - 34] = v;
 					break;
 

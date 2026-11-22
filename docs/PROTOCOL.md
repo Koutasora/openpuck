@@ -797,6 +797,10 @@ preview commands `0x30` / `0x31` play whatever the setting is.
 Console: `SNL` list, `SNP <n>` play melody n, `SNE <e>` play the melody of event e, `SNM <0..3>` confirmations,
 `SNG <-60..0>` volume.
 
+### 10.6 Back4 chords set to None (status blob 26)
+
+The back4 + B/X/Y chords (fields `17..19`, blob `p[25..27]`) and back4 + D-pad chords (fields `34..37`, blob `p[182..185]`) take a mode number or `0xFE` = None: the combination does nothing. From status blob version 26; older firmware rejects `0xFE`. back4 + A (always Steam) and back4 + LB/RB (profiles) are not configurable.
+
 ## 11. Timing notes
 
 - Default poll interval: `4000` microseconds (250 Hz, matches SC2 report rate)
