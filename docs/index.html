@@ -137,6 +137,7 @@
   .scfig text.pl{font-size:28px;text-anchor:start}
   .scfig text.pr{font-size:28px;text-anchor:end}
   .scfig text.pa{font-weight:400;fill:var(--acc2)}
+  .scfig text.pa.sm{font-size:24px}
   .scfig .dot{fill:var(--fg)}
   .scfig .bar{fill:var(--acc2)}
   .scfig .barbg{fill:none;stroke:#36405a}
@@ -153,6 +154,13 @@
   .steps input[type=number]{width:76px;background:#0e1017;color:var(--fg);border:1px solid #313a4f;border-radius:3px;padding:5px}
   .steps button{padding:4px 8px}
   .steps .acts{white-space:nowrap}
+  .keygrp{align-items:center}
+  .keygrp select{flex:0 0 190px}
+  .keygrp label{flex:0 0 auto}
+  .keygrp button{padding:5px 10px}
+  .kprev{flex:1 1 100%;color:var(--mut);font-size:12px}
+  .kprev b{color:var(--fg)}
+  .bnote{flex:1 1 100%;margin:0}
   .evlog{font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:8px;margin:8px 0 0;min-height:90px;white-space:pre-wrap}
   .stat .v.sm{font-size:13px;word-break:break-word}
   .foot{color:var(--mut);font-size:12px;margin:18px 0 0}
@@ -3210,7 +3218,40 @@ const STEAM_TB={0x1:"A",0x2:"B",0x4:"X",0x8:"Y",0x10:"QAM",0x40:"View",0x4000:"M
   0x200000:"R-pad touch",0x400000:"R-pad click",0x2000000:"L-pad touch",0x4000000:"L-pad click",
   0x40000000:"Touchpad",0x80000000:"Mute"};
 // Action kinds. The wire byte is the key; add a kind here (and in actText/bindsRender/bindsDecorateRows) to extend.
-const ACT_KINDS={0:"Button",1:"Combo",2:"Macro"};
+const ACT_KINDS={0:"Button",1:"Combo",2:"Macro",3:"Key",4:"Mouse"};
+// Key / mouse actions (blob v2, status blob >= 24): PROTOCOL.md 10.2. [HID usage, name, KeyboardEvent.code, short name]
+const KEY_GROUPS=[];
+{ const g=(n,a)=>KEY_GROUPS.push([n,a]);
+  g("Letters","ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((c,i)=>[0x04+i,c,"Key"+c,c]));
+  g("Digits","1234567890".split("").map((c,i)=>[0x1e+i,c,"Digit"+c,c]));
+  g("Function keys",Array.from({length:12},(_,i)=>[0x3a+i,"F"+(i+1),"F"+(i+1),"F"+(i+1)]));
+  g("Editing and navigation",[[0x28,"Enter","Enter"],[0x29,"Esc","Escape"],[0x2a,"Backspace","Backspace"],[0x2b,"Tab","Tab"],[0x2c,"Space","Space"],
+    [0x4f,"Arrow Right","ArrowRight"],[0x50,"Arrow Left","ArrowLeft"],[0x51,"Arrow Down","ArrowDown"],[0x52,"Arrow Up","ArrowUp"],
+    [0x4a,"Home","Home"],[0x4d,"End","End"],[0x4b,"Page Up","PageUp"],[0x4e,"Page Down","PageDown"],[0x49,"Insert","Insert"],[0x4c,"Delete","Delete"],
+    [0x46,"Print Screen","PrintScreen"],[0x47,"Scroll Lock","ScrollLock"],[0x48,"Pause","Pause"],[0x39,"Caps Lock","CapsLock"],[0x65,"Menu","ContextMenu"]]);
+  g("Symbols",[[0x2d,"Minus (-)","Minus","-"],[0x2e,"Equals (=)","Equal","="],[0x2f,"Left bracket ([)","BracketLeft","["],[0x30,"Right bracket (])","BracketRight","]"],
+    [0x31,"Backslash (\)","Backslash","\\"],[0x33,"Semicolon (;)","Semicolon",";"],[0x34,"Quote (')","Quote","'"],[0x35,"Backtick (`)","Backquote","`"],
+    [0x36,"Comma (,)","Comma",","],[0x37,"Period (.)","Period","."],[0x38,"Slash (/)","Slash","/"]]);
+  g("Keypad",[[0x53,"Num Lock","NumLock"],[0x54,"Keypad /","NumpadDivide"],[0x55,"Keypad *","NumpadMultiply"],[0x56,"Keypad -","NumpadSubtract"],
+    [0x57,"Keypad +","NumpadAdd"],[0x58,"Keypad Enter","NumpadEnter"],...[1,2,3,4,5,6,7,8,9,0].map((n,i)=>[0x59+i,"Keypad "+n,"Numpad"+n]),[0x63,"Keypad .","NumpadDecimal"]]);
+  g("Modifier keys (as a key)",[[0xe0,"Left Ctrl","ControlLeft"],[0xe1,"Left Shift","ShiftLeft"],[0xe2,"Left Alt","AltLeft"],[0xe3,"Left Win","MetaLeft"],
+    [0xe4,"Right Ctrl","ControlRight"],[0xe5,"Right Shift","ShiftRight"],[0xe6,"Right Alt","AltRight"],[0xe7,"Right Win","MetaRight"]]);
+}
+const KEY_NAME={}, KEY_BY_CODE={};
+for(const [,list] of KEY_GROUPS) for(const [u,n,c,sh] of list){ KEY_NAME[u]=sh||n; KEY_BY_CODE[c]=u; }
+// modifier byte = HID keyboard modifier byte; the panel edits the left four, right ones are kept and shown
+const KEY_MODS=[[0x01,"Ctrl"],[0x02,"Shift"],[0x04,"Alt"],[0x08,"Win"],[0x10,"Right Ctrl"],[0x20,"Right Shift"],[0x40,"Right Alt"],[0x80,"Right Win"]];
+const MOUSE_ACTS=[[1,"Left click","Left click"],[2,"Right click","Right click"],[3,"Middle click","Middle click"],[4,"Back click","Back click"],
+  [5,"Forward click","Forward click"],[6,"Wheel up (one notch)","Wheel up"],[7,"Wheel down (one notch)","Wheel down"],
+  [8,"Wheel up (repeat while held)","Wheel up (repeat)"],[9,"Wheel down (repeat while held)","Wheel down (repeat)"]];
+function keyText(a){
+  const m=KEY_MODS.filter(x=>a.mask&x[0]).map(x=>x[1]);
+  return [...m,KEY_NAME[a.arg]||("0x"+a.arg.toString(16))].join("+");
+}
+function mouseText(a){ const m=MOUSE_ACTS.find(x=>x[0]===a.arg); return m?m[2]:"Mouse ?"; }
+// the firmware sends keyboard / mouse only from these modes: DS4 type -> HID gyro (DS4), DS5 type -> PS5 DualSense
+let kbmCap=false;
+function kbmOk(et){ return kbmCap && (et===2||et===3); }
 function tbCodes(def){
   return Object.keys(def.labels).map(Number).filter(c=>CODE_TB[c]).sort((a,b)=>a-b);
 }
@@ -3228,6 +3269,8 @@ function maskNames(mask,et,sep){
 function actText(a,et){
   if(a.k===1) return maskNames(a.mask,et)||"Combo (empty)";
   if(a.k===2) return "Macro "+(a.arg+1);
+  if(a.k===3) return keyText(a);
+  if(a.k===4) return mouseText(a);
   return (a.arg && TYPE_DEFS[et].labels[a.arg]) || "None";
 }
 
@@ -3236,7 +3279,7 @@ let curMacro=0, macroType=0, macroPlaying=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 function emptyBinds(){
-  const b={active:0,act:[],macros:[]};
+  const b={ver:1,active:0,act:[],macros:[]};
   for(let p=0;p<BIND_PROFILES;p++){ b.act.push([]);
     for(let e=0;e<TYPE_DEFS.length;e++){ b.act[p].push([]);
       for(let i=0;i<BIND_BACKS;i++) b.act[p][e].push({k:0,arg:0,mask:0}); } }
@@ -3246,10 +3289,10 @@ function emptyBinds(){
 function bindsParse(d){
   const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);
   const plen=BIND_PROFILES*TYPE_DEFS.length*BIND_BACKS*6+1+BIND_MACROS*(2+BIND_STEPS*6);
-  if(d.length!==4+plen+2 || d[0]!==0xB1 || d[1]!==1 || dv.getUint16(2,true)!==plen) return null;
+  if(d.length!==4+plen+2 || d[0]!==0xB1 || (d[1]!==1 && d[1]!==2) || dv.getUint16(2,true)!==plen) return null;
   let sum=0; for(let i=4;i<4+plen;i++) sum=(sum+d[i])&0xFFFF;
   if(sum!==dv.getUint16(4+plen,true)) return null;
-  const b=emptyBinds(); let o=4; b.active=d[o++];
+  const b=emptyBinds(); b.ver=d[1]; let o=4; b.active=d[o++];
   for(let p=0;p<BIND_PROFILES;p++) for(let e=0;e<TYPE_DEFS.length;e++) for(let i=0;i<BIND_BACKS;i++){
     b.act[p][e][i]={k:d[o],arg:d[o+1],mask:dv.getUint32(o+2,true)}; o+=6; }
   for(let m=0;m<BIND_MACROS;m++){
@@ -3266,7 +3309,9 @@ function bindsBuild(b){
     const st=b.macros[m].steps; pl.push(0,st.length);
     for(let k=0;k<BIND_STEPS;k++){ const s=st[k]||{mask:0,ms:0}; pl.push(...u32(s.mask>>>0),s.ms&255,s.ms>>>8); } }
   let sum=0; for(const v of pl) sum=(sum+v)&0xFFFF;
-  return [0xB1,1,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
+  // key / mouse kinds exist from blob version 2 on; keep the version the device sent otherwise
+  const ver=b.act.some(p=>p.some(t=>t.some(a=>a.k>=3)))?2:(b.ver||1);
+  return [0xB1,ver,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
 }
 
 // Run fn on the shared bulk pipe: the status poll must not be in flight (its reply would be eaten by our read).
@@ -3397,7 +3442,12 @@ function figLabels(){
   const face=def.key==="SWITCH"?["B","A","Y","X"]:[L[1],L[2],L[3],L[4]];
   face.forEach((n,i)=>{ const t=f.txt["f"+i]; t.textContent=n; t.setAttribute("class",n.length>2?"s":""); });
   f.txt.lb.textContent=L[5]; f.txt.rb.textContent=L[6]; f.txt.lt.textContent=L[19]; f.txt.rt.textContent=L[20];
-  for(let i=0;i<BIND_BACKS;i++) b.pd[i].textContent=binds?actText(binds.act[binds.active][et][i],et):"";
+  for(let i=0;i<BIND_BACKS;i++){
+    const t=binds?actText(binds.act[binds.active][et][i],et):"", e=b.pd[i];
+    e.textContent=t; e.setAttribute("class",e.getAttribute("class").replace(" sm","")+(t.length>9?" sm":""));
+    if(t.length>14){ e.setAttribute("textLength",14*13); e.setAttribute("lengthAdjust","spacingAndGlyphs"); }
+    else { e.removeAttribute("textLength"); e.removeAttribute("lengthAdjust"); }
+  }
 }
 function figHighlight(fig,raw,out){
   for(const h of fig.hs){
@@ -3415,7 +3465,7 @@ function bindsFocusRow(i){
 // ---- mapping rows ----
 function bindsDecorateRows(){
   typeEls.forEach((rec,et)=>{
-    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[];
+    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[]; rec.keyg=[]; rec.ksel=[]; rec.mcb=[]; rec.kprev=[]; rec.msel=[];
     for(let i=0;i<BIND_BACKS;i++){
       const sel=rec.back[i], row=sel.parentNode;
       const kind=document.createElement("select"); kind.className="bkind bind";
@@ -3432,9 +3482,37 @@ function bindsDecorateRows(){
           const a=binds.act[binds.active][et][i]; a.k=1; a.arg=0; a.mask=m>>>0; bindsCommit(); bindsRender(); };
       }
       row.appendChild(combo);
+      // Key: key select + left modifiers + Record (press the combination on this computer's keyboard)
+      const keyg=document.createElement("div"); keyg.className="cbgroup keygrp bind";
+      const ksel=document.createElement("select");
+      for(const [gn,list] of KEY_GROUPS){ const og=document.createElement("optgroup"); og.label=gn;
+        for(const [u,n] of list){ const o=document.createElement("option"); o.value=u; o.textContent=n; og.appendChild(o); }
+        ksel.appendChild(og); }
+      keyg.appendChild(ksel);
+      const mcb={};
+      for(const [bit,name] of KEY_MODS.slice(0,4)){
+        const lab=document.createElement("label"), cb=document.createElement("input"); cb.type="checkbox";
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(name)); keyg.appendChild(lab); mcb[bit]=cb;
+        cb.onchange=()=>{ const a=binds.act[binds.active][et][i]; setKeyAct(a,a.arg||0x04,(a.mask&0xf0)|modBits(mcb)); };
+      }
+      const recBtn=document.createElement("button"); recBtn.textContent="Record"; recBtn.title="Click, then press the key combination on this computer's keyboard";
+      keyg.appendChild(recBtn);
+      const prev=document.createElement("span"); prev.className="kprev"; keyg.appendChild(prev);
+      ksel.onchange=()=>{ const a=binds.act[binds.active][et][i]; setKeyAct(a,+ksel.value,a.k===3?a.mask:0); };
+      recBtn.onclick=()=>keyRecord(recBtn,(u,m)=>setKeyAct(binds.act[binds.active][et][i],u,m));
+      row.appendChild(keyg);
+      const msel=document.createElement("select"); msel.className="bind";
+      for(const [c,n] of MOUSE_ACTS){ const o=document.createElement("option"); o.value=c; o.textContent=n; msel.appendChild(o); }
+      msel.onchange=()=>{ const a=binds.act[binds.active][et][i]; a.k=4; a.arg=+msel.value; a.mask=0; bindsCommit(); bindsRender(); };
+      row.appendChild(msel);
+      if(i===BIND_BACKS-1){
+        const nt=document.createElement("p"); nt.className="note bnote bind"; row.parentNode.insertBefore(nt,row.nextSibling); rec.kbmNote=nt;
+      }
       kind.onchange=()=>{
-        const a=binds.act[binds.active][et][i], k=+kind.value;
-        if(k===0){ a.k=0; a.arg=+sel.value; a.mask=0; } else if(k===1){ a.k=1; a.arg=0; }
+        const a=binds.act[binds.active][et][i], k=+kind.value, was=a.k;
+        if(k===0){ a.k=0; a.arg=+sel.value; a.mask=0; } else if(k===1){ a.k=1; a.arg=0; if(was!==1) a.mask=0; }
+        else if(k===3){ a.k=3; if(was!==3){ a.arg=0x04; a.mask=0; } }
+        else if(k===4){ a.k=4; if(was!==4){ a.arg=1; a.mask=0; } a.mask=0; }
         else { a.k=2; a.arg=+macro.value; a.mask=0; }
         bindsCommit(); bindsRender();
       };
@@ -3442,8 +3520,33 @@ function bindsDecorateRows(){
       // the Button select above writes the active profile directly (field 40+et*9+i); re-read afterwards
       sel.addEventListener("change",()=>setTimeout(bindsRead,300));
       rec.kind.push(kind); rec.macro.push(macro); rec.combo.push(combo); rec.cbs.push(cbs);
+      rec.keyg.push(keyg); rec.ksel.push(ksel); rec.mcb.push(mcb); rec.kprev.push(prev); rec.msel.push(msel);
     }
   });
+}
+function modBits(mcb){ let m=0; for(const b in mcb) if(mcb[b].checked) m|=+b; return m; }
+function setKeyAct(a,usage,mods){ a.k=3; a.arg=usage; a.mask=mods>>>0; bindsCommit(); bindsRender(); }
+// Record: the next key press (with its modifiers) becomes the action; a lone modifier press becomes that modifier as a key.
+let keyRec=null;
+function keyRecStop(){
+  if(!keyRec) return;
+  document.removeEventListener("keydown",keyRec.kd,true); document.removeEventListener("keyup",keyRec.ku,true);
+  window.removeEventListener("blur",keyRecStop);
+  keyRec.btn.textContent="Record"; keyRec.btn.classList.remove("active"); keyRec=null;
+}
+function keyRecord(btn,apply){
+  const same=keyRec&&keyRec.btn===btn; keyRecStop(); if(same) return;
+  let lastMod=0;
+  const kd=e=>{
+    e.preventDefault(); e.stopPropagation(); if(e.repeat) return;
+    const u=KEY_BY_CODE[e.code]; if(!u) return;
+    if(u>=0xe0){ lastMod=u; return; }
+    const m=(e.ctrlKey?1:0)|(e.shiftKey?2:0)|(e.altKey?4:0)|(e.metaKey?8:0);
+    keyRecStop(); apply(u,m);
+  };
+  const ku=e=>{ e.preventDefault(); e.stopPropagation(); const u=KEY_BY_CODE[e.code]; if(u&&u>=0xe0&&u===lastMod){ keyRecStop(); apply(u,0); } };
+  keyRec={btn,kd,ku}; btn.textContent="Press keys…"; btn.classList.add("active");
+  document.addEventListener("keydown",kd,true); document.addEventListener("keyup",ku,true); window.addEventListener("blur",keyRecStop);
 }
 function macroLabel(m){ return "Macro "+(m+1)+(binds&&binds.macros[m].steps.length?"":" (empty)"); }
 function bindsRender(){
@@ -3455,10 +3558,24 @@ function bindsRender(){
       rec.back[i].style.display=(a.k===0)?"":"none";
       rec.macro[i].style.display=(a.k===2)?"":"none";
       rec.combo[i].style.display=(a.k===1)?"":"none";
+      rec.keyg[i].style.display=(a.k===3)?"":"none";
+      rec.msel[i].style.display=(a.k===4)?"":"none";
+      for(const o of rec.kind[i].options) if(o.value==="3"||o.value==="4") o.disabled=!kbmOk(et)&&+o.value!==a.k;
+      if(a.k===3){
+        if(document.activeElement!==rec.ksel[i]) rec.ksel[i].value=a.arg;
+        for(const b in rec.mcb[i]) rec.mcb[i][b].checked=(a.mask&+b)!==0;
+        rec.kprev[i].innerHTML="Sends <b>"+escHtml(keyText(a))+"</b> while the paddle is held";
+      }
+      if(a.k===4 && document.activeElement!==rec.msel[i]) rec.msel[i].value=a.arg;
       for(let m=0;m<BIND_MACROS;m++) rec.macro[i].options[m].textContent=macroLabel(m);
       if(a.k===2 && document.activeElement!==rec.macro[i]) rec.macro[i].value=a.arg;
       for(const c in rec.cbs[i]) rec.cbs[i][c].checked=((a.mask&CODE_TB[c])>>>0)!==0;
     }
+  });
+  typeEls.forEach((rec,et)=>{
+    rec.kbmNote.textContent=!kbmCap?"Key and Mouse actions need a firmware with status protocol 24 or newer.":
+      et<2?"PC keyboard/mouse: PS5 and DS4-gyro modes only.":
+      "Key and Mouse act on a PC host in "+(et===2?"HID gyro (DS4)":"PS5 DualSense")+" mode only.";
   });
   [...$("#profBtns").children].forEach((b,n)=>b.classList.toggle("active",n===binds.active));
   figLabels(); macroRender();
@@ -3579,6 +3696,8 @@ async function liveLoop(){
 
 // ---- wiring ----
 function bindsOnBlob(p){
+  const kc=(p[0]>=24);
+  if(kc!==kbmCap){ kbmCap=kc; bindsRender(); }
   const cap=(p[0]>=23 && p.length>195 && !isDongle);
   if(cap!==bindsCap){
     bindsCap=cap;
