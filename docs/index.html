@@ -3287,6 +3287,7 @@ const KEY_GROUPS=[];
   g("Letters","ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((c,i)=>[0x04+i,c,"Key"+c,c]));
   g("Digits","1234567890".split("").map((c,i)=>[0x1e+i,c,"Digit"+c,c]));
   g("Function keys",Array.from({length:12},(_,i)=>[0x3a+i,"F"+(i+1),"F"+(i+1),"F"+(i+1)]));
+  g("F13-F24",Array.from({length:12},(_,i)=>[0x68+i,"F"+(i+13),"F"+(i+13),"F"+(i+13)]));
   g("Editing and navigation",[[0x28,"Enter","Enter"],[0x29,"Esc","Escape"],[0x2a,"Backspace","Backspace"],[0x2b,"Tab","Tab"],[0x2c,"Space","Space"],
     [0x4f,"Arrow Right","ArrowRight"],[0x50,"Arrow Left","ArrowLeft"],[0x51,"Arrow Down","ArrowDown"],[0x52,"Arrow Up","ArrowUp"],
     [0x4a,"Home","Home"],[0x4d,"End","End"],[0x4b,"Page Up","PageUp"],[0x4e,"Page Down","PageDown"],[0x49,"Insert","Insert"],[0x4c,"Delete","Delete"],
@@ -3528,7 +3529,7 @@ function bindsFocusRow(i){
 // ---- mapping rows ----
 function bindsDecorateRows(){
   typeEls.forEach((rec,et)=>{
-    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[]; rec.keyg=[]; rec.ksel=[]; rec.mcb=[]; rec.kprev=[]; rec.msel=[];
+    const def=TYPE_DEFS[et]; rec.kind=[]; rec.combo=[]; rec.macro=[]; rec.cbs=[]; rec.gnote=[]; rec.keyg=[]; rec.ksel=[]; rec.mcb=[]; rec.kprev=[]; rec.msel=[];
     for(let i=0;i<BIND_BACKS;i++){
       const sel=rec.back[i], row=sel.parentNode;
       const kind=document.createElement("select"); kind.className="bkind bind";
@@ -3568,6 +3569,9 @@ function bindsDecorateRows(){
       for(const [c,n] of MOUSE_ACTS){ const o=document.createElement("option"); o.value=c; o.textContent=n; msel.appendChild(o); }
       msel.onchange=()=>{ const a=binds.act[binds.active][et][i]; a.k=4; a.arg=+msel.value; a.mask=0; bindsCommit(); bindsRender(); };
       row.appendChild(msel);
+      const gnote=document.createElement("p"); gnote.className="note bnote bind"; gnote.style.margin="0";
+      gnote.textContent="Games may switch to keyboard/mouse mode on any key or click. F13-F24 are usually ignored by games: use them for Discord push-to-talk.";
+      row.appendChild(gnote);
       if(i===BIND_BACKS-1){
         const nt=document.createElement("p"); nt.className="note bnote bind"; row.parentNode.insertBefore(nt,row.nextSibling); rec.kbmNote=nt;
       }
@@ -3583,7 +3587,7 @@ function bindsDecorateRows(){
       // the Button select above writes the active profile directly (field 40+et*9+i); re-read afterwards
       sel.addEventListener("change",()=>setTimeout(bindsRead,300));
       rec.kind.push(kind); rec.macro.push(macro); rec.combo.push(combo); rec.cbs.push(cbs);
-      rec.keyg.push(keyg); rec.ksel.push(ksel); rec.mcb.push(mcb); rec.kprev.push(prev); rec.msel.push(msel);
+      rec.gnote.push(gnote); rec.keyg.push(keyg); rec.ksel.push(ksel); rec.mcb.push(mcb); rec.kprev.push(prev); rec.msel.push(msel);
     }
   });
 }
@@ -3623,6 +3627,7 @@ function bindsRender(){
       rec.combo[i].style.display=(a.k===1)?"":"none";
       rec.keyg[i].style.display=(a.k===3)?"":"none";
       rec.msel[i].style.display=(a.k===4)?"":"none";
+      rec.gnote[i].style.display=(a.k===3||a.k===4)?"":"none";
       for(const o of rec.kind[i].options) if(o.value==="3"||o.value==="4") o.disabled=!kbmOk(et)&&+o.value!==a.k;
       if(a.k===3){
         if(document.activeElement!==rec.ksel[i]) rec.ksel[i].value=a.arg;
