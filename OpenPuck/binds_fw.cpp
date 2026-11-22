@@ -3,6 +3,7 @@
 #include "bonds.h"
 #include "haptics.h"
 #include "kbm_fw.h"
+#include "sounds_fw.h"
 #include "triton.h"
 #include <Arduino.h>
 #include <Adafruit_LittleFS.h>
@@ -110,9 +111,12 @@ bool bindsFwSetProfile(uint8_t profile)
 		return false;
 	g_binds.active = profile;
 	bindsFwCommit();
-	s_pulsesLeft = (uint8_t)(profile + 1);
-	s_pulseOn = false;
-	s_pulseNextMs = millis();
+	if (soundsFwVibrate()) {
+		s_pulsesLeft = (uint8_t)(profile + 1);
+		s_pulseOn = false;
+		s_pulseNextMs = millis();
+	}
+	soundsFwPlayEvent((uint8_t)(SE_PROFILE1 + profile));
 	return true;
 }
 

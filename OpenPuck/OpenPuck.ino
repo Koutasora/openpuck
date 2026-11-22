@@ -31,6 +31,7 @@ using namespace Adafruit_LittleFS_Namespace;
 #include "haptics.h"
 #include "binds_fw.h"
 #include "kbm_fw.h"
+#include "sounds_fw.h"
 #include "rf_link.h"
 #include "puck_hid.h" // puckCmdLogDrain()
 #include "rf_diag.h"
@@ -116,6 +117,8 @@ void usbReenumerate(uint8_t k)
 // Used by every user-facing mode change (back-4 chord, WebUSB panel, CDC console).
 void modeSwitchReboot(uint8_t mode)
 {
+	if (modeValid(mode) && mode != g_usbMode)
+		soundsFwNoteModeSwitch();
 	if (modeValid(mode))
 		saveMode(
 			mode); // 0xFF / invalid => keep the current mode (bond-import reboot)
@@ -158,6 +161,7 @@ void setup()
 	loadCfg();
 	// binds.bin (or defaults from g_type[].back); needs cfg.bin loaded first
 	bindsFwInit();
+	soundsFwInit();
 	kbmFwInit();
 	rfApplyStartupLastGoodChannel();
 	loadBonds();
@@ -396,6 +400,7 @@ void loop()
 	faultDiagSetStage(5);
 	hapticTask();
 	bindsFwTask();
+	soundsFwTask();
 	acc[5] += (uint32_t)(micros() - t);
 	t = micros();
 	faultDiagSetStage(6);
@@ -445,6 +450,7 @@ void loop()
 	faultDiagSetStage(5);
 	hapticTask();
 	bindsFwTask();
+	soundsFwTask();
 	faultDiagSetStage(6);
 	ledTask();
 #if OPK_PWR_SWITCH

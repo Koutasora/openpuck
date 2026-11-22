@@ -10,6 +10,7 @@
 #include "usb_mount.h" // modeSwitchReboot()
 #include "binds_fw.h"
 #include "kbm_fw.h"
+#include "sounds_fw.h"
 #include "host_detect.h"
 #include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
@@ -195,6 +196,45 @@ static void hostConsole(const char *a)
 		      kbmFwKeyboardMounted() ? "on" : "off");
 }
 
+// Melodies played through the controller's actuator (sounds.h):
+//   SNL        list: confirmation setting, volume, event -> melody, note counts
+//   SNP <n>    play melody 0..7 now    SNE <e>  play the melody of event e (0..7) if sound is on
+//   SNM <0..3> confirmations: 0 off, 1 vibration, 2 sound, 3 both    SNG <-60..0>  volume in dB
+static void soundsConsole(const char *a)
+{
+	static const char *const EV[SE_COUNT] = { "profile1",	"profile2",
+						  "profile3",	"mode-ps",
+						  "mode-xbox",	"mode-switch",
+						  "mode-other", "connect" };
+	const long v = atol(a + 1);
+	bool ok = true;
+	if (a[0] == 'L') {
+		Serial.printf("# sounds: confirm %u, volume %d dB\n",
+			      g_sounds.confirm, g_sounds.gainDb);
+		for (int e = 0; e < SE_COUNT; e++) {
+			const uint8_t m = g_sounds.event[e];
+			Serial.printf("# %s -> %d (%u notes)\n", EV[e],
+				      m < SOUNDS_MELODIES ? m : -1,
+				      m < SOUNDS_MELODIES ?
+					      g_sounds.melody[m].count :
+					      0);
+		}
+	} else if (a[0] == 'P' && v >= 0) {
+		ok = soundsFwPlaySlot((uint8_t)v);
+	} else if (a[0] == 'E' && v >= 0 && v < SE_COUNT) {
+		ok = soundsFwPlayEvent((uint8_t)v);
+	} else if (a[0] == 'M' && v >= 0) {
+		ok = soundsFwSetConfirm((uint8_t)v);
+	} else if (a[0] == 'G') {
+		ok = soundsFwSetGain((int)v);
+	} else {
+		ok = false;
+	}
+	if (!ok)
+		Serial.println(
+			"# SNL | SNP <0..7> | SNE <0..7> | SNM <0..3> | SNG <-60..0>");
+}
+
 // Back-paddle binds (profiles p=1..3, et=0 Xbox 1 Switch 2 DS4 3 DS5, i=0..3 for L4 R4 L5 R5):
 //   BL                       list the binds    BH   this help
 //   BP <p>                   active profile (+ buzz)
@@ -242,6 +282,8 @@ void serialConsolePoll()
 				bindsConsoleAction(line + 3);
 			} else if (!strncmp(line, "BM ", 3)) {
 				bindsConsoleMacro(line + 3);
+			} else if (!strncmp(line, "SN", 2)) {
+				soundsConsole(line + 2);
 			} else if (!strcmp(line, "CD")) {
 				// A/B: content dedup on the Steam input forward (drop reports whose body minus the
 				// free-running counter is unchanged) -- caps delivered rate at the controller's real

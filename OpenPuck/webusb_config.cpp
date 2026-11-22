@@ -14,6 +14,7 @@
 #include "usb_tx.h"
 #include "usb_mount.h" // modeSwitchReboot()
 #include "binds_fw.h"
+#include "sounds_fw.h"
 #include "kbm_fw.h"
 #include "wake_hid.h"
 #include "controllers.h"
@@ -128,6 +129,7 @@ static bool boardCommand(uint8_t op)
 //                [v23: p[197] active binds profile 0..2 (back-paddle actions, binds.h; commands 0x26..0x2A)]
 //                [v24: command 0x2B <0 auto|1 PC|2 console> = manual host setting (kbm_fw.h); live state 0xB0 grows
 //                 to 25 bytes, the last one = detected host]
+//                [v25: commands 0x2D..0x31 = melodies (sounds.h)]
 #define WB_PAYLEN 196
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
@@ -155,7 +157,9 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (24 = +op 0x2B (manual host setting) and the host byte at the end of the 0xB0 live state -- the panel MUST
+	// (25 = +melody ops 0x2D..0x31 (sounds.h) -- the panel MUST see >=25 before sending them, older firmware
+	// drops them silently;
+	// 24 = +op 0x2B (manual host setting) and the host byte at the end of the 0xB0 live state -- the panel MUST
 	// see >=24 before sending 0x2B, older firmware drops it silently;
 	// 23 = +active binds profile at blob p[197] and the binds/live-state ops 0x26..0x2A -- the panel MUST see >=23
 	// before sending those, older firmware drops them silently;
@@ -181,7 +185,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 24;
+	p[2] = 25;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -836,6 +840,29 @@ static void webusbSendBindsChunk(uint8_t idx)
 	usb_web.write(f, (uint16_t)(4 + n));
 	usb_web.flush();
 }
+//   0xB5 <2+n> <idx> <total> <n data>      sounds blob chunk (SOUNDS_CHUNK bytes per chunk, last one shorter)
+//   0xB6 3 <op> <ok 1/0> 0                 ack for 0x2E / 0x2F / 0x30 / 0x31
+static void webusbSendSoundsChunk(uint8_t idx)
+{
+	static uint8_t f[4 + SOUNDS_CHUNK];
+	uint8_t n = soundsFwReadChunk(idx, f + 4);
+	if (!n || !usb_web.connected() || tud_vendor_write_available() < 4u + n)
+		return;
+	f[0] = 0xB5;
+	f[1] = (uint8_t)(2 + n);
+	f[2] = idx;
+	f[3] = SOUNDS_CHUNKS;
+	usb_web.write(f, (uint16_t)(4 + n));
+	usb_web.flush();
+}
+static void webusbSendSoundsAck(uint8_t op, bool ok)
+{
+	uint8_t f[5] = { 0xB6, 3, op, (uint8_t)(ok ? 1 : 0), 0 };
+	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
+		usb_web.write(f, sizeof f);
+		usb_web.flush();
+	}
+}
 static void webusbSendBindsAck(uint8_t op, bool ok)
 {
 	uint8_t f[5] = { 0xB3, 3, op, (uint8_t)(ok ? 1 : 0),
@@ -992,7 +1019,7 @@ void webusbPoll()
 			// 0x16 = test rumble (v21); extend this range whenever a new opcode is added, or the
 			// parser drops it as garbage and the handler below never runs.
 			if ((op < 0x01 || op > 0x1A) &&
-			    (op < 0x20 || op > 0x2C)) { // resync: drop one byte
+			    (op < 0x20 || op > 0x31)) { // resync: drop one byte
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -1008,6 +1035,13 @@ void webusbPoll()
 			// 0x28 (binds chunk) carries its length at [2]; same one-byte-resync gate as 0x21.
 			if (op == 0x28 && n >= 3 &&
 			    (buf[2] == 0 || buf[2] > BINDS_CHUNK)) {
+				memmove(buf, buf + 1, --n);
+				continue;
+			}
+			// 0x2E (sounds chunk) and 0x31 (preview melody) carry a length too: [2] bytes, [1] notes.
+			if ((op == 0x2E && n >= 3 &&
+			     (buf[2] == 0 || buf[2] > SOUNDS_CHUNK)) ||
+			    (op == 0x31 && n >= 2 && buf[1] > SOUNDS_NOTES)) {
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -1034,6 +1068,15 @@ void webusbPoll()
 				(op == 0x21) ? (uint8_t)(6 + (n >= 6 ? buf[5] :
 								       0)) :
 					       1;
+			// melody ops (sounds.h): 0x2D / 0x30 take one byte, 0x2E a chunk, 0x31 [count] + count notes
+			if (op == 0x2D || op == 0x30)
+				need = 2;
+			else if (op == 0x2E)
+				need = (uint8_t)(3 + (n >= 3 ? buf[2] : 0));
+			else if (op == 0x31)
+				need = (uint8_t)(2 +
+						 SOUNDS_NOTE_BYTES *
+							 (n >= 2 ? buf[1] : 0));
 			if (n < need)
 				break; // wait for more bytes
 			if (boardCommand(op)) {
@@ -1305,6 +1348,28 @@ void webusbPoll()
 			} else if (op == 0x2B) {
 				webusbSendBindsAck(op,
 						   kbmFwSetHostSetting(buf[1]));
+				// ---- melodies (sounds.h), protocol v25 ----
+				// 0x2D <idx>: read sounds blob chunk -> 0xB5. 0x2E <idx> <len> <data>: stage chunk (idx 0 restarts).
+				// 0x2F: validate + apply + save. 0x30 <n>: play stored melody n. 0x31 <count> <notes>: play a
+				// melody that is not stored. 0x2E..0x31 are acked with 0xB6.
+			} else if (op == 0x2D) {
+				webusbSendSoundsChunk(buf[1]);
+			} else if (op == 0x2E) {
+				webusbSendSoundsAck(
+					op, soundsFwStageChunk(buf[1], buf + 3,
+							       buf[2]));
+			} else if (op == 0x2F) {
+				webusbSendSoundsAck(op, soundsFwStageCommit());
+			} else if (op == 0x30) {
+				webusbSendSoundsAck(op,
+						    soundsFwPlaySlot(buf[1]));
+			} else if (op == 0x31) {
+				webusbSendSoundsAck(
+					op,
+					soundsFwPlayRaw(
+						buf + 1,
+						(uint8_t)(1 + SOUNDS_NOTE_BYTES *
+								      buf[1])));
 			} else if (op == 0x02) {
 				uint8_t f = buf[1], v = buf[2];
 

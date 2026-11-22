@@ -1,4 +1,5 @@
 #include "haptics.h"
+#include "sounds_fw.h"
 #include "bonds.h"
 #include "config.h"
 #include "rf_link.h"
@@ -688,6 +689,7 @@ void hapticOnReconnect(int slot)
 	// Scrub haptics queued before the link came up (stale across the reconnect) -- this slot only.
 	hapticCancelPendingOn(slot);
 	imuForceRaw(slot);
+	soundsFwOnConnect(slot);
 	// NO automatic haptic re-init. hapticReinit lands 0x81 (CLEAR DIGITAL MAPPINGS -- rid < 0x87 so it
 	// EXECUTES even on legacy framing). 0x81 is NON-IDEMPOTENT (ibex FUN_0001f554): EVERY call re-runs the
 	// lizard-disable event + func_0x0001bbf0 (a hardware peripheral re-arm unique to the 0x81 path) -- so
