@@ -459,7 +459,8 @@ Messages:
     acked with `0xB3`. **Requires status-blob version ≥ 24.** See §10.3.
   - `0x2C`: diagnostics, reply `0xB4` (§10.4). Sent only while the panel is connected.
   - `0x2D <idx>`: read chunk `idx` of the sounds blob (reply `0xB5`). **Requires status-blob version ≥ 25** (older
-    firmware drops `0x2D`–`0x31` silently). See §10.5.
+    firmware drops `0x2D`–`0x31` silently). See §10.5. For `idx` out of range (or a full TX buffer) there is no `0xB5`
+    reply; the host retries.
   - `0x2E <idx> <len> <data>`: stage sounds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks in order)
   - `0x2F`: validate + apply + save the staged blob (`sounds.bin`)
   - `0x30 <n>`: play stored melody `n` (0..7) now
@@ -776,8 +777,14 @@ payload, `u16 LE` sum of the payload bytes. Payload (1042 bytes):
 Events (index into the event table): `0` profile 1, `1` profile 2, `2` profile 3, `3` mode change to a PlayStation mode
 (PS5, PS5 game, PS5 auth, HID gyro/DS4, DS4 game, PS3), `4` mode change to Xbox (Xbox, Xbox OG), `5` mode change to Switch
 (HORI, Pro), `6` mode change to any other mode (Steam, Lizard, DirectInput, SInput), `7` a controller connected.
-Notes: `freq` 0 = rest, otherwise `1..4000` Hz; `ms` is `1..5000`. A bad blob is rejected whole (`0x2F` acks `ok = 0`) and a
+Notes: `freq` 0 = rest, otherwise `1..4000` Hz; `ms` is `30..5000`. A bad blob is rejected whole (`0x2F` acks `ok = 0`) and a
 bad or missing `sounds.bin` means the defaults (own short motifs, melody `i` for event `i`, confirmations = vibration).
+
+The 30 ms minimum protects the relay queue: a note is two `0x83` entries per controller and the relay sends about one
+entry per poll cycle (~4 ms), so shorter notes would flood the 32-entry queue and push out other frames. The sequencer
+also holds the next note while a linked slot has more than 4 entries queued (the note is late, not dropped; a queue
+that does not drain for 1 s ends the melody). With confirmation "both", the melody of a profile switch starts after the
+last vibration pulse. Melodies do not follow the per-type rumble setting: sound is its own setting (confirmations).
 
 The confirmations setting decides how a profile switch is confirmed (vibration = N pulses as before, sound = the
 profile's melody). The melodies of the other events play only when it includes sound. A mode change plays the melody
