@@ -20,7 +20,8 @@
 #define BINDS_STEPS 16
 
 // BindAction.type
-#define BA_BUTTON 0 // arg = button code 0..BINDS_CODE_MAX (see TypeCfg in config.h), 0 = none
+// arg = button code 0..BINDS_CODE_MAX (see TypeCfg in config.h), 0 = none
+#define BA_BUTTON 0
 #define BA_COMBO 1 // mask = TB_* bits pressed together
 #define BA_MACRO 2 // arg = macro index
 #define BINDS_CODE_MAX 20

@@ -41,7 +41,8 @@ void bindsFwTask()
 		s_pulseOn = true;
 		s_pulseNextMs = millis() + PULSE_ON_MS;
 	} else {
-		buzz(0); // the controller's haptic latches: the stop is not optional
+		// the controller's haptic latches: the stop is not optional
+		buzz(0);
 		s_pulseOn = false;
 		s_pulsesLeft--;
 		s_pulseNextMs = millis() + PULSE_GAP_MS;

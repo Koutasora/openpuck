@@ -152,7 +152,8 @@ void setup()
 	factoryResetOnce(OPK_GIT_HASH);
 #endif
 	loadCfg();
-	bindsFwInit(); // binds.bin (or defaults from g_type[].back); needs cfg.bin loaded first
+	// binds.bin (or defaults from g_type[].back); needs cfg.bin loaded first
+	bindsFwInit();
 	rfApplyStartupLastGoodChannel();
 	loadBonds();
 	// Lizard (desktop) keyboard/mouse binding table. Custom remapping applies ONLY in pure

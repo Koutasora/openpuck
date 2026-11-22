@@ -12,7 +12,8 @@ struct MacroRun {
 	uint32_t stepStartMs;
 };
 static MacroRun g_run[NSLOT][BINDS_BACKS];
-static uint32_t g_prevPaddles[NSLOT]; // paddle bits of the previous call (rising-edge detection)
+// paddle bits of the previous call (rising-edge detection)
+static uint32_t g_prevPaddles[NSLOT];
 
 void bindsResetRuntime()
 {

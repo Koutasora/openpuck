@@ -45,8 +45,10 @@ static void testCombo()
 	uint32_t out = bindsApply(0, TB_R4 | TB_Y, ET_XBOX, 0);
 	CHECK(out == (TB_LB | TB_RB | TB_A | TB_Y));
 	CHECK(!(out & TB_R4));
-	CHECK(bindsApply(0, TB_Y, ET_XBOX, 4) == TB_Y); // released: nothing left
-	CHECK(bindsBackCode(g_binds, ET_XBOX, 1) == 0); // g_back must read "none" for a combo
+	// released: nothing left
+	CHECK(bindsApply(0, TB_Y, ET_XBOX, 4) == TB_Y);
+	// g_back must read "none" for a combo
+	CHECK(bindsBackCode(g_binds, ET_XBOX, 1) == 0);
 	// other type keeps its BUTTON default
 	CHECK(bindsApply(0, TB_R4, ET_DS5, 8) == TB_R4);
 }
@@ -67,7 +69,8 @@ static void testMacro()
 	uint32_t t = 1000;
 	// press at t=1000
 	CHECK(bindsApply(1, TB_L5, ET_SWITCH, t) == TB_A);
-	CHECK(bindsApply(1, 0, ET_SWITCH, t + 49) == TB_A); // release does not abort
+	// release does not abort
+	CHECK(bindsApply(1, 0, ET_SWITCH, t + 49) == TB_A);
 	CHECK(bindsApply(1, 0, ET_SWITCH, t + 50) == 0); // pause step
 	CHECK(bindsApply(1, 0, ET_SWITCH, t + 79) == 0);
 	CHECK(bindsApply(1, 0, ET_SWITCH, t + 80) == (TB_B | TB_X));
@@ -80,7 +83,8 @@ static void testMacro()
 	CHECK(bindsApply(1, 0, ET_SWITCH, t + 1010) == TB_A);
 	CHECK(bindsApply(1, TB_L5, ET_SWITCH, t + 1020) == TB_A);
 	CHECK(bindsApply(1, 0, ET_SWITCH, t + 1030) == TB_A);
-	CHECK(bindsApply(1, 0, ET_SWITCH, t + 1050) == 0); // step 1 of the ORIGINAL start
+	// step 1 of the ORIGINAL start
+	CHECK(bindsApply(1, 0, ET_SWITCH, t + 1050) == 0);
 	// another slot is independent
 	CHECK(bindsApply(0, 0, ET_SWITCH, t + 1060) == 0);
 }

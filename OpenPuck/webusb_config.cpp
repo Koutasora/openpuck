@@ -1191,7 +1191,8 @@ void webusbPoll()
 						k = (uint8_t)((f - 40) % 9);
 					if (et < ET_COUNT) {
 						if (k < 4)
-							bindsFwSetButton(et, k, v); // BUTTON action in the active profile
+							// BUTTON action in the active profile
+							bindsFwSetButton(et, k, v);
 						else if (k == 4)
 							g_type[et].qamMap = v;
 						else if (k == 5)
