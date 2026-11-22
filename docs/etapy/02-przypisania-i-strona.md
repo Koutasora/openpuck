@@ -113,6 +113,7 @@ Test i wydanie
 - Test 2026-11-22 (główny PC): Play on puck gra melodię z aktuatora; raport 0x83 HAPTIC_LFO_TONE (side 0 i 1, bez LFO) jest słyszalny.
 - Limit melodii zostaje 32 pozycje (nuty i pauzy) po 30-5000 ms, 8 melodii: użytkownik nie potrzebuje dłuższych utworów.
 - Import melodii tylko z MIDI (bez RTTTL, MusicXML, audio): użytkownikowi wystarcza.
+- Kombinacje back4 + B/X/Y i D-pad mogą mieć wartość None (`CHORD_NONE` = 0xFE, bajt spoza trybów i inny niż 0xFF z `cfg.bin`): nic nie robią; opcja na stronie od wersji bloku 26.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

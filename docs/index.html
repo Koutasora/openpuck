@@ -705,8 +705,9 @@ const MODE_INFO = [["Steam",1],["PC / Xbox 360 console",0],["Switch / PC",1],["P
   ["PC sims",1],["PC / SDL",1],["PS5 console",0]];
 const modePanel=i=>!MODE_INFO[i]||!!MODE_INFO[i][1];
 function modeDesc(i){ const m=MODE_INFO[i]; return m?[m[0],m[1]?"panel":"no panel",...(m[2]?[m[2]]:[])].join(" · "):""; }
-function modeFull(i){ return (MODE_NAMES[i]||("mode "+i))+" — "+modeDesc(i); }
+function modeFull(i){ if(i===CHORD_NONE) return "None"; return (MODE_NAMES[i]||("mode "+i))+" — "+modeDesc(i); }
 const CHORD_FIELD = [17, 18, 19];          // back4 + B/X/Y
+const CHORD_NONE = 0xFE;                   // chord value "None" (status blob >= 26): the combination does nothing
 const CHORD_DPAD_FIELD = [34, 35, 36, 37]; // back4 + D-pad left/up/right/down (firmware protocol >= 18)
 const CHORD_DPAD_DEF = [9, 8, 7, 2];       // firmware defaults: PS3, DS4 game, PS5 game, Switch HORIPAD
 let dev=null, epIn=0, epOut=0, ifNum=0, polling=false, capturing=false, backupBusy=false;
@@ -1906,6 +1907,12 @@ function applyBlob(p){
       // a strength set from the console can land between the presets -- show the nearest one
       if(document.activeElement!==scl) scl.value=RUMBLE_SCALES.reduce((a,b)=>Math.abs(b-rumbleScale)<Math.abs(a-rumbleScale)?b:a);
     } }
+  // "None" at the top of every chord list, only on firmware that accepts it (status blob >= 26)
+  for(const sel of document.querySelectorAll("select.chord, select.chordD")){
+    const has=!!sel.querySelector('option[value="'+CHORD_NONE+'"]');
+    if(p[0]>=26 && !has){ const o=document.createElement("option"); o.value=CHORD_NONE; o.textContent="None"; sel.prepend(o); }
+    else if(p[0]<26 && has) sel.querySelector('option[value="'+CHORD_NONE+'"]').remove();
+  }
   for(const sel of document.querySelectorAll("select.chord")){ if(document.activeElement!==sel) sel.value=chord[+sel.dataset.i]; }
   $("#dpadChords").classList.toggle("hide", !dpadCap);
   $("#dpadOld").classList.toggle("hide", dpadCap);
@@ -4803,12 +4810,14 @@ function scChord(){
 // rows: k = what to press, tb = highlighted buttons, x = result
 function scGroups(c){
   const M=m=>modeFull(m), ro=(k,tb,x)=>({k,tb,x});
+  // a chord set to None does nothing, so it is left out
+  const mc=(k,tb,m)=>m===CHORD_NONE?null:ro(k,tb,M(m));
   return [
     {t:"Switch USB mode",sub:"Hold all four back paddles (L4 R4 L5 R5), then press",rows:[
       ro("back4 + A",SC_BACK4|0x1,"Steam (puck). Fixed: the way back out of any mode."),
-      ro("back4 + B",SC_BACK4|0x2,M(c.btn[0])),ro("back4 + X",SC_BACK4|0x4,M(c.btn[1])),ro("back4 + Y",SC_BACK4|0x8,M(c.btn[2])),
-      ro("back4 + D-pad left",SC_BACK4|0x1000,M(c.dpad[0])),ro("back4 + D-pad up",SC_BACK4|0x2000,M(c.dpad[1])),
-      ro("back4 + D-pad right",SC_BACK4|0x800,M(c.dpad[2])),ro("back4 + D-pad down",SC_BACK4|0x400,M(c.dpad[3]))]},
+      mc("back4 + B",SC_BACK4|0x2,c.btn[0]),mc("back4 + X",SC_BACK4|0x4,c.btn[1]),mc("back4 + Y",SC_BACK4|0x8,c.btn[2]),
+      mc("back4 + D-pad left",SC_BACK4|0x1000,c.dpad[0]),mc("back4 + D-pad up",SC_BACK4|0x2000,c.dpad[1]),
+      mc("back4 + D-pad right",SC_BACK4|0x800,c.dpad[2]),mc("back4 + D-pad down",SC_BACK4|0x400,c.dpad[3])].filter(Boolean)},
     {t:"Profiles",sub:"Hold all four back paddles, then press. The pad buzzes N times for profile N. Emulated modes only.",rows:[
       ro("back4 + RB",SC_BACK4|0x200,"Next profile"),ro("back4 + LB",SC_BACK4|0x80000,"Previous profile")]},
     {t:"Power and slots",rows:[

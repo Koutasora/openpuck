@@ -66,6 +66,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Eksport i import pliku przypisań (zapis, zmiana, import przywraca)
 - [ ] Lizard mapping: nazwy przycisków myszy jak w akcjach
 - [ ] Klawiatura i mysz na PC nadal bez opóźnień (stan wysyłany rzadziej): pisanie, klik, kółko
+- [ ] Kombinacja back4 ustawiona na None nic nie robi (np. back4+B), ustawienie zostaje po odłączeniu zasilania; Shortcuts jej nie pokazuje
 
 ### 7. Wydanie
 - [ ] Repo publiczne (ustawia użytkownik)
