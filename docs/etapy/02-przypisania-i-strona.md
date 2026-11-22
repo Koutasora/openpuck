@@ -96,6 +96,13 @@ Test i wydanie
 - Dźwięki: zmiana trybu to reboot (modeSwitchReboot), więc flaga w pliku `/sndmode.bin` (RAM nie przeżywa); melodia trybu gra przy pierwszym połączeniu po starcie i zastępuje melodię połączenia. Melodia połączenia najwyżej raz na 20 s na pada (łącze potrafi migotać).
 - Dźwięki: WebUSB 0x2D-0x31 (odczyt/zapis bloku we fragmentach po 96 B, odsłuch slotu, odsłuch podanej melodii), odpowiedzi 0xB5/0xB6; wersja bloku statusu 25 (opis w `docs/PROTOCOL.md` §10.5).
 - Zakres częstotliwości nut 1-4000 Hz i czasu 1-5000 ms, głośność -60..0 dB, domyślnie -6: granice tylko po to, by zły blok z przeglądarki nie wysłał śmieci do pada.
+- Strona nie przebudowuje DOM bez zmiany: jeden strażnik na `textContent`/`innerHTML` pomija zapis tej samej wartości, a zakładki kontrolerów mają podpis; łatwiej niż poprawiać każde miejsce osobno i chroni nowe karty.
+- Dźwięki na stronie: melodie i zdarzenia zapisuje przycisk Save to device (edycja nut nie powinna pisać we flash przy każdym kliknięciu), a tryb potwierdzeń i głośność zapisują się same po 400 ms jak inne ustawienia (zapisują cały blok, także rozpoczęte zmiany melodii).
+- Nazwy profili i melodii w przeglądarce (localStorage) jak nazwy makr; wchodzą do kopii zapasowej (`panel.profileNames`, `panel.sounds`).
+- Import MIDI: jedna linia (najwyższa nuta akordu), pauzy jako nuty o freq 0 (liczą się do limitu 32), tempo z meta 0x51, ścieżka do wyboru (perkusja oznaczona); czasy i częstotliwości poza zakresem obcinane z informacją, SMPTE i format 2 odrzucane.
+- Plik przypisań to czytelny JSON (nie hex bloku), walidowany przed jakąkolwiek zmianą stanu; akcje Key/Mouse wymagają statusu >= 24, jak w firmware.
+- Reset profilu = L4 LB, R4 RB, L5 L3, R5 R3 dla każdego typu pada (jak `bindsInitDefaults`); kopiowanie i reset idą zwykłym zapisem bloku przypisań.
+- Copy w karcie Version kopiuje build firmware (wersja albo hash, zależnie od tego, co wpisał `gen_version.sh`) i protokół statusu.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

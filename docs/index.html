@@ -261,6 +261,8 @@
         <div class="stat"><div class="k">Panel update</div><div class="v" id="stVersionUpdate">—</div></div>
       </div>
       <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
+        <button id="verCopy" title="Copy the firmware build and status protocol to the clipboard">Copy</button>
+        <span class="note" id="verMsg" style="margin:0"></span>
         <button id="diagCap" title="Collects the live state and the firmware counters every 100 ms for 3 s: hold a paddle or press the buttons while it runs">Capture 3 s and copy</button>
         <span class="note" id="diagMsg" style="margin:0"></span>
       </div>
@@ -415,6 +417,13 @@
       <p id="rumbleOld" class="note hide">This puck's firmware predates the rumble-shaping settings — update it to configure them.</p>
     </div>
 
+    <div class="card hide" id="sndSetCard" data-sub="mapping/settings">
+      <h2>Confirmations</h2>
+      <div class="row"><label>Confirm with</label><select id="sndConfirm"></select></div>
+      <div class="row"><label>Volume</label><input type="range" id="sndVol" min="-60" max="0" step="1"><span class="val" id="sndVolV"></span></div>
+      <p class="note">Sets how a profile switch is confirmed: vibration (as many pulses as the profile number) or the profile's melody. Melodies of mode changes and of a controller connecting play only when this includes sound. 0 dB is the loudest. Changes are saved at once; assign the melodies in the Sounds tab.</p>
+    </div>
+
     <div class="card wide" data-sub="mapping/mapping">
       <h2>Button mapping</h2>
       <p class="note" style="margin-top:0">Separate mappings per emulated controller type — each only offers targets that exist on that controller. The type matching the current mode is highlighted. Steam &amp; Lizard are native puck modes (Steam does its own remapping) and aren't configured here.</p>
@@ -422,6 +431,12 @@
         <label>Profile</label>
         <div id="profBtns" style="display:flex;gap:6px"></div>
         <span class="note" id="bindsMsg" style="margin:0"></span>
+      </div>
+      <div class="hide" id="profTools">
+        <div class="row"><label>Profile name</label><input id="profName" class="mtxt" type="text" maxlength="24"><span class="note" style="margin:0;flex:1 1 200px">Names are kept in this browser only.</span></div>
+        <div class="row"><label>Copy to</label>
+          <select id="profCopyTo" style="flex:0 0 180px"></select><button id="profCopy">Copy assignments</button></div>
+        <div class="row"><label>Reset</label><button id="profReset">Reset this profile to defaults</button></div>
       </div>
       <div class="row hide" id="hostRow">
         <label>Keyboard/mouse host</label>
@@ -485,6 +500,50 @@
       </div>
     </div>
 
+    <div class="card hide" id="sndOldCard" data-sub="mapping/sounds">
+      <h2>Sounds</h2>
+      <p class="note" style="margin-top:0">Needs firmware with status protocol 25 or newer. Update the puck to use melodies.</p>
+    </div>
+
+    <div class="card hide" id="sndCard" data-sub="mapping/sounds">
+      <h2>Melodies</h2>
+      <p class="note" style="margin-top:0">The puck plays a melody through the controller's actuator, up to 32 notes per melody. Melody names are kept in this browser only.</p>
+      <div class="slot-tabs" id="sndTabs"></div>
+      <div class="row" style="margin-top:0"><label>Name</label><input id="sndName" class="mtxt" type="text" maxlength="24"><span class="note" id="sndUsed" style="margin:0;flex:1 1 200px"></span></div>
+      <div class="timeline" id="sndTimeline"></div>
+      <div class="row mmeta"><span id="sndCount"></span><span id="sndTotal"></span></div>
+      <table class="steps" id="sndNotes"></table>
+      <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
+        <button id="sndAddNote">Add note</button>
+        <button id="sndAddRest">Add rest</button>
+        <button id="sndClear">Clear</button>
+        <button id="midiBtn">Import MIDI file...</button>
+        <input type="file" id="midiFile" accept=".mid,.midi,audio/midi" style="display:none">
+      </div>
+      <div class="row hide" id="midiRow" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
+        <label>MIDI track</label><select id="midiTrack"></select><button id="midiGo">Import</button>
+      </div>
+      <p class="note" id="midiNote" style="margin:0 0 10px"></p>
+      <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
+        <button id="sndPrev">Preview in browser</button>
+        <button id="sndPlayPuck">Play on puck</button>
+        <button id="sndPlayStored">Play saved melody on puck</button>
+        <button id="sndSave" class="primary">Save to device</button>
+        <span class="note" id="sndMsg" style="margin:0"></span>
+      </div>
+      <p class="note">Play on puck sends the notes shown here and needs a linked controller at the current volume (Settings). Hz 0 is a rest; notes run 1-4000 Hz and 1-5000 ms.</p>
+    </div>
+
+    <div class="card hide" id="sndEvCard" data-sub="mapping/sounds">
+      <h2>Events</h2>
+      <p class="note" style="margin-top:0">Which melody plays on each event. Other modes are Steam, Lizard, DirectInput and SInput. Save to device applies the melodies and this assignment together.</p>
+      <div id="sndEvents"></div>
+      <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
+        <button id="sndEvSave" class="primary">Save to device</button>
+        <span class="note" id="sndEvMsg" style="margin:0"></span>
+      </div>
+    </div>
+
     <div class="card" id="lizardCard" style="display:none" data-sub="mapping/settings">
       <h2>Lizard / desktop mapping</h2>
       <p class="note" style="margin-top:0">Keyboard, mouse &amp; media bindings for <strong>Lizard (always)</strong> mode — each row maps a controller input to a desktop action. (Steam-mode seamless lizard, when Steam is closed, keeps the built-in default behavior and is not affected by this map.) Edits apply after <strong>Save to device</strong>.</p>
@@ -517,6 +576,17 @@
         </div>
         <p class="note" id="cloneStatus">—</p>
         <p class="note"><b>macOS:</b> reading the official puck needs Chrome in <em>System Settings → Privacy &amp; Security → Input Monitoring</em> (restart Chrome after enabling it). The puck's interfaces include a keyboard, so macOS asks for this — the page can only reach the puck's vendor channel, never keystrokes. You can switch it off again afterwards.</p>
+      </div>
+    </div>
+
+    <div class="card hide" id="assignCard" data-sub="mapping/pairing">
+      <h2>Assignments &amp; macros file</h2>
+      <p class="note" style="margin-top:0">Save the paddle assignments of all profiles, the macros and the macro and profile names to a JSON file, apart from the full backup. Import replaces them on the connected puck; pairings and other settings stay.</p>
+      <div class="row" style="margin:0;flex-wrap:wrap">
+        <button id="assignExport" class="primary">Export to file...</button>
+        <button id="assignImport">Import from file...</button>
+        <input type="file" id="assignFile" accept="application/json,.json" style="display:none">
+        <span class="note" id="assignMsg" style="margin:0"></span>
       </div>
     </div>
 
@@ -688,6 +758,22 @@ function updateStabUI(){
 }
 setInterval(updateStabUI, 500);
 const $ = s=>document.querySelector(s);
+// The status poll rewrites most of the page every ~600 ms. Writing a value that did not change would still
+// replace the nodes and drop a text selection the user is making, so those writes are skipped.
+(function(){
+  const tc=Object.getOwnPropertyDescriptor(Node.prototype,"textContent");
+  Object.defineProperty(Node.prototype,"textContent",{configurable:true,enumerable:tc.enumerable,get:tc.get,set(v){
+    v=v==null?"":String(v); const c=this.childNodes;
+    if(c.length===1 && c[0].nodeType===3 ? c[0].data===v : !c.length && v==="") return;
+    tc.set.call(this,v);
+  }});
+  const ih=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");
+  Object.defineProperty(Element.prototype,"innerHTML",{configurable:true,enumerable:ih.enumerable,get:ih.get,set(v){
+    v=String(v);
+    if(this._ih===v && ih.get.call(this)===this._ihOut) return;
+    ih.set.call(this,v); this._ih=v; this._ihOut=ih.get.call(this);
+  }});
+})();
 // Debug UI gate: developer/diagnostic controls (stability test, clear-stuck-buzz, land-all-0x87) and the
 // forensic cards (Hang log, Loop-state trail, Flight recorder) only show with ?debug=true in the URL.
 // Everything still RUNS regardless (the trail keeps recording to localStorage, stability auto-resume works)
@@ -1356,6 +1442,9 @@ function renderSlotTabs(bondedCount) {
   const bar = $("#slotTabs");
   if (bondedCount <= 1) { bar.style.display="none"; updateSlotDisplay(g_activeSlot); return; }
   bar.style.display="flex";
+  const sig=g_activeSlot+"|"+g_slotData.map(d=>d?(d.up?2:1):0).join("");
+  if (bar.dataset.sig===sig) { updateSlotDisplay(g_activeSlot); return; }
+  bar.dataset.sig=sig;
   bar.innerHTML="";
   for (let s=0; s<4; s++) {
     const d = g_slotData[s];
@@ -1494,7 +1583,7 @@ function rawIn(len,timeoutMs){
     return timeoutMs?null:rawIn(len);
   });
 }
-const FRAME_TYPES=new Set([0xA5,0xA7,0xAB,0xAC,0xAD,0xB0,0xB2,0xB3,0xB4]);
+const FRAME_TYPES=new Set([0xA5,0xA7,0xAB,0xAC,0xAD,0xB0,0xB2,0xB3,0xB4,0xB5,0xB6]);
 // state snapshots: only the newest is worth reading, and an old one must not pass for the reply to a new request
 const FRAME_SNAPSHOT=new Set([0xA5,0xAC,0xAD,0xB0]);
 const STASH_MAX_AGE=400;
@@ -1819,9 +1908,10 @@ function applyBlob(p){
   $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
   bindsOnBlob(p);
+  soundsOnBlob(p);
   if(scReady) scUpdate();
 }
-function fmtSlider(id,v){ return id==="hapBlockS" ? v+" s" : ""+v; }
+function fmtSlider(id,v){ return id==="hapBlockS" ? v+" s" : id==="sndVol" ? v+" dB" : ""+v; }
 function setSlider(id,v){ const el=$("#"+id); if(document.activeElement!==el){ el.value=v; } $("#"+id+"V").textContent=fmtSlider(id,el.value); }
 
 let inflight=false;
@@ -1940,11 +2030,11 @@ function buildBackup(p, bp){
     cfg.lizardMap=lizardBindings.map(b=>({outType:b.outType,od:b.od.slice(),trig:b.trig>>>0,hold:b.hold>>>0}));
   return { magic:"openpuck-backup", version:(cfg.lizardMap?2:1), bonds, config:cfg };
 }
-function downloadBackup(obj){
+function downloadBackup(obj,prefix){
   const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:"application/json"}));
-  a.download="openpuck-backup-"+ts+".json"; a.click();
+  a.download=(prefix||"openpuck-backup")+"-"+ts+".json"; a.click();
 }
 // let any in-flight poll read settle before we drive the shared endpoints ourselves
 async function waitIdle(){ for(let i=0;i<60 && inflight;i++) await new Promise(r=>setTimeout(r,5)); }
@@ -1956,7 +2046,12 @@ async function panelSnapshot(){
   const raw=await bindsReadRaw(), b=raw&&bindsParse(raw);
   if(!b) return null;
   const o={version:1, binds:hexEnc(raw), activeProfile:b.active,
-    macroNames:Array.from({length:BIND_MACROS},(_,i)=>macroNames[i]||"")};
+    macroNames:Array.from({length:BIND_MACROS},(_,i)=>macroNames[i]||""),
+    profileNames:Array.from({length:BIND_PROFILES},(_,i)=>profileNames[i]||"")};
+  if(p[0]>=25){
+    const sraw=await soundsReadRaw();
+    if(sraw&&sndParse(sraw)) o.sounds={blob:hexEnc(sraw),names:Array.from({length:SND_MELODIES},(_,i)=>soundNames[i]||"")};
+  }
   if(p[0]>=24){
     await send([0x27,0xFF]); const l=await readFrame(0xB0,24,256), lv=l&&parseLive(l);
     if(lv&&lv.host!==null) o.hostSetting=(lv.host>>2)&3;
@@ -1970,7 +2065,7 @@ async function panelRestore(pn){
   }
   const raw=new Uint8Array(hexDec(pn.binds||"")), b=bindsParse(raw);
   if(!b){ log("import: paddle binds in the file are not valid — skipped"); return "Paddle binds in the file were not valid and were skipped."; }
-  let ok=true; stashDrop(0xB0,0xB2,0xB3);
+  let ok=true; stashDrop(0xB0,0xB2,0xB3,0xB5,0xB6);
   for(let idx=0,o=0;o<raw.length;idx++,o+=96){
     const part=[...raw.slice(o,o+96)];
     await send([0x28,idx,part.length,...part]);
@@ -1987,8 +2082,24 @@ async function panelRestore(pn){
     macroNames=pn.macroNames.slice(0,BIND_MACROS).map(x=>typeof x==="string"?x.slice(0,24):"");
     try{ localStorage.setItem("openpuck.macroNames",JSON.stringify(macroNames)); }catch(e){}
   }
-  log("paddle binds, profile, host setting and macro names restored");
-  return "";
+  if(Array.isArray(pn.profileNames)){
+    profileNames=pn.profileNames.slice(0,BIND_PROFILES).map(x=>typeof x==="string"?x.slice(0,24):""); profSaveNames();
+  }
+  let note="";
+  if(pn.sounds&&typeof pn.sounds==="object"){
+    const sraw=new Uint8Array(hexDec(pn.sounds.blob||""));
+    if(p[0]<25) note="Sounds were skipped: this puck's firmware is too old.";
+    else if(!sndParse(sraw)) note="Sounds in the file were not valid and were skipped.";
+    else if(!await soundsWrite([...sraw])) note="The puck rejected the sounds.";
+    else if(Array.isArray(pn.sounds.names)){
+      soundNames=pn.sounds.names.slice(0,SND_MELODIES).map(x=>typeof x==="string"?x.slice(0,24):"");
+      try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){}
+    }
+    if(note) log("import: "+note);
+  }
+  sounds=null; soundsLastTry=0;
+  log("paddle binds, profile, host setting, macro, profile and melody names and sounds restored");
+  return note;
 }
 async function exportBackup(){
   if(!dev){ log("not connected"); return; }
@@ -3070,7 +3181,7 @@ $("#relRefresh").onclick=()=>loadReleases(true);
 // scUpdate (outside the tabs while no puck is connected). Selection lives in the URL hash and in localStorage.
 const TAB_DEFS=[
   ["status","Status",[["status","Status"],["modes","Modes"],["debug","Debug"],["log","Log"],["fw","Firmware update"]]],
-  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
+  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["sounds","Sounds"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
 const TAB_STORE="opk_tab", TAB_DEFAULT="status/status";
 // the ReversePuck dongle only has the paired-pucks card, the log and the firmware flasher
 const DONGLE_TABS=["status/log","status/fw","mapping/pairing"];
@@ -3599,7 +3710,7 @@ async function bindsXfer(fn){
   // during a firmware update the IN pipe belongs to the update acks (runUpdate stops the status poll)
   for(let i=0;i<200 && dev && !dfuBusy && (inflight||statusWanted||capturing||backupBusy||flightBusy||lizardBusy||rfBusy);i++) await sleep(10);
   if(!dev || dfuBusy || !polling || inflight) return null;
-  inflight=true; stashDrop(0xB0,0xB2,0xB3); // anything left from earlier is not the answer to what we send now
+  inflight=true; stashDrop(0xB0,0xB2,0xB3,0xB5,0xB6); // anything left from earlier is not the answer to what we send now
   try{ return await fn(); }
   catch(e){ log("binds err: "+e.message); return null; }
   finally{ inflight=false; }
@@ -3658,6 +3769,118 @@ async function bindsSetProfile(n){
   if(!ok) bindsMsg("profile switch failed");
 }
 
+// ---- profile names, copy and reset (names live in this browser only: the firmware keeps none) ----
+let profileNames=[];
+try{ const n=JSON.parse(localStorage.getItem("openpuck.profileNames")||"[]"); if(Array.isArray(n)) profileNames=n; }catch(e){}
+function profName(p){ const n=profileNames[p]; return (typeof n==="string"&&n.trim())?n.trim():"Profile "+(p+1); }
+function profSaveNames(){ try{ localStorage.setItem("openpuck.profileNames",JSON.stringify(profileNames)); }catch(e){} }
+let profKey="";
+function profRender(){
+  const a=binds?binds.active:-1;
+  [...$("#profBtns").children].forEach((b,n)=>{ b.textContent=profName(n); b.classList.toggle("active",n===a); });
+  const nameEl=$("#profName");
+  if(document.activeElement!==nameEl) nameEl.value=a>=0?(profileNames[a]||""):"";
+  nameEl.placeholder=a>=0?"Profile "+(a+1):""; nameEl.disabled=a<0;
+  const sel=$("#profCopyTo"), key=a+"|"+[0,1,2].map(profName).join("|");
+  if(key!==profKey){
+    profKey=key; sel.textContent="";
+    for(let n=0;n<BIND_PROFILES;n++) if(n!==a){ const o=document.createElement("option"); o.value=n; o.textContent=profName(n); sel.appendChild(o); }
+  }
+  $("#profCopy").disabled=a<0; $("#profReset").disabled=a<0;
+  sndEventsRender();
+}
+function profCopy(){
+  if(!binds) return;
+  const from=binds.active, to=+$("#profCopyTo").value;
+  if(!confirm("Copy all assignments of "+profName(from)+" to "+profName(to)+"?\n\nThis replaces what "+profName(to)+" has now, for every controller type. Macros are shared and stay as they are.")) return;
+  binds.act[to]=binds.act[from].map(t=>t.map(a=>({...a})));
+  bindsMsg("unsaved"); bindsCommit(); bindsRender();
+}
+// same defaults as the firmware (bindsInitDefaults): the paddles send LB, RB, L3, R3
+const PROFILE_DEFAULT_CODES=[5,6,7,8];
+function profReset(){
+  if(!binds) return;
+  const p=binds.active;
+  if(!confirm("Reset all paddle assignments of "+profName(p)+" to the defaults (L4 = LB, R4 = RB, L5 = L3, R5 = R3), for every controller type?")) return;
+  binds.act[p]=TYPE_DEFS.map(()=>PROFILE_DEFAULT_CODES.map(c=>({k:0,arg:c,mask:0})));
+  bindsMsg("unsaved"); bindsCommit(); bindsRender();
+}
+
+// ---- assignments file: paddle assignments of every profile, macros, macro and profile names (JSON) ----
+// Separate from the full backup: it carries no pairings or settings and can be edited by hand.
+function assignExport(){
+  if(!binds){ bindsMsg("assignments are not loaded yet"); return; }
+  const obj={magic:"openpuck-assignments",version:1,
+    profiles:binds.act.map((types,p)=>({name:profileNames[p]||"",
+      types:types.map((paddles,e)=>({type:TYPE_DEFS[e].key,paddles:paddles.map(a=>({kind:a.k,arg:a.arg,mask:a.mask>>>0}))}))})),
+    macros:binds.macros.map((m,i)=>({name:macroNames[i]||"",steps:m.steps.map(s=>({mask:s.mask>>>0,ms:s.ms}))}))};
+  downloadBackup(obj,"openpuck-assignments");
+  bindsMsg("exported");
+}
+// Returns {binds,profileNames,macroNames} for a parsed file, or throws an Error that says what is wrong.
+function assignParse(obj){
+  const bad=m=>{ throw new Error(m); };
+  const isU32=v=>Number.isInteger(v)&&v>=0&&v<=0xFFFFFFFF;
+  if(!obj||obj.magic!=="openpuck-assignments") bad("not an OpenPuck assignments file");
+  if(obj.version!==1) bad("unknown file version "+obj.version);
+  if(!Array.isArray(obj.profiles)||obj.profiles.length!==BIND_PROFILES) bad("expected "+BIND_PROFILES+" profiles");
+  if(!Array.isArray(obj.macros)||obj.macros.length!==BIND_MACROS) bad("expected "+BIND_MACROS+" macros");
+  const b=emptyBinds(); b.ver=binds.ver; b.active=binds.active;
+  const pn=[], mn=[];
+  obj.profiles.forEach((p,pi)=>{
+    const at="profile "+(pi+1);
+    if(!p||!Array.isArray(p.types)||p.types.length!==TYPE_DEFS.length) bad(at+": expected "+TYPE_DEFS.length+" controller types");
+    pn.push(typeof p.name==="string"?p.name.slice(0,24):"");
+    p.types.forEach((t,e)=>{
+      const at2=at+", "+TYPE_DEFS[e].name;
+      if(!t||!Array.isArray(t.paddles)||t.paddles.length!==BIND_BACKS) bad(at2+": expected "+BIND_BACKS+" paddles");
+      t.paddles.forEach((a,i)=>{
+        const at3=at2+", "+BACK_LABELS[i].split(" ")[0];
+        if(!a||!Number.isInteger(a.kind)||a.kind<0||a.kind>4) bad(at3+": unknown action kind");
+        const arg=a.arg|0, mask=a.mask===undefined?0:a.mask;
+        if(!Number.isInteger(a.arg)||!isU32(mask)) bad(at3+": bad action values");
+        if(a.kind===0&&(arg<0||arg>20)) bad(at3+": button code out of range");
+        if(a.kind===2&&(arg<0||arg>=BIND_MACROS)) bad(at3+": macro number out of range");
+        if(a.kind===3&&(arg<0x04||arg>0xE7||mask>255)) bad(at3+": key or modifiers out of range");
+        if(a.kind===4&&(arg<1||arg>9)) bad(at3+": mouse action out of range");
+        if(a.kind>=3&&!kbmCap) bad(at3+": Key and Mouse actions need firmware with status protocol 24 or newer");
+        b.act[pi][e][i]={k:a.kind,arg:a.kind===1?0:arg,mask:(a.kind===1||a.kind===3)?mask>>>0:0};
+      });
+    });
+  });
+  obj.macros.forEach((m,mi)=>{
+    const at="macro "+(mi+1);
+    if(!m||!Array.isArray(m.steps)||m.steps.length>BIND_STEPS) bad(at+": at most "+BIND_STEPS+" steps");
+    mn.push(typeof m.name==="string"?m.name.slice(0,24):"");
+    m.steps.forEach((s,k)=>{
+      if(!s||!isU32(s.mask)||!Number.isInteger(s.ms)||s.ms<1||s.ms>65535) bad(at+", step "+(k+1)+": bad button mask or time (1-65535 ms)");
+      b.macros[mi].steps.push({mask:s.mask>>>0,ms:s.ms});
+    });
+  });
+  if(!bindsParse(new Uint8Array(bindsBuild(b)))) bad("the assignments do not fit the puck's format");
+  return {binds:b,profileNames:pn,macroNames:mn};
+}
+async function assignImport(file){
+  if(!binds){ bindsMsg("assignments are not loaded yet"); return; }
+  let r;
+  try{ r=assignParse(JSON.parse(await file.text())); }
+  catch(e){ bindsMsg("import failed: "+(e instanceof SyntaxError?"not valid JSON":e.message)); $("#assignMsg").textContent="Import failed: "+(e instanceof SyntaxError?"not valid JSON":e.message); return; }
+  if(!confirm("Replace the paddle assignments of all profiles, all macros and the macro and profile names with the contents of this file?\n\nPairings and other settings stay as they are.")){ return; }
+  binds=r.binds; profileNames=r.profileNames; macroNames=r.macroNames; profSaveNames();
+  try{ localStorage.setItem("openpuck.macroNames",JSON.stringify(macroNames)); }catch(e){}
+  bindsRender(); profRender();
+  bindsMsg("unsaved"); clearTimeout(bindsSaveTimer); await bindsSave();
+  $("#assignMsg").textContent=$("#bindsMsg").textContent==="saved"?"Imported and saved to the puck.":"Imported, but: "+$("#bindsMsg").textContent;
+}
+(function profilesInit(){
+  $("#profName").oninput=()=>{ if(!binds) return; profileNames[binds.active]=$("#profName").value.slice(0,24); profSaveNames(); profRender(); };
+  $("#profCopy").onclick=profCopy;
+  $("#profReset").onclick=profReset;
+  $("#assignExport").onclick=assignExport;
+  $("#assignImport").onclick=()=>$("#assignFile").click();
+  $("#assignFile").onchange=()=>{ const f=$("#assignFile").files[0]; $("#assignFile").value=""; if(f) assignImport(f); };
+})();
+
 // ---- figures ----
 // docs/img/sc-{front,back,top}.svg are cut from Valve's reference drawing (see img/LICENSE-valve.txt). FIGD holds
 // the same geometry as filled paths, one per button, so a highlight fits the contour exactly. Units are those of
@@ -3712,6 +3935,7 @@ const mapFigs=[], liveFigs=[];
 let macroFig=null;
 // paddle legends on the underside drawing (the face and bumper names live in the lists, not on the drawing)
 function setLegend(e,t){
+  if(e._t===t) return; e._t=t;
   e.textContent=""; e.removeAttribute("textLength");
   const i=t.indexOf(" ("), parts=(i>0&&t.length*19>BACK_M-24)?[t.slice(0,i),t.slice(i+1)]:[t];
   parts.forEach((x,k)=>{ const ts=svgEl("tspan",{x:e.getAttribute("x"),dy:k?34:0},x);
@@ -3859,7 +4083,7 @@ function bindsRender(){
       et<2?"PC keyboard/mouse: PS5 and DS4-gyro modes only.":
       "Key and Mouse act on a PC host in "+(et===2?"HID gyro (DS4)":"PS5 DualSense")+" mode only.";
   });
-  [...$("#profBtns").children].forEach((b,n)=>b.classList.toggle("active",n===binds.active));
+  profRender();
   figLabels(); macroRender();
 }
 
@@ -3874,7 +4098,7 @@ function macroStepText(s){ return s.mask?"Press "+maskNames(s.mask,macroType," +
 function macroUsedBy(m){
   const out=[]; if(!binds) return out;
   for(let p=0;p<BIND_PROFILES;p++) for(let e=0;e<TYPE_DEFS.length;e++) for(let i=0;i<BIND_BACKS;i++){
-    const a=binds.act[p][e][i]; if(a.k===2&&a.arg===m) out.push(BACK_LABELS[i].split(" ")[0]+" ("+TYPE_DEFS[e].name+", profile "+(p+1)+")"); }
+    const a=binds.act[p][e][i]; if(a.k===2&&a.arg===m) out.push(BACK_LABELS[i].split(" ")[0]+" ("+TYPE_DEFS[e].name+", "+profName(p)+")"); }
   return out;
 }
 function macroDirty(){ bindsMsg("unsaved"); }
@@ -4059,7 +4283,7 @@ function liveRender(){
   $("#lvOut").textContent=maskNames(L.out,et,", ")||"—";
   $("#lvLs").textContent=L.lx+", "+L.ly; $("#lvRs").textContent=L.rx+", "+L.ry;
   $("#lvTr").textContent=L.lt+" / "+L.rt;
-  $("#lvProf").textContent=(L.profile+1)+(et>=0?" · "+TYPE_DEFS[et].name:" · Steam");
+  $("#lvProf").textContent=profName(L.profile)+(et>=0?" · "+TYPE_DEFS[et].name:" · Steam");
   $("#lvLink").textContent=(L.link?"up":"down")+" · slot "+(L.slot+1);
   $("#lvBatt").textContent=L.batt?(L.batt+"%"+(L.charge===2?" charging":L.charge===4?" charged":"")):"—";
   // The firmware leaves a paddle bit set for a plain Button action (the modes translate it later), so work out
@@ -4117,7 +4341,7 @@ function bindsOnBlob(p){
   const cap=(p[0]>=23 && p.length>195 && !isDongle);
   if(cap!==bindsCap){
     bindsCap=cap;
-    for(const id of ["bindsBar","mapFigs","macroCard","liveCard"]) $("#"+id).classList.toggle("hide",!cap);
+    for(const id of ["bindsBar","profTools","assignCard","mapFigs","macroCard","liveCard"]) $("#"+id).classList.toggle("hide",!cap);
     for(const el of document.querySelectorAll(".bind")) el.style.display=cap?"":"none";
     if(!cap){ binds=null; live=null; liveRender(); for(const t of typeEls) for(const sel of t.back) sel.style.display=""; }
     else bindsRender();
@@ -4127,7 +4351,7 @@ function bindsOnBlob(p){
 }
 (function bindsInit(){
   const pb=$("#profBtns");
-  for(let n=0;n<BIND_PROFILES;n++){ const b=document.createElement("button"); b.textContent=(n+1);
+  for(let n=0;n<BIND_PROFILES;n++){ const b=document.createElement("button");
     b.onclick=()=>bindsSetProfile(n); pb.appendChild(b); }
   bindsDecorateRows();
   mapFigs.push(makeFig("front",{}),makeFig("back",{labels:true}));
@@ -4158,8 +4382,353 @@ function bindsOnBlob(p){
   for(const el of document.querySelectorAll(".bind")) el.style.display="none";
   new IntersectionObserver(es=>{ liveVisible=es[es.length-1].isIntersecting; }).observe($("#liveCard"));
   bindsInited=true;
-  figLabels(); macroRender();
+  profRender(); figLabels(); macroRender();
   liveLoop();
+})();
+
+// ===================== Melodies (sounds blob v1, status blob 25+) =====================
+// Wire format and ops: docs/PROTOCOL.md §10.5. Hidden below status protocol 25: older firmware drops 0x2D..0x31
+// silently, so they must never be sent blind. Transfers use bindsXfer (one pipe reader, paused during updates).
+const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
+const SND_EVENTS=["Profile 1","Profile 2","Profile 3","Mode: PlayStation","Mode: Xbox","Mode: Switch",
+  "Mode: other","Controller connected"];
+const SND_CONFIRM=[[1,"Vibration"],[2,"Sound"],[3,"Both"],[0,"Off"]];
+const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const NOTE_LO=36, NOTE_HI=107; // C2 (65 Hz) .. B7 (3951 Hz), all under the 4000 Hz limit
+var sounds=null, soundsDev=null, soundsCap=null, soundsLastTry=0, soundsSaving=false, soundsSaveTimer=0;
+let curMel=0, soundNames=[], midiData=null;
+try{ const n=JSON.parse(localStorage.getItem("openpuck.soundNames")||"[]"); if(Array.isArray(n)) soundNames=n; }catch(e){}
+function soundName(m){ const n=soundNames[m]; return (typeof n==="string"&&n.trim())?n.trim():"Melody "+(m+1); }
+function soundSetName(m,v){ soundNames[m]=v; try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){} }
+const noteHz=m=>Math.round(440*Math.pow(2,(m-69)/12));
+function noteOf(freq){
+  if(!freq) return "rest";
+  const m=Math.round(69+12*Math.log2(freq/440));
+  return (m>=NOTE_LO&&m<=NOTE_HI&&Math.abs(noteHz(m)-freq)/freq<0.01)?String(m):"custom";
+}
+const noteLabel=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
+function sndEmpty(){
+  return {confirm:1,gain:-6,ev:[0,1,2,3,4,5,6,7],mel:Array.from({length:SND_MELODIES},()=>[])};
+}
+function sndParse(d){
+  if(d.length!==4+SND_PAYLOAD+2||d[0]!==0xB8||d[1]!==1) return null;
+  const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);
+  if(dv.getUint16(2,true)!==SND_PAYLOAD) return null;
+  let sum=0; for(let i=4;i<4+SND_PAYLOAD;i++) sum=(sum+d[i])&0xFFFF;
+  if(sum!==dv.getUint16(4+SND_PAYLOAD,true)) return null;
+  const s=sndEmpty(); s.confirm=d[4]; s.gain=(d[5]<<24)>>24;
+  for(let e=0;e<8;e++) s.ev[e]=d[6+e];
+  for(let m=0,o=14;m<SND_MELODIES;m++,o+=129){
+    const n=d[o]; if(n>SND_NOTES) return null;
+    for(let k=0;k<n;k++) s.mel[m].push({freq:dv.getUint16(o+1+k*4,true),ms:dv.getUint16(o+3+k*4,true)});
+  }
+  return s;
+}
+function sndBuild(s){
+  const pl=[s.confirm,s.gain&255,...s.ev];
+  for(const mel of s.mel){
+    pl.push(mel.length);
+    for(let k=0;k<SND_NOTES;k++){ const n=mel[k]||{freq:0,ms:0}; pl.push(n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8); }
+  }
+  let sum=0; for(const v of pl) sum=(sum+v)&0xFFFF;
+  return [0xB8,1,pl.length&255,pl.length>>>8,...pl,sum&255,sum>>>8];
+}
+async function soundsReadRaw(){
+  const buf=[];
+  for(let idx=0;idx<SND_CHUNKS;idx++){
+    let f=null;
+    for(let t=0;t<3 && !f;t++){ await send([0x2D,idx]); f=await readFrame(0xB5,3,256); if(f && f[0]!==idx) f=null; }
+    if(!f) return null;
+    for(let k=2;k<f.length;k++) buf.push(f[k]);
+  }
+  return new Uint8Array(buf);
+}
+async function soundsAck(op){
+  let f=null;
+  for(let t=0;t<3 && !f;t++){ f=await readFrame(0xB6,3,64); if(f && f[0]!==op) f=null; }
+  return f;
+}
+async function soundsRead(){
+  if(!dev || !soundsCap || dfuBusy) return;
+  soundsLastTry=Date.now();
+  const raw=await bindsXfer(soundsReadRaw), s=raw&&sndParse(raw);
+  if(s){ sounds=s; sndMsg(""); sndRender(); } else sndMsg("read failed");
+}
+async function soundsWrite(blob){
+  for(let idx=0,o=0;o<blob.length;idx++,o+=96){
+    const part=blob.slice(o,o+96);
+    await send([0x2E,idx,part.length,...part]);
+    const f=await soundsAck(0x2E); if(!f||f[1]!==1) return false;
+  }
+  await send([0x2F]);
+  const f=await soundsAck(0x2F); return !!f&&f[1]===1;
+}
+async function soundsSave(){
+  if(!sounds || soundsSaving || !dev || dfuBusy) return;
+  soundsSaving=true; sndMsg("saving…");
+  const blob=sndBuild(sounds);
+  const ok=await bindsXfer(()=>soundsWrite(blob));
+  soundsSaving=false;
+  if(ok){ await soundsRead(); sndMsg("saved"); }
+  else sndMsg(ok===null?"not saved: the puck is busy, try again":"device rejected the sounds");
+}
+function soundsCommit(){ clearTimeout(soundsSaveTimer); soundsSaveTimer=setTimeout(soundsSave,400); }
+function sndMsg(m){ if(/fail|reject|not saved/.test(m)) diagNote("sounds: "+m); for(const id of ["sndMsg","sndEvMsg"]) $("#"+id).textContent=m; }
+function sndDirty(){ sndMsg("unsaved"); }
+// 0x30 plays a stored melody, 0x31 the notes given (not stored); both are acked with 0xB6, ok 0 = nothing played
+async function soundsPlay(op,bytes){
+  const f=await bindsXfer(async()=>{ await send([op,...bytes]); return await soundsAck(op); });
+  sndMsg(!f?"no answer from the puck":f[1]===1?"playing on the puck":"nothing played: no controller is linked");
+}
+function soundsOnBlob(p){
+  const cap=(p[0]>=25 && !isDongle);
+  if(soundsDev!==dev){ sounds=null; soundsDev=dev; soundsLastTry=0; }
+  if(cap!==soundsCap){
+    soundsCap=cap;
+    for(const id of ["sndCard","sndEvCard","sndSetCard"]) $("#"+id).classList.toggle("hide",!cap);
+    $("#sndOldCard").classList.toggle("hide",cap);
+    if(!cap) sounds=null;
+  }
+  if(cap && !sounds && Date.now()-soundsLastTry>1500 && !soundsSaving && !dfuBusy) soundsRead();
+}
+
+// ---- editor ----
+const sndNotes=()=>sounds.mel[curMel];
+function sndNoteName(n){ const k=noteOf(n.freq); return k==="rest"?"Rest":k==="custom"?"":noteLabel(+k); }
+function sndEventName(e){ return e<3?profName(e):SND_EVENTS[e]; }
+function sndRender(){
+  if(!sounds) return;
+  [...$("#sndTabs").children].forEach((t,m)=>{ t.classList.toggle("active",m===curMel);
+    t.textContent=soundName(m)+(sounds.mel[m].length?" ("+sounds.mel[m].length+")":""); });
+  const nameEl=$("#sndName"); if(document.activeElement!==nameEl) nameEl.value=soundNames[curMel]||"";
+  nameEl.placeholder="Melody "+(curMel+1);
+  const used=[]; sounds.ev.forEach((m,e)=>{ if(m===curMel) used.push(sndEventName(e)); });
+  $("#sndUsed").textContent=used.length?"Plays on: "+used.join(", "):"Not assigned to any event.";
+  sndRowsRender();
+  const cs=$("#sndConfirm"); if(document.activeElement!==cs) cs.value=sounds.confirm;
+  setSlider("sndVol",sounds.gain);
+  sndEventsRender();
+}
+function sndEventsRender(){
+  if(!sounds) return;
+  const evs=$("#sndEvents");
+  if(!evs.children.length) SND_EVENTS.forEach((n,e)=>{
+    const row=document.createElement("div"); row.className="row";
+    const lab=document.createElement("label"); row.appendChild(lab);
+    const sel=document.createElement("select");
+    const none=document.createElement("option"); none.value=SND_NONE; none.textContent="None"; sel.appendChild(none);
+    for(let m=0;m<SND_MELODIES;m++){ const o=document.createElement("option"); o.value=m; sel.appendChild(o); }
+    sel.onchange=()=>{ sounds.ev[e]=+sel.value; sndDirty(); sndRender(); };
+    row.appendChild(sel); evs.appendChild(row);
+  });
+  [...evs.children].forEach((row,e)=>{
+    row.firstChild.textContent=sndEventName(e);
+    const sel=row.lastChild;
+    for(let m=0;m<SND_MELODIES;m++) sel.options[m+1].textContent=(m+1)+": "+soundName(m);
+    if(document.activeElement!==sel) sel.value=sounds.ev[e];
+  });
+}
+function sndRowSync(k){
+  const n=sndNotes()[k], tr=$("#snote"+k); if(!tr) return;
+  tr.querySelector("select").value=noteOf(n.freq);
+  const inp=tr.querySelectorAll("input"); inp[0].value=n.freq; inp[0].disabled=!n.freq;
+  sndTotals();
+}
+function sndTotals(){
+  const st=sndNotes(); let total=0; for(const n of st) total+=n.ms;
+  $("#sndCount").textContent=st.length+" / "+SND_NOTES+" notes";
+  $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
+  const tl=$("#sndTimeline"); tl.textContent="";
+  st.forEach(n=>{
+    const seg=document.createElement("div"); seg.className="tl "+(n.freq?"press":"wait"); seg.style.flexGrow=n.ms;
+    seg.title=n.freq?sndNoteName(n)+" "+n.freq+" Hz, "+n.ms+" ms":"Rest "+n.ms+" ms"; seg.textContent=n.freq?sndNoteName(n):""; tl.appendChild(seg);
+  });
+}
+function sndRowsRender(){
+  const tbl=$("#sndNotes"); tbl.textContent="";
+  const st=sndNotes();
+  st.forEach((n,k)=>{
+    const tr=document.createElement("tr"); tr.id="snote"+k; tr.style.cursor="default";
+    const td0=document.createElement("td"); td0.textContent=k+1; tr.appendChild(td0);
+    const td1=document.createElement("td"); const sel=document.createElement("select");
+    const r=document.createElement("option"); r.value="rest"; r.textContent="Rest"; sel.appendChild(r);
+    for(let m=NOTE_HI;m>=NOTE_LO;m--){ const o=document.createElement("option"); o.value=m; o.textContent=noteLabel(m); sel.appendChild(o); }
+    const c=document.createElement("option"); c.value="custom"; c.textContent="Custom"; c.disabled=true; sel.appendChild(c);
+    sel.value=noteOf(n.freq);
+    sel.onchange=()=>{ n.freq=sel.value==="rest"?0:noteHz(+sel.value); sndDirty(); sndRowSync(k); };
+    td1.appendChild(sel); tr.appendChild(td1);
+    const td2=document.createElement("td"); td2.appendChild(document.createTextNode("Hz "));
+    const hz=document.createElement("input"); hz.type="number"; hz.min=1; hz.max=SND_FREQ_MAX; hz.value=n.freq; hz.disabled=!n.freq;
+    hz.onchange=()=>{ n.freq=Math.max(1,Math.min(SND_FREQ_MAX,Math.round(+hz.value)||1)); sndDirty(); sndRowSync(k); };
+    td2.appendChild(hz); tr.appendChild(td2);
+    const td3=document.createElement("td"); td3.appendChild(document.createTextNode("ms "));
+    const ms=document.createElement("input"); ms.type="number"; ms.min=1; ms.max=SND_MS_MAX; ms.value=n.ms;
+    ms.onchange=()=>{ n.ms=Math.max(1,Math.min(SND_MS_MAX,Math.round(+ms.value)||1)); ms.value=n.ms; sndDirty(); sndTotals(); };
+    td3.appendChild(ms); tr.appendChild(td3);
+    const td4=document.createElement("td"); td4.className="acts";
+    const mk=(txt,fn,dis)=>{ const b=document.createElement("button"); b.textContent=txt; b.disabled=!!dis; b.onclick=fn; td4.appendChild(b); };
+    mk("Up",()=>{ st.splice(k-1,0,st.splice(k,1)[0]); sndDirty(); sndRender(); },k===0);
+    mk("Down",()=>{ st.splice(k+1,0,st.splice(k,1)[0]); sndDirty(); sndRender(); },k===st.length-1);
+    mk("Delete",()=>{ st.splice(k,1); sndDirty(); sndRender(); });
+    tr.appendChild(td4); tbl.appendChild(tr);
+  });
+  if(!st.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="note"; td.textContent="No notes. Add a note or import a MIDI file."; tr.appendChild(td); tbl.appendChild(tr); }
+  const full=st.length>=SND_NOTES;
+  $("#sndAddNote").disabled=full; $("#sndAddRest").disabled=full; $("#sndClear").disabled=!st.length;
+  $("#sndPrev").disabled=!st.length; $("#sndPlayPuck").disabled=!st.length;
+  sndTotals();
+}
+// browser preview: the same notes through Web Audio (a plain square tone, not what the actuator sounds like)
+let sndCtx=null, sndPrevTimer=0, sndPrevOsc=[];
+function sndPreviewStop(){
+  clearTimeout(sndPrevTimer); for(const o of sndPrevOsc){ try{ o.stop(); }catch(e){} } sndPrevOsc=[];
+  $("#sndPrev").textContent="Preview in browser";
+}
+function sndPreview(){
+  if(sndPrevOsc.length){ sndPreviewStop(); return; }
+  const st=sndNotes(); if(!st.length) return;
+  try{
+    sndCtx=sndCtx||new (window.AudioContext||window.webkitAudioContext)();
+    sndCtx.resume();
+    const g=sndCtx.createGain(); g.gain.value=0.12; g.connect(sndCtx.destination);
+    let t=sndCtx.currentTime+0.05;
+    for(const n of st){
+      const d=n.ms/1000;
+      if(n.freq){ const o=sndCtx.createOscillator(); o.type="square"; o.frequency.value=n.freq; o.connect(g); o.start(t); o.stop(t+d); sndPrevOsc.push(o); }
+      t+=d;
+    }
+    $("#sndPrev").textContent="Stop preview";
+    sndPrevTimer=setTimeout(sndPreviewStop,(t-sndCtx.currentTime)*1000+100);
+  }catch(e){ sndMsg("preview failed: "+e.message); }
+}
+function sndAdd(freq){
+  if(!sounds) return; const st=sndNotes(); if(st.length>=SND_NOTES) return;
+  st.push({freq,ms:freq?200:100}); sndDirty(); sndRender();
+}
+
+// ---- MIDI import (SMF format 0/1, one melody line) ----
+function midiParse(buf){
+  const d=new Uint8Array(buf), dv=new DataView(buf);
+  const tag=i=>String.fromCharCode(d[i],d[i+1],d[i+2],d[i+3]);
+  if(d.length<14 || tag(0)!=="MThd") throw new Error("not a MIDI file");
+  const hl=dv.getUint32(4), fmt=dv.getUint16(8), ntr=dv.getUint16(10), div=dv.getUint16(12);
+  if(fmt>1) throw new Error("MIDI format "+fmt+" is not supported (use format 0 or 1)");
+  if(div&0x8000 || !div) throw new Error("this MIDI file uses SMPTE timing, which is not supported");
+  const tracks=[], tempos=[]; let o=8+hl;
+  while(o+8<=d.length && tracks.length<ntr){
+    const id=tag(o), end=Math.min(o+8+dv.getUint32(o+4),d.length); o+=8;
+    if(id!=="MTrk"){ o=end; continue; }
+    const tr={name:"",notes:[],drums:false}, open={}; let t=0, run=0;
+    const vlq=()=>{ let v=0,b; do{ if(o>=end) throw new Error("the MIDI file is truncated"); b=d[o++]; v=v*128+(b&127); }while(b&128); return v; };
+    const off=(ch,p)=>{ const a=open[ch*128+p]; if(a&&a.length) tr.notes.push({s:a.shift(),e:t,p}); };
+    while(o<end){
+      t+=vlq();
+      let st=d[o];
+      if(st<0x80){ if(!run) throw new Error("the MIDI file is damaged"); st=run; } else o++;
+      if(st===0xFF){
+        const type=d[o++], l=vlq();
+        if(type===0x51 && l===3) tempos.push({t,us:(d[o]<<16)|(d[o+1]<<8)|d[o+2]});
+        else if(type===0x03 && !tr.name) tr.name=String.fromCharCode(...d.slice(o,o+l)).replace(/[^\x20-\x7e]/g,"");
+        o+=l; run=0; continue;
+      }
+      if(st===0xF0||st===0xF7){ o+=vlq(); run=0; continue; }
+      run=st; const hi=st&0xF0, ch=st&15, a=d[o], v=d[o+1]; o+=(hi===0xC0||hi===0xD0)?1:2;
+      if(o>end) throw new Error("the MIDI file is truncated");
+      if(hi===0x90 && v>0){ (open[ch*128+a]=open[ch*128+a]||[]).push(t); if(ch===9) tr.drums=true; }
+      else if(hi===0x80 || hi===0x90) off(ch,a);
+    }
+    // notes still held when the track ends stop with it
+    for(const k in open) for(const s of open[k]) tr.notes.push({s,e:t,p:k%128});
+    tracks.push(tr); o=end;
+  }
+  if(!tracks.length) throw new Error("no tracks in this MIDI file");
+  return {tracks,tempos,div};
+}
+// ticks -> milliseconds through the tempo changes (meta 0x51; default 120 bpm)
+function midiMs(m){
+  const tm=[{t:0,us:500000}];
+  for(const x of [...m.tempos].sort((a,b)=>a.t-b.t)){ if(x.t===tm[tm.length-1].t) tm[tm.length-1]=x; else tm.push(x); }
+  let acc=0; const cum=tm.map((x,i)=>{ if(i) acc+=(x.t-tm[i-1].t)*tm[i-1].us/m.div/1000; return acc; });
+  return tick=>{ let i=tm.length-1; while(i>0&&tm[i].t>tick) i--; return cum[i]+(tick-tm[i].t)*tm[i].us/m.div/1000; };
+}
+// One line from a track: at every moment the highest sounding note wins, gaps become rests, leading silence is
+// dropped. Returns every entry; the caller cuts it to what fits.
+function midiLine(m,track){
+  const ms=midiMs(m), ns=track.notes.filter(n=>n.e>n.s).map((n,i)=>({...n,id:i})).sort((a,b)=>a.s-b.s||a.id-b.id);
+  const bounds=[...new Set(ns.flatMap(n=>[n.s,n.e]))].sort((a,b)=>a-b), segs=[];
+  let act=[], next=0;
+  for(let i=0;i+1<bounds.length;i++){
+    const a=bounds[i], b=bounds[i+1];
+    while(next<ns.length && ns[next].s<=a) act.push(ns[next++]);
+    act=act.filter(n=>n.e>a);
+    let best=null; for(const n of act) if(!best||n.p>best.p||(n.p===best.p&&n.s>best.s)) best=n;
+    const id=best?best.id:-1, last=segs[segs.length-1];
+    if(last&&last.id===id) last.b=b; else segs.push({id,p:best?best.p:0,a,b});
+  }
+  while(segs.length&&segs[0].id<0) segs.shift();
+  const notes=[]; let clipped=0;
+  for(const s of segs){
+    const raw=Math.round(ms(s.b)-ms(s.a)), dur=Math.max(1,Math.min(SND_MS_MAX,raw));
+    if(dur!==raw) clipped++;
+    let f=0;
+    if(s.id>=0){ f=noteHz(s.p); if(f>SND_FREQ_MAX){ f=SND_FREQ_MAX; clipped++; } else if(f<1) f=1; }
+    notes.push({freq:f,ms:dur});
+  }
+  return {notes,clipped};
+}
+function midiTrackLabel(tr,i){
+  return "Track "+(i+1)+(tr.name?" - "+tr.name:"")+" ("+tr.notes.length+" notes"+(tr.drums?", drums":"")+")";
+}
+function midiLoad(file){
+  const note=$("#midiNote"); $("#midiRow").classList.add("hide"); midiData=null; note.textContent="";
+  if(!file) return;
+  file.arrayBuffer().then(buf=>{
+    const m=midiParse(buf), sel=$("#midiTrack"); sel.textContent="";
+    let best=-1;
+    m.tracks.forEach((tr,i)=>{ if(!tr.notes.length) return;
+      const o=document.createElement("option"); o.value=i; o.textContent=midiTrackLabel(tr,i); sel.appendChild(o);
+      if(!tr.drums&&(best<0||tr.notes.length>m.tracks[best].notes.length)) best=i; });
+    if(!sel.options.length) throw new Error("no notes in this MIDI file");
+    if(best>=0) sel.value=best;
+    midiData={m,name:file.name.replace(/\.[^.]*$/,"")};
+    $("#midiRow").classList.remove("hide");
+    note.textContent="Pick the track with the melody, then press Import. Chords keep their highest note.";
+  }).catch(e=>{ $("#midiRow").classList.add("hide"); sndMsg("MIDI import failed: "+e.message); });
+}
+function midiImport(){
+  if(!midiData||!sounds) return;
+  const {m,name}=midiData, line=midiLine(m,m.tracks[+$("#midiTrack").value]);
+  if(!line.notes.length){ $("#midiNote").textContent="This track has no playable notes."; return; }
+  if(sndNotes().length && !confirm("Replace the notes of "+soundName(curMel)+" with this track?")) return;
+  const kept=line.notes.slice(0,SND_NOTES);
+  sounds.mel[curMel]=kept;
+  if(!soundNames[curMel]) soundSetName(curMel,name.slice(0,24));
+  const parts=["Imported "+kept.length+" of "+line.notes.length+" notes (rests count as notes)."];
+  if(line.notes.length>SND_NOTES) parts.push("Cut to the first "+SND_NOTES+": a melody holds at most "+SND_NOTES+" notes.");
+  if(line.clipped) parts.push(line.clipped+" values were limited to 1-"+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
+  $("#midiNote").textContent=parts.join(" ");
+  $("#midiRow").classList.add("hide"); midiData=null;
+  sndDirty(); sndRender();
+}
+(function soundsInit(){
+  const tabs=$("#sndTabs");
+  for(let m=0;m<SND_MELODIES;m++){ const t=document.createElement("span"); t.className="slot-tab";
+    t.onclick=()=>{ sndPreviewStop(); curMel=m; if(sounds) sndRender(); }; tabs.appendChild(t); }
+  for(const [v,n] of SND_CONFIRM){ const o=document.createElement("option"); o.value=v; o.textContent=n; $("#sndConfirm").appendChild(o); }
+  $("#sndConfirm").onchange=()=>{ if(!sounds) return; sounds.confirm=+$("#sndConfirm").value; soundsCommit(); };
+  $("#sndVol").oninput=()=>{ $("#sndVolV").textContent=fmtSlider("sndVol",$("#sndVol").value); };
+  $("#sndVol").onchange=()=>{ if(!sounds) return; sounds.gain=+$("#sndVol").value; soundsCommit(); };
+  $("#sndName").oninput=()=>{ soundSetName(curMel,$("#sndName").value.slice(0,24)); if(sounds) sndRender(); };
+  $("#sndAddNote").onclick=()=>sndAdd(440);
+  $("#sndAddRest").onclick=()=>sndAdd(0);
+  $("#sndClear").onclick=()=>{ if(!sounds) return; sndNotes().length=0; sndDirty(); sndRender(); };
+  $("#sndPrev").onclick=sndPreview;
+  $("#sndPlayPuck").onclick=()=>{ const st=sndNotes(); soundsPlay(0x31,[st.length,...st.flatMap(n=>[n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8])]); };
+  $("#sndPlayStored").onclick=()=>soundsPlay(0x30,[curMel]);
+  for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(); };
+  $("#midiBtn").onclick=()=>$("#midiFile").click();
+  $("#midiFile").onchange=()=>{ midiLoad($("#midiFile").files[0]); $("#midiFile").value=""; };
+  $("#midiGo").onclick=midiImport;
 })();
 
 // ===================== Shortcuts card =====================
@@ -4458,6 +5027,14 @@ async function diagCopy(capture){
   }catch(e){ msg.textContent="failed: "+e.message; diagNote("diagnostics failed: "+e.message); }
   finally{ btns.forEach(b=>b.disabled=false); }
 }
+$("#verCopy").onclick=async()=>{
+  const msg=$("#verMsg");
+  if(!lastP){ msg.textContent="no data from the puck yet"; return; }
+  const build=blobBuildId(lastP), dirty=lastP.length>38&&lastP[38];
+  const text="OpenPuck firmware "+(build||"unknown")+(build?(dirty?" (dirty)":" (clean)"):"")+"\nStatus protocol v"+lastP[0];
+  try{ await navigator.clipboard.writeText(text); msg.textContent="copied"; }
+  catch(e){ msg.textContent="clipboard blocked: select the version above and copy it"; }
+};
 $("#diagCopy").onclick=()=>diagCopy(false);
 $("#diagCap").onclick=()=>diagCopy(true);
 </script>
