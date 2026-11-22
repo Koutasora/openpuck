@@ -213,8 +213,8 @@
   <button id="debugCdc" title="Reboot ONCE with the CDC serial console enabled (WebUSB goes away for that boot); auto-reverts on the next boot">Debug CDC</button>
   <button id="dfuSerial" title="Reboot into serial DFU (adafruit-nrfutil), then replug">Serial DFU</button>
   <button id="dfuUf2" title="Reboot into the UF2 mass-storage bootloader; drop a .uf2 on the drive">UF2 DFU</button>
-  <button id="factoryErase" class="danger" title="Wipe ALL bonds + settings and reboot to defaults. You must re-pair. Cannot be undone.">⚠ Factory erase</button>
-  <button id="wipeBoard" class="danger debugonly" title="ERASE THE ENTIRE BOARD: firmware + all settings + bonds. The board reboots app-less and mounts as the UF2 drive on every boot until you re-flash OpenPuck. Debug only. Cannot be undone.">☢ Wipe board</button>
+  <button id="factoryErase" class="danger" title="Wipe ALL bonds + settings and reboot to defaults. You must re-pair. Cannot be undone.">Factory erase</button>
+  <button id="wipeBoard" class="danger debugonly" title="ERASE THE ENTIRE BOARD: firmware + all settings + bonds. The board reboots app-less and mounts as the UF2 drive on every boot until you re-flash OpenPuck. Debug only. Cannot be undone.">Wipe board</button>
 </div>
 <div class="wrap">
   <p class="sub">First connect uses the Chrome/Edge device picker; reconnects are automatic. If the picker is empty, quit any app holding the device or replug.</p>
@@ -668,7 +668,7 @@ function updateUf2UI(){
   if(!sel || !flash) return;
   sel.textContent = selectedUf2
     ? selectedUf2.name+" — app image "+Math.round(selectedUf2.image.length/1024)+" KiB, parsed OK"
-      +(selectedUf2.updatable ? "" : " — ⚠ no panel-update support in this image (flashing it = drag-and-drop only afterwards)")
+      +(selectedUf2.updatable ? "" : " — no panel-update support in this image (flashing it = drag-and-drop only afterwards)")
     : "no file selected";
   flash.disabled = dfuBusy || !selectedUf2;
   flash.title = selectedUf2
@@ -1074,7 +1074,7 @@ function applyRfStatus(p){
     hopBtn.addEventListener("click",()=>hopRf(ch));
     hopCell.appendChild(hopBtn);
     const startupBtn=document.createElement("button");
-    startupBtn.textContent=ch===startup?"Startup ✓":"Startup";
+    startupBtn.textContent=ch===startup?"Startup: on":"Startup";
     startupBtn.dataset.rfStartup="1";
     startupBtn.dataset.rfStartupSelected=ch===startup?"1":"0";
     startupBtn.disabled=rfSurveyLockActive||ch===startup;
@@ -1437,7 +1437,7 @@ function onGone(){
   // if a stability test is running, this disconnect is the reset that ended the run -- record its uptime
   // (kept in-page so it survives the reset + reconnect, shown next to Last reset).
   let up=null;
-  if(stabArmed && stabStart){ up=(Date.now()-stabStart)/1000; stabLastRun={secs:up}; log("⏱ stability: stayed up "+fmtDur(up)+", then reset"); stabStart=0; }
+  if(stabArmed && stabStart){ up=(Date.now()-stabStart)/1000; stabLastRun={secs:up}; log("stability: stayed up "+fmtDur(up)+", then reset"); stabStart=0; }
   // if the PREVIOUS reset was never classified (no full blob landed between two resets), flush it as
   // "unclassified" instead of silently overwriting it -- every reset must leave a row.
   if(pendingHang){
@@ -1663,7 +1663,7 @@ function applyBlob(p){
     $("#stRfFail").innerHTML = crc+" · "+norx+" · "+heal + (rf?' · <span class="pill dn">ring '+rf+'</span>':"");
     // ring fault = we caught+recovered a relay-ring corruption that would otherwise be an invisible IRQ-off
     // watchdog hang. Log each new one (persists across the device reset + panel reconnect).
-    if(rf>(window._ringFault||0)) log("⚠ RING FAULT #"+rf+" recovered — caught a relay-ring desync/corruption (would have hung loop with IRQs off)");
+    if(rf>(window._ringFault||0)) log("RING FAULT #"+rf+" recovered — caught a relay-ring desync/corruption (would have hung loop with IRQs off)");
     window._ringFault=rf; }
   // v12: relay-frame rate + clock fingerprint (browser index = firmware index − 2)
   { const relay=(p.length>121?(p[120]|(p[121]<<8)):null);
@@ -1688,7 +1688,7 @@ function applyBlob(p){
       // persists). Log once per episode + keep escalating if it climbs toward the ~8s watchdog.
       if(!window._stallEpisode || stallMs>window._stallPeak+800){
         window._stallEpisode=true; window._stallPeak=stallMs;
-        log("⚠ LOOP STALL @ "+name+" ("+stallMs+"ms) — watchdog reset imminent");
+        log("LOOP STALL @ "+name+" ("+stallMs+"ms) — watchdog reset imminent");
       }
     } else {
       if(window._stallEpisode) trailAdd("running again — stall recovered without a reset (peaked "+window._stallPeak+"ms)");
@@ -1730,7 +1730,7 @@ function applyBlob(p){
       + (hangStage!==0xFF ? "  hung in: "+(STAGE_NAMES[hangStage]||hangStage) : "")
       + (hpc ? "  hang PC="+hx(hpc)+" LR="+hx(hlr) : "")
       + (stabLastRun ? "  ·  stability: stayed up "+fmtDur(stabLastRun.secs)+" before this reset" : "");
-    if (hpc && hpc!==window._hangPC){ window._hangPC=hpc; log("⚑ HANG PC="+hx(hpc)+" LR="+hx(hlr)+" — send me this; I'll map it to the stuck function"); }
+    if (hpc && hpc!==window._hangPC){ window._hangPC=hpc; log("HANG PC="+hx(hpc)+" LR="+hx(hlr)+" — send me this; I'll map it to the stuck function"); }
     // append the queued reset to the running hang log, now that we have this boot's reason/PC/stack
     if (pendingHang){
       const usbdW2=(p.length>140?(p[139]|(p[140]<<8)):0);
@@ -2317,7 +2317,7 @@ function onWedge(stage, stallMs){
   if(!window._wedgeEp) trailAdd("WEDGED @ "+name+" ("+stallMs+"ms — live 0xA9 report; watchdog reset imminent)");
   if(!window._wedgeEp || stallMs > (window._wedgePeak||0)+500){
     window._wedgeEp=true; window._wedgePeak=stallMs;
-    log("🛑 LOOP WEDGED @ "+name+" (stuck "+stallMs+"ms) — this is where it hangs; watchdog reset imminent");
+    log("LOOP WEDGED @ "+name+" (stuck "+stallMs+"ms) — this is where it hangs; watchdog reset imminent");
     const el=$("#flightWedge"); if(el) el.innerHTML=' &nbsp;<span class="pill dn">last wedge: '+name+' ('+stallMs+'ms)</span>';
   }
 }
@@ -2335,7 +2335,7 @@ setInterval(()=>{
     const secs=Math.round(age/1000);
     $("#stLoopState").innerHTML='<span class="pill dn">NO HEARTBEAT '+secs+'s — hard wedge</span>';
     if(!window._hbLostEp){ window._hbLostEp=true;
-      log("🛑 heartbeat lost — no status blob for "+secs+"s: hard wedge (USB stack dead too, so the live wedge reporter can't run) — check the flight trail after the reset");
+      log("heartbeat lost — no status blob for "+secs+"s: hard wedge (USB stack dead too, so the live wedge reporter can't run) — check the flight trail after the reset");
       trailAdd("HEARTBEAT LOST — no status for "+secs+"s (hard wedge: USB silent, whole MCU likely stopped)");
       const el=$("#flightWedge"); if(el) el.innerHTML=' &nbsp;<span class="pill dn">last wedge: hard (no heartbeat)</span>';
     }
@@ -2400,7 +2400,7 @@ function renderFlight(STAGE_NAMES){
   const hx=v=>"0x"+v.toString(16).padStart(4,"0");
   sum.textContent="showing "+flightEvents.length+" of "+h.total+" events before the last hang";
   // usbd stack free trending to 0 is the leading overflow suspect -> flag it inline.
-  const usbdFlag=(h.usbdStk>0 && h.usbdStk<16)?" ⚠LOW":"";
+  const usbdFlag=(h.usbdStk>0 && h.usbdStk<16)?" LOW":"";
   wedge.innerHTML=" &nbsp;<b>@wedge:</b> stuck in "+stage(h.stage)+", stall "+h.stallMs+"ms, loop "+h.loopPerSec+"/s"
     +" · usbdStk "+h.usbdStk+"w"+usbdFlag+" · loopStk "+h.loopStk+"w · heap "+h.heap+"B"
     +" · poll "+h.pollsps+" relay "+h.relayps+" crc "+h.crc+" norx "+h.norx+" heal "+h.heal+" ringF "+h.ringF;
@@ -2585,7 +2585,7 @@ function buildLizardRow(b, idx){
   }
 
   // delete
-  const del=document.createElement("button"); del.textContent="✕"; del.title="Delete binding";
+  const del=document.createElement("button"); del.textContent="Delete"; del.title="Delete binding";
   del.style.cssText="margin-left:auto;flex:0 0 auto;padding:4px 10px";
   del.onclick=()=>{ lizardBindings.splice(idx,1); renderLizard(); };
   row.appendChild(del);
@@ -2767,7 +2767,7 @@ function checkUpdateNotice(){
     (latest[0]>inst[0] || (latest[0]===inst[0] &&
      (latest[1]>inst[1] || (latest[1]===inst[1] && latest[2]>inst[2])))));
   el.classList.toggle("hide", !newer);
-  if(newer) el.textContent="⬆ update "+rel.tag_name+" available";
+  if(newer) el.textContent="update "+rel.tag_name+" available";
 }
 $("#updAvail").onclick=()=>tabOpen("status/fw");
 
@@ -2833,7 +2833,7 @@ async function runUpdate(title, confirmText, getImage){
   try{
     const image=await getImage();
     if(!imagePanelUpdatable(image) &&
-       !confirm("⚠ DOWNGRADE WARNING\n\nThis image predates panel updates (releases up to 0.9.6 do). It will "
+       !confirm("DOWNGRADE WARNING\n\nThis image predates panel updates (releases up to 0.9.6 do). It will "
         +"flash fine, but the puck it leaves behind CANNOT be updated from this panel — getting off it again "
         +"means UF2 DFU + drag-and-drop.\n\nFlash it anyway?"))
       throw new Error("cancelled — the selected image doesn't support panel updates");
