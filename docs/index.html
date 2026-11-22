@@ -238,6 +238,47 @@
     </div>
   </div>
 
+  <div class="card" id="playerCard">
+    <h2>Haptic player</h2>
+    <p class="note" style="margin-top:0">Plays tones through the controller's actuators over WebHID (output report 0x83). Works with an OpenPuck in Steam mode, an official Valve puck, or a controller on a USB cable. Chrome or Edge. Test panel: which side drives which actuator is not confirmed yet. Gain above 0 dB is blocked.</p>
+    <p class="note hide" id="plNoHid" style="color:var(--warn)">WebHID is not available in this browser. Use Chrome or Edge.</p>
+    <div class="row" style="margin:10px 0">
+      <button id="plConnect" class="primary">Connect controller</button>
+      <button id="plDisconnect" disabled>Disconnect</button>
+      <span class="note" id="plStatus" style="margin:0;flex:1 1 200px">Not connected.</span>
+    </div>
+    <div class="row"><label>Controller</label><select id="plIface" disabled></select></div>
+    <p class="note" id="plIfaceNote" style="margin:0 0 10px"></p>
+    <div class="row"><label>Sides</label>
+      <span id="plSides" style="display:flex;gap:14px;flex-wrap:wrap">
+        <label style="flex:none"><input type="checkbox" value="0" checked> 0 (trackpad L?)</label>
+        <label style="flex:none"><input type="checkbox" value="1"> 1 (trackpad R?)</label>
+        <label style="flex:none"><input type="checkbox" value="2"> 2 (both?)</label>
+        <label style="flex:none"><input type="checkbox" value="3"> 3 (grip?)</label>
+        <label style="flex:none"><input type="checkbox" value="4"> 4 (grip?)</label>
+      </span></div>
+    <div class="row"><label>Frequency (Hz)</label><input id="plFreq" class="mtxt" type="number" min="1" max="12000" value="440" style="flex:0 0 120px"></div>
+    <div class="row"><label>Gain (dB)</label><input id="plGain" type="range" min="-60" max="0" value="-12"><span class="val" id="plGainV">-12</span></div>
+    <div class="row"><label>Duration (ms)</label><input id="plDur" class="mtxt" type="number" min="0" max="32767" value="1000" style="flex:0 0 120px">
+      <label style="flex:none"><input type="checkbox" id="plUntil"> Max (32767 ms)</label></div>
+    <div class="row"><label>LFO frequency</label><input id="plLfoF" class="mtxt" type="number" min="0" max="65535" value="0" style="flex:0 0 120px"></div>
+    <div class="row"><label>LFO depth</label><input id="plLfoD" class="mtxt" type="number" min="0" max="255" value="0" style="flex:0 0 120px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <button id="plPlay" class="primary">Play tone</button>
+      <button id="plStopOff">Stop: off tone</button>
+      <button id="plStopZero">Stop: zero tone</button>
+      <button id="plStopRumble">Stop: rumble off</button>
+      <button id="plStopAll">Stop all</button>
+    </div>
+    <h3 style="margin:14px 0 0">Sweep</h3>
+    <div class="row"><label>From MIDI note</label><input id="plSwFrom" class="mtxt" type="number" min="0" max="127" value="24" style="flex:0 0 120px">
+      <label style="flex:0 0 110px">To MIDI note</label><input id="plSwTo" class="mtxt" type="number" min="0" max="127" value="96" style="flex:0 0 120px"></div>
+    <div class="row"><label>Ms per step</label><input id="plSwMs" class="mtxt" type="number" min="20" max="10000" value="400" style="flex:0 0 120px">
+      <button id="plSwGo">Start sweep</button><button id="plSwStop">Stop</button>
+      <span class="note" id="plSwNow" style="margin:0"></span></div>
+    <p class="note" id="plLast" style="margin-bottom:0;font-family:monospace">Last report: none</p>
+  </div>
+
   <div id="panel" class="hide">
     <div class="slot-tabs" id="mainTabs"></div>
     <div class="slot-tabs subtabs" id="subTabs"></div>
@@ -3210,7 +3251,7 @@ $("#relRefresh").onclick=()=>loadReleases(true);
 // scUpdate (outside the tabs while no puck is connected). Selection lives in the URL hash and in localStorage.
 const TAB_DEFS=[
   ["status","Status",[["status","Status"],["modes","Modes"],["debug","Debug"],["log","Log"],["fw","Firmware update"]]],
-  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["sounds","Sounds"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
+  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["sounds","Sounds"],["player","Player"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
 const TAB_STORE="opk_tab", TAB_DEFAULT="status/status";
 // the ReversePuck dongle only has the paired-pucks card, the log and the firmware flasher
 const DONGLE_TABS=["status/log","status/fw","mapping/pairing"];
@@ -4870,6 +4911,7 @@ function scUpdate(){
   const card=$("#shortcutsCard"), c=scChord();
   if(dev){ const h=$("#sub-mapping-shortcuts"); if(h && card.parentNode!==h) h.appendChild(card); }
   else { const h=$("#cloneHome"); if(h.nextElementSibling!==card) h.after(card); }
+  plPlace();
   const key=JSON.stringify(c);
   if(key===scKey) return;
   scKey=key;
@@ -4995,6 +5037,164 @@ async function scSave(){
   for(const f of scFigs){ const w=document.createElement("div"); w.appendChild(f.box); $("#scFigs").appendChild(w); }
   $("#scSave").onclick=scSave;
   scReady=true; scUpdate();
+})();
+
+// ===================== Haptic player (WebHID test panel) =====================
+// Independent from the WebUSB connection: a puck in Steam mode, an official Valve puck (28DE:1304) and a wired
+// controller (28DE:1302) are all plain HID devices. The puck exposes one vendor interface per slot; the one that
+// delivers input reports is the slot with a live controller. Tones are OUTPUT report 0x83 HAPTIC_LFO_TONE:
+// [side u8][gain_db i8][freq u16][dur_ms u16][lfo_freq u16][lfo_depth u8], rumble is 0x80 with a 9-byte payload.
+const PL_FILTERS=[{vendorId:0x28DE,productId:0x1304,usagePage:0xFF00},{vendorId:0x28DE,productId:0x1302,usagePage:0xFF00}];
+const pl={ifaces:[], cur:null, queue:Promise.resolve(), sweep:0, lenTone:9, lenRumble:9};
+// the card sits in the Player tab while a puck is connected over WebUSB, on the landing page (after Shortcuts) otherwise
+function plPlace(){
+  const card=$("#playerCard"); if(!card) return;
+  if(dev){ const h=$("#sub-mapping-player"); if(h && card.parentNode!==h) h.appendChild(card); }
+  else { const sc=$("#shortcutsCard"); if(sc.nextElementSibling!==card) sc.after(card); }
+}
+function plSetStatus(t){ $("#plStatus").textContent=t; }
+const plHex=a=>[...a].map(x=>x.toString(16).padStart(2,"0")).join(" ");
+// byte length of an output report (without the id), from the report descriptor; null if not listed
+function plOutLen(d,id){
+  for(const c of d.collections||[]){
+    if(c.usagePage!==0xFF00) continue;
+    for(const r of c.outputReports||[]){
+      if(r.reportId!==id) continue;
+      const bits=(r.items||[]).reduce((n,i)=>n+i.reportSize*i.reportCount,0);
+      if(bits>0) return Math.ceil(bits/8);
+    }
+  }
+  return null;
+}
+function plStatusLine(){
+  const c=pl.cur;
+  for(const id of ["plPlay","plStopOff","plStopZero","plStopRumble","plStopAll","plSwGo"]) $("#"+id).disabled=!c;
+  if(!c){ plSetStatus("Not connected."); return; }
+  plSetStatus("Connected: 28DE:"+c.dev.productId.toString(16).toUpperCase().padStart(4,"0")+", interface "+(c.idx+1)+
+    ", output length 0x83: "+pl.lenTone+" B, 0x80: "+pl.lenRumble+" B");
+}
+async function plUse(entry){
+  const old=pl.cur;
+  if(old && old!==entry){
+    // silence the old interface before leaving it
+    pl.sweep++;
+    await plStopAll(old);
+    try{ if(old.dev.opened) await old.dev.close(); }catch(e){}
+    pl.cur=null;
+  }
+  try{ if(!entry.dev.opened) await entry.dev.open(); }
+  catch(e){ pl.cur=null; plStatusLine(); throw e; }
+  pl.cur=entry;
+  pl.lenTone=plOutLen(entry.dev,0x83)||9;
+  pl.lenRumble=plOutLen(entry.dev,0x80)||9;
+  plStatusLine();
+  $("#plDisconnect").disabled=false;
+}
+async function plConnect(){
+  const picked=await navigator.hid.requestDevice({filters:PL_FILTERS});
+  const list=picked.filter(d=>d.collections.some(c=>c.usagePage===0xFF00));
+  if(!list.length) return;
+  if(pl.cur) await plDisconnect();
+  pl.ifaces=list.map((d,i)=>({dev:d, idx:i, live:false}));
+  // listen on every interface for a moment: the one that sends input belongs to a live controller
+  await Promise.all(pl.ifaces.map(async e=>{
+    try{
+      if(!e.dev.opened) await e.dev.open();
+      const h=()=>{ e.live=true; };
+      e.dev.addEventListener("inputreport",h);
+      await new Promise(r=>setTimeout(r,300));
+      e.dev.removeEventListener("inputreport",h);
+    }catch(err){ log("Player: interface "+(e.idx+1)+" cannot be opened: "+err.message); }
+  }));
+  const live=pl.ifaces.filter(e=>e.live), first=live[0]||pl.ifaces[0];
+  for(const e of pl.ifaces) if(e!==first){ try{ if(e.dev.opened) await e.dev.close(); }catch(err){} }
+  const sel=$("#plIface"); sel.textContent="";
+  for(const e of pl.ifaces){ const o=document.createElement("option"); o.value=e.idx; o.textContent="Interface "+(e.idx+1)+(e.live?" (sending data)":""); sel.appendChild(o); }
+  sel.value=first.idx; sel.disabled=pl.ifaces.length<2;
+  $("#plIfaceNote").textContent=live.length?"":"No controller is sending data. Turn the controller on, or pick an interface by hand.";
+  try{ await plUse(first); log("Player: connected, "+live.length+" interface(s) sending data"); }
+  catch(err){ pl.cur=null; plStatusLine(); log("Player: "+err.message); }
+}
+async function plDisconnect(){
+  pl.sweep++;
+  if(pl.cur) await plStopAll();
+  for(const e of pl.ifaces){ try{ if(e.dev.opened) await e.dev.close(); }catch(err){} }
+  pl.cur=null; pl.ifaces=[];
+  $("#plIface").textContent=""; $("#plIface").disabled=true; $("#plIfaceNote").textContent="";
+  $("#plDisconnect").disabled=true; $("#plSwNow").textContent="";
+  plStatusLine();
+}
+// every send goes through one promise chain so reports never overlap
+function plSend(id,payload,c=pl.cur){
+  if(!c){ log("Player: not connected"); return Promise.resolve(); }
+  const len=id===0x83?pl.lenTone:pl.lenRumble;
+  const data=new Uint8Array(Math.max(len,payload.length)); data.set(payload);
+  const run=async()=>{
+    if(!c.dev.opened){ log("Player: device not open, report skipped"); return; }
+    $("#plLast").textContent="Last report: "+id.toString(16).toUpperCase()+"  "+plHex(data);
+    log("Player: send 0x"+id.toString(16)+" "+plHex(data));
+    try{ await c.dev.sendReport(id,data); }catch(e){ log("Player: send failed: "+e.message); }
+  };
+  pl.queue=pl.queue.then(run,run);
+  return pl.queue;
+}
+function plTone(side,gain,freq,dur,lfoF,lfoD){
+  const g=Math.max(-128,Math.min(0,Math.round(gain)));
+  return [side,g&0xFF,freq&0xFF,(freq>>8)&0xFF,dur&0xFF,(dur>>8)&0xFF,lfoF&0xFF,(lfoF>>8)&0xFF,lfoD&0xFF];
+}
+const plNum=(id,lo,hi)=>Math.max(lo,Math.min(hi,Math.round(+$("#"+id).value)||0));
+function plSides(){ return [...document.querySelectorAll("#plSides input:checked")].map(i=>+i.value); }
+function plSendTones(sides,gain,freq,dur,lfoF,lfoD,c){ return Promise.all(sides.map(s=>plSend(0x83,plTone(s,gain,freq,dur,lfoF,lfoD),c))); }
+const plOff=(sides,c)=>plSendTones(sides,-128,0,0x8000,0,0,c);
+const plZero=sides=>Promise.all(sides.map(s=>plSend(0x83,[s,0,0,0,0,0,0,0,0])));
+const plRumbleOff=c=>plSend(0x80,[0,0,0,0,0,0,0,0,0],c);
+async function plStopAll(c=pl.cur){ await plOff([0,1,2,3,4],c); await plRumbleOff(c); }
+function plPlay(){
+  const dur=$("#plUntil").checked?0x7FFF:plNum("plDur",0,32767);
+  return plSendTones(plSides(),plNum("plGain",-60,0),plNum("plFreq",1,12000),dur,plNum("plLfoF",0,65535),plNum("plLfoD",0,255));
+}
+async function plSweep(){
+  const my=++pl.sweep, from=plNum("plSwFrom",0,127), to=plNum("plSwTo",0,127), ms=plNum("plSwMs",20,10000);
+  const sides=plSides(), gain=plNum("plGain",-60,0), lfoF=plNum("plLfoF",0,65535), lfoD=plNum("plLfoD",0,255);
+  const dir=to>=from?1:-1;
+  for(let n=from; dir>0?n<=to:n>=to; n+=dir){
+    if(pl.sweep!==my || !pl.cur) return;
+    const hz=Math.min(12000,Math.round(440*Math.pow(2,(n-69)/12)));
+    $("#plSwNow").textContent=noteLabel(n)+"  "+hz+" Hz";
+    plSendTones(sides,gain,hz,Math.min(65535,ms+50),lfoF,lfoD);
+    await new Promise(r=>setTimeout(r,ms));
+  }
+  if(pl.sweep===my){ $("#plSwNow").textContent=""; await plStopAll(); }
+}
+(function plInit(){
+  plStatusLine();
+  if(!navigator.hid){ $("#plNoHid").classList.remove("hide"); $("#plConnect").disabled=true; return; }
+  $("#plConnect").onclick=async()=>{
+    $("#plConnect").disabled=true;
+    try{ await plConnect(); }catch(e){ log("Player: "+e.message); }
+    finally{ $("#plConnect").disabled=false; }
+  };
+  $("#plDisconnect").onclick=plDisconnect;
+  $("#plIface").onchange=async e=>{
+    try{ await plUse(pl.ifaces[+e.target.value]); }catch(err){ log("Player: "+err.message); }
+  };
+  $("#plGain").oninput=()=>{ $("#plGainV").textContent=$("#plGain").value; };
+  $("#plPlay").onclick=plPlay;
+  $("#plStopOff").onclick=()=>plOff(plSides());
+  $("#plStopZero").onclick=()=>plZero(plSides());
+  $("#plStopRumble").onclick=()=>plRumbleOff();
+  $("#plStopAll").onclick=()=>{ pl.sweep++; plStopAll(); };
+  $("#plSwGo").onclick=plSweep;
+  $("#plSwStop").onclick=()=>{ pl.sweep++; $("#plSwNow").textContent=""; plStopAll(); };
+  navigator.hid.addEventListener("disconnect",e=>{
+    if(pl.cur && pl.ifaces.some(x=>x.dev===e.device)){
+      pl.sweep++; pl.cur=null; pl.ifaces=[]; plStatusLine();
+      $("#plDisconnect").disabled=true; $("#plIface").textContent=""; $("#plIface").disabled=true;
+      $("#plIfaceNote").textContent=""; $("#plSwNow").textContent=""; plSetStatus("Disconnected."); log("Player: device disconnected");
+    }
+  });
+  // best effort: silence the actuators when the page goes away
+  window.addEventListener("pagehide",()=>{ if(pl.cur){ pl.sweep++; plStopAll(); } });
 })();
 
 // ===================== Copy diagnostics =====================

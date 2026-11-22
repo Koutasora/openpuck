@@ -29,6 +29,9 @@ Strona openpuck gra pliki MIDI na żywo na aktuatorach haptyki nowego Steam Cont
 - Osobna zakładka Player zamiast rozbudowy Sounds: Sounds to melodie zapisane w pucku, Player gra na żywo (potwierdzone przez użytkownika).
 - 4 głosy (gładziki side 0/1, uchwyty 3/4 wg SteamHapticsSinger) z wyborem przy każdym aktuatorze (potwierdzone przez użytkownika); domyślny zestaw po teście z kroku 1.
 - Format raportu i strojenie wg SteamHapticsSinger (BSD-3) i SDL; kod własny, bez kopiowania programu.
+- Karta Player bez połączenia WebUSB stoi na stronie startowej (jak Shortcuts), z połączeniem w zakładce Mapping > Player: użytkownicy pucka Valve i pada na kablu nigdy nie łączą się przez WebUSB.
+- Panel testowy: Stop all wycisza side 0-4 (side 2 nieznany, traktowany jako osobny kanał) i wysyła zerowy 0x80; pole dur ograniczone do 0..32767, bo bit 15 (0x8000) używa wariant stopu z SteamHapticsSinger i jego znaczenie jest nieznane; "Max (32767 ms)" zamiast "do zatrzymania".
+- Raport 0x83 dopełniany zerami do długości z deskryptora urządzenia (domyślnie 9 B): deskryptor pucka Valve i pada na kablu może mieć inną długość niż OpenPuck.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
