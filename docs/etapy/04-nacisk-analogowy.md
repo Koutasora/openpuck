@@ -33,6 +33,8 @@ W trybach PS3 i OG Xbox wybrany spust steruje siłą nacisku wybranego przycisku
 - Istniejące wymuszanie 255 przy kliknięciu zwykłego LT/RT w OG Xbox bez zmian (decyzja po pomiarze użytkownika, krok 5).
 - Build przed: RAM 66996 B, flash 290644 B; po: RAM 67012 B (+16), flash 291300 B (+656).
 - Strona: przy "Triggers L / R" w Live dopisywane "(L click)" / "(R click)" z bitów raw L2/R2 (do pomiaru wartości przy kliknięciu); kopia zapasowa ma klucz `pressure`, przywracana tylko na puck z protokołem 28.
+- Wydania (użytkownik 2026-11-23): 1.0.0 zostaje Latest i nietknięte; dodatkowe wydania jako pre-release do przełączania na liście "Update from a release": 1.0.4 (main po etapie 03, utworzone 2026-11-23) i 1.0.5 z naciskiem po scaleniu PR etapu 04 (`gh release create --prerelease --latest=false`).
+- Scalenie do main tworzy tylko tag (tag pushowany przez GITHUB_TOKEN nie uruchamia budowania), więc wydanie z .uf2 powstaje dopiero po `gh release create`; 1.0.0 to stan po etapie 02, bez 4 głosów, dlatego punkt odniesienia do testu to 1.0.4.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
