@@ -42,6 +42,9 @@ Test i wydanie
 - [x] Strona: panel autora w płaskim stylu, rysunki Valve, profile, Combo/Macro, Macros, Live view, bateria
 - [x] Strona: akcje Key/Mouse, karta skrótów jako obrazek, usunięcie zielonych resztek
 - [x] Makra prostsze w obsłudze (na końcu)
+- [ ] Dźwięki z haptyki (HAPTIC_LFO_TONE, `docs/PROTOCOL.md`): melodie w pucku, przypisanie do zdarzeń (zmiana profilu, zmiana trybu osobno dla rodzin PlayStation/Xbox/Switch, połączenie pada), przełącznik wibracja/dźwięk/oba/wyłączone i głośność w Settings; na stronie edytor tonów z odsłuchem i import MIDI (jedna linia melodii); domyślnie własne, oryginalne motywy
+- [ ] Rzadsze wysyłanie stanu klawiatury/myszy (dokończyć i sprawdzić `d47ac39`)
+- [ ] Strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu), przycisk Copy w Version
 - [ ] GitHub Pages
 - [ ] Końcowy build, lista testów w `CHECKLISTA.md`, test użytkownika, wydanie
 - Sprawdzenie: test `tests/binds` i build na LAB po każdym kroku; test strony w Chromium (Playwright) na LAB bez sprzętu; jeden test na sprzęcie u użytkownika na końcu
@@ -81,6 +84,8 @@ Test i wydanie
 - Test w grach (użytkownik): push-to-talk z łopatki (F13, mysz) działa w Wiedźminie i emulatorze bez przycinania; w jednej grze każde zdarzenie klawiatura/mysz przełącza grę z pada na klawiaturę/mysz. Uznane za zachowanie gry, bez zmian w pucku (odrzucone: sztuczny przycisk pada po akcji, klawisze multimedialne).
 - Test na sprzęcie 2026-11-22 (główny PC): użytkownik sprawdził całą listę z `CHECKLISTA.md` (przypisania, profile z wibracją, makra, klawiatura/mysz, strona) — działa.
 - Do następnego czatu: rzadsze wysyłanie stanu klawiatury/myszy (częściowo w `d47ac39`, niewgrane), strona nie przebudowuje kart przy każdym odczycie (zaznaczenie tekstu znika), potem końcowy build, wydanie .uf2 i publikacja strony.
+- Dźwięki: oryginalne dźwięki PlayStation/Xbox/Switch nie są przepisywane ani dołączane (utwory i znaki dźwiękowe tych firm); użytkownik może wgrać własne melodie przez import MIDI. Domyślne motywy własne.
+- Do decyzji użytkownika w nowym czacie: nazwy profili, kopiowanie profilu i reset przypisań, eksport/import samych przypisań i makr, nowe nazwy myszy w Lizard mapping.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
