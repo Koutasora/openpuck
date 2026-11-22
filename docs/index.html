@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpenPuck Config</title>
 <style>
-  :root{ --bg:#11131a; --card:#1b1f2b; --fg:#e7ecf3; --mut:#8a93a6; --acc:#5bd6a0; --acc2:#5b9bd6; --bad:#d65b6e; --warn:#e3b341; }
+  :root{ --bg:#11131a; --card:#1b1f2b; --fg:#e7ecf3; --mut:#8a93a6; --acc2:#5b9bd6; --bad:#d65b6e; --warn:#e3b341; }
   *{box-sizing:border-box}
   body{margin:0;font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg)}
   h1{font-size:20px;margin:0 0 4px}
@@ -28,8 +28,8 @@
   .card h2{font-size:14px;font-weight:700;color:var(--fg);margin:0 0 14px}
   .row{display:flex;align-items:center;gap:14px;margin:12px 0;flex-wrap:wrap}
   .row label{flex:0 0 150px;color:var(--fg)}
-  .row .val{flex:0 0 64px;text-align:right;color:var(--acc);font-variant-numeric:tabular-nums}
-  input[type=range]{flex:1;min-width:120px;accent-color:var(--acc)}
+  .row .val{flex:0 0 64px;text-align:right;color:var(--fg);font-variant-numeric:tabular-nums}
+  input[type=range]{flex:1;min-width:120px;accent-color:var(--acc2)}
   select{background:#0e1017;color:var(--fg);border:1px solid #313a4f;border-radius:3px;padding:6px 8px;flex:1;min-width:120px}
   button{background:#222a3a;color:var(--fg);border:1px solid #36405a;border-radius:3px;padding:9px 14px;cursor:pointer;font:inherit}
   button:hover{border-color:var(--acc2)}
@@ -66,7 +66,8 @@
   .slot-tab:hover{border-color:var(--acc2);color:var(--fg)}
   .slot-tab.active{background:var(--acc2);border-color:var(--acc2);color:#06121f}
   .slot-tab .dot{width:7px;height:7px;border-radius:0;background:var(--bad);flex-shrink:0;transition:background .3s}
-  .slot-tab .dot.up{background:var(--acc)}
+  .slot-tab .dot.up{background:var(--acc2)}
+  .slot-tab.active .dot.up{background:#06121f}
   .per-slot-grid{margin-bottom:12px}
 
   /* ---- top-level tabs (Controller / Firmware update) ---- */
@@ -78,7 +79,7 @@
   /* ---- firmware update tab ---- */
   .dropzone{border:2px dashed #36405a;border-radius:3px;padding:26px 18px;text-align:center;cursor:pointer;
     color:var(--mut);transition:border-color .15s,background .15s;margin-bottom:14px}
-  .dropzone:hover,.dropzone.drag{border-color:var(--acc);color:var(--fg);background:#151b28}
+  .dropzone:hover,.dropzone.drag{border-color:var(--acc2);color:var(--fg);background:#151b28}
   .dropzone b{color:var(--fg)}
   .rel-row{display:flex;align-items:center;gap:14px;padding:10px 2px;border-top:1px solid #232a3a;flex-wrap:wrap}
   .rel-row:first-child{border-top:0}
@@ -113,7 +114,7 @@
   .updbox h3{margin:0 0 4px;font-size:16px}
   #updStage{color:var(--fg);margin:10px 0 0;font-size:14px}
   .updbar{height:10px;background:#0e1017;border:1px solid #232a3a;border-radius:0;overflow:hidden;margin:10px 0 6px}
-  #updFill{height:100%;width:0;background:var(--acc);transition:width .2s}
+  #updFill{height:100%;width:0;background:var(--acc2);transition:width .2s}
   #updFill.pulse{background:var(--acc2)}
   #updFill.bad{background:var(--bad)}
 
@@ -520,7 +521,7 @@
       <div class="card fwupcard" id="relCard">
         <h2>Update from a release</h2>
         <div class="row" style="margin-top:0">
-          <span class="note" style="flex:1;margin:0">Official builds from <a href="https://github.com/safijari/openpuck/releases" target="_blank" rel="noopener" style="color:var(--acc2)">github.com/safijari/openpuck/releases</a> &nbsp;·&nbsp; installed: <b id="updInstalled" style="color:var(--acc)">—</b></span>
+          <span class="note" style="flex:1;margin:0">Official builds from <a href="https://github.com/safijari/openpuck/releases" target="_blank" rel="noopener" style="color:var(--acc2)">github.com/safijari/openpuck/releases</a> &nbsp;·&nbsp; installed: <b id="updInstalled">—</b></span>
           <button id="relRefresh">Refresh</button>
         </div>
         <div id="relList" class="note" style="margin:0">loading…</div>
@@ -781,7 +782,7 @@ function setTab(et){
   TYPE_DEFS.forEach((def,et)=>{
     // tab button
     const tab=document.createElement("button"); tab.className="slot-tab"; tab.style.cursor="pointer";
-    tab.innerHTML='<span>'+def.name+'</span><span class="active-dot" style="display:none;font-size:11px;color:var(--acc)"> ●</span>';
+    tab.innerHTML='<span>'+def.name+'</span><span class="active-dot" style="display:none;font-size:11px"> ●</span>';
     tab.onclick=()=>setTab(et); bar.appendChild(tab);
     // panel
     const sec=document.createElement("div"); sec.style.cssText="background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:12px 14px;display:none";
