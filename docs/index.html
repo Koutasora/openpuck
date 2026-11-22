@@ -172,6 +172,7 @@
   <span class="brand">OpenPuck <small>SC2 puck · WebUSB</small></span>
   <span id="connState" class="pill dn">disconnected</span>
   <span id="battTxt" class="hide" style="font-size:12px;font-weight:600"></span>
+  <span id="hostTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <button id="connectBtn" class="primary">Connect</button>
   <span id="updAvail" class="pill hide" title="A newer OpenPuck release is available — click to open the Firmware update tab">…</span>
   <span class="spacer"></span>
@@ -382,6 +383,11 @@
         <label>Profile</label>
         <div id="profBtns" style="display:flex;gap:6px"></div>
         <span class="note" id="bindsMsg" style="margin:0"></span>
+      </div>
+      <div class="row hide" id="hostRow">
+        <label>Keyboard/mouse host</label>
+        <select id="hostSel"></select>
+        <span class="note bnote" id="hostNote" style="margin:0"></span>
       </div>
       <div class="figs hide" id="mapFigs"></div>
       <div id="typeCfgs"></div>
@@ -1374,7 +1380,7 @@ function onGone(){
   window._flightAuto=false; // re-arm the one-shot flight-trail auto-load for the next reconnect
   window._wedgeEp=false; window._wedgePeak=0; // re-arm the live wedge logger for the next wedge episode
   window._lastBlobTs=0; window._hbLostEp=false; // re-arm the heartbeat watchdog (don't fire on a stale pre-reset timestamp)
-  polling=false; dev=null; tabInited=false; bindsCap=false; binds=null; live=null; $("#battTxt").classList.add("hide"); // re-default the config tab to the mode on next connect
+  polling=false; dev=null; tabInited=false; bindsCap=false; binds=null; live=null; $("#battTxt").classList.add("hide"); $("#hostTxt").classList.add("hide"); $("#hostRow").classList.add("hide"); // re-default the config tab to the mode on next connect
   cloneRender();
   checkUpdateNotice(); // no device = no notice
   $("#connState").textContent="reconnecting…"; $("#connState").className="pill dn";
@@ -3250,7 +3256,7 @@ function keyText(a){
 }
 function mouseText(a){ const m=MOUSE_ACTS.find(x=>x[0]===a.arg); return m?m[2]:"Mouse ?"; }
 // the firmware sends keyboard / mouse only from these modes: DS4 type -> HID gyro (DS4), DS5 type -> PS5 DualSense
-let kbmCap=false;
+let kbmCap=false, hostCap=false;
 function kbmOk(et){ return kbmCap && (et===2||et===3); }
 function tbCodes(def){
   return Object.keys(def.labels).map(Number).filter(c=>CODE_TB[c]).sort((a,b)=>a-b);
@@ -3635,7 +3641,39 @@ function s16(v){ return v>32767?v-65536:v; }
 function parseLive(p){
   const u32=o=>((p[o]|(p[o+1]<<8)|(p[o+2]<<16)|(p[o+3]<<24))>>>0);
   return {raw:u32(0),out:u32(4),lt:p[8],rt:p[9],lx:s16(p[10]|(p[11]<<8)),ly:s16(p[12]|(p[13]<<8)),
-    rx:s16(p[14]|(p[15]<<8)),ry:s16(p[16]|(p[17]<<8)),profile:p[18],slot:p[19],et:p[20],link:p[21],batt:p[22],charge:p[23]};
+    rx:s16(p[14]|(p[15]<<8)),ry:s16(p[16]|(p[17]<<8)),profile:p[18],slot:p[19],et:p[20],link:p[21],batt:p[22],charge:p[23],
+    host:p.length>24?p[24]:null};
+}
+// Host byte (PROTOCOL.md 10.3): bits 0-1 detected host, 2-3 manual setting, 4-7 reason of the result
+const HOST_SET=[[0,"Auto"],[1,"Always PC"],[2,"Always console"]];
+const HOST_WHY={1:"asked for the Windows descriptor",2:"a browser opened the panel",3:"probed like a PC, no console auth",4:"console authentication seen",
+  5:"set by hand",6:"remembered from the last session"};
+function hostText(h){
+  const det=h&3, why=(h>>4)&15;
+  if(det===1) return "PC"+(why===1?" (Windows)":why===2?" (browser)":why===3?" (guess)":why===5?" (set)":why===6?" (remembered)":"");
+  if(det===2) return "console"+(why===5?" (set)":why===6?" (remembered)":"");
+  return "unknown";
+}
+function hostInfoRender(){
+  const el=$("#hostTxt"), ok=live&&live.host!==null&&bindsCap;
+  el.classList.toggle("hide",!ok);
+  if(!ok) return;
+  el.textContent="Host: "+hostText(live.host);
+  el.title="Keyboard/mouse host: "+(HOST_WHY[(live.host>>4)&15]||"nothing seen yet");
+  const row=$("#hostRow"); row.classList.toggle("hide",!hostCap);
+  if(hostCap){
+    const sel=$("#hostSel"); if(document.activeElement!==sel) sel.value=(live.host>>2)&3;
+    $("#hostNote").textContent="Now: "+hostText(live.host)+" ("+(HOST_WHY[(live.host>>4)&15]||"nothing seen yet")+"). Keyboard and mouse actions work on a PC host only.";
+  }
+}
+async function hostSet(v){
+  const f=await bindsXfer(async()=>{
+    await send([0x2B,v]); let r=null;
+    for(let t=0;t<3 && !r;t++){ r=await readFrame(0xB3,3,64); if(r && r[0]!==0x2B) r=null; }
+    return r;
+  });
+  if(f && f[1]===1 && live) live.host=f[2];
+  hostInfoRender();
 }
 function battText(l){
   if(!l||!l.batt) return "";
@@ -3652,6 +3690,7 @@ async function livePoll(){
 function liveRender(){
   const bt=$("#battTxt"), txt=battText(live);
   bt.textContent=txt; bt.classList.toggle("hide",!txt||!bindsCap);
+  hostInfoRender();
   if(!live||!liveVisible) return;
   const L=live, et=(L.et<TYPE_DEFS.length)?L.et:-1;
   $("#lvRaw").textContent=maskNames(L.raw,-1,", ")||"—";
@@ -3697,6 +3736,7 @@ async function liveLoop(){
 // ---- wiring ----
 function bindsOnBlob(p){
   const kc=(p[0]>=24);
+  hostCap=kc;
   if(kc!==kbmCap){ kbmCap=kc; bindsRender(); }
   const cap=(p[0]>=23 && p.length>195 && !isDongle);
   if(cap!==bindsCap){
@@ -3728,6 +3768,8 @@ function bindsOnBlob(p){
   $("#mAdd").onclick=()=>{ if(!binds) return; const st=binds.macros[curMacro].steps;
     if(st.length<BIND_STEPS){ st.push({mask:0,ms:100}); macroRender(); bindsRender(); } };
   $("#mTest").onclick=macroTest;
+  for(const [v,n] of HOST_SET){ const o=document.createElement("option"); o.value=v; o.textContent=n; $("#hostSel").appendChild(o); }
+  $("#hostSel").onchange=()=>hostSet(+$("#hostSel").value);
   $("#mSave").onclick=()=>{ clearTimeout(bindsSaveTimer); bindsSave(); };
   for(const el of document.querySelectorAll(".bind")) el.style.display="none";
   new IntersectionObserver(es=>{ liveVisible=es[es.length-1].isIntersecting; }).observe($("#liveCard"));
