@@ -52,23 +52,23 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 ### 6. Dodatki po pierwszym teście (od 2026-11-22)
 - [x] Wgraj nowy `build/openpuck/OpenPuck.uf2` przez Firmware update -> local file; pad łączy się bez ponownego parowania, ustawienia zostają
 - [x] Sounds: Play on puck - z aktuatora pada słychać ton (czy w ogóle słychać)
-- [ ] Sounds: zapis melodii na padzie, po odłączeniu zasilania pucka melodia zostaje
-- [ ] Zmiana profilu na padzie (back4 + LB/RB): potwierdzenie Vibration / Sound / Both / Off działa zgodnie z ustawieniem; przy Both impulsy i melodia po kolei, impuls nieucięty
-- [ ] Głośność dźwięków: zmiana suwaka słychać
-- [ ] Melodia po zmianie trybu (back4 + przycisk) osobno dla rodzin PlayStation, Xbox, Switch i other
-- [ ] Melodia przy połączeniu pada, najwyżej raz na 20 s (szybkie wyłączenie i włączenie pada nie gra jej drugi raz)
-- [ ] Import pliku MIDI i odsłuch zaimportowanej melodii
-- [ ] Import MIDI z niskimi nutami: melodia przesunięta w górę i słyszalna; Octave up/down
-- [ ] Szybka melodia (import MIDI z krótkimi nutami) gra płynnie, pad nie gubi połączenia ani ustawień
-- [ ] Zaznaczanie tekstu na stronie nie znika (strona nie przebudowuje kart w trakcie)
-- [ ] Przycisk Copy w polu Version kopiuje wersję
-- [ ] Profile: zmiana nazwy, kopiowanie i reset profilu
-- [ ] Eksport i import pliku przypisań (zapis, zmiana, import przywraca)
-- [ ] Lizard mapping: nazwy przycisków myszy jak w akcjach
-- [ ] Klawiatura i mysz na PC nadal bez opóźnień (stan wysyłany rzadziej): pisanie, klik, kółko
-- [ ] Kombinacja back4 ustawiona na None nic nie robi (np. back4+B), ustawienie zostaje po odłączeniu zasilania; Shortcuts jej nie pokazuje
+- [x] Sounds: zapis melodii na padzie, po odłączeniu zasilania pucka melodia zostaje
+- [x] Zmiana profilu na padzie (back4 + LB/RB): potwierdzenie Vibration / Sound / Both / Off działa zgodnie z ustawieniem; przy Both impulsy i melodia po kolei, impuls nieucięty
+- [x] Głośność dźwięków: zmiana suwaka słychać
+- [x] Melodia po zmianie trybu (back4 + przycisk) osobno dla rodzin PlayStation, Xbox, Switch i other
+- [x] Melodia przy połączeniu pada, najwyżej raz na 20 s (szybkie wyłączenie i włączenie pada nie gra jej drugi raz)
+- [x] Import pliku MIDI i odsłuch zaimportowanej melodii
+- [x] Import MIDI z niskimi nutami: melodia przesunięta w górę i słyszalna; Octave up/down
+- [x] Szybka melodia (import MIDI z krótkimi nutami) gra płynnie, pad nie gubi połączenia ani ustawień
+- [x] Zaznaczanie tekstu na stronie nie znika (strona nie przebudowuje kart w trakcie)
+- [x] Przycisk Copy w polu Version kopiuje wersję
+- [x] Profile: zmiana nazwy, kopiowanie i reset profilu
+- [x] Eksport i import pliku przypisań (zapis, zmiana, import przywraca)
+- [x] Lizard mapping: nazwy przycisków myszy jak w akcjach
+- [x] Klawiatura i mysz na PC nadal bez opóźnień (stan wysyłany rzadziej): pisanie, klik, kółko
+- [x] Kombinacja back4 ustawiona na None nic nie robi (np. back4+B), ustawienie zostaje po odłączeniu zasilania; Shortcuts jej nie pokazuje
 
 ### 7. Wydanie
-- [ ] Repo publiczne (ustawia użytkownik)
+- [x] Repo publiczne (ustawia użytkownik)
 - [ ] Po scaleniu PR: GitHub Pages - Settings -> Pages -> Deploy from a branch, `main`, `/docs`; strona działa pod https://koutasora.github.io/openpuck/
-- [ ] Wydanie `.uf2` na GitHubie repo (po teście); workflow tworzy gałąź `firmware`, lista wydań na stronie pokazuje wydanie
+- [ ] Wydanie 1.0.0: po scaleniu PR tag `1.0.0` na `main`; workflow buduje `.uf2`, tworzy wydanie i gałąź `firmware`, lista wydań na stronie pokazuje wydanie
