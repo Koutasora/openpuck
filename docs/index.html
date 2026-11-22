@@ -50,8 +50,8 @@
   .stat{background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px}
   .stat .k{color:var(--mut);font-size:12px}
   .stat .v{font-size:18px;margin-top:2px}
-  .modes{display:flex;gap:10px;flex-wrap:wrap}
-  .modebtn{text-align:left}
+  .modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .modebtn{text-align:left;min-width:0}
   .modebtn small{display:block;font-size:11px;font-weight:400;color:var(--mut)}
   .modebtn.active small{color:#06121f}
   .modegroup{margin:0 0 12px}
