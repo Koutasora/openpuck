@@ -761,7 +761,7 @@ one) instead of the slot the poll happened to be on.
 
 The puck can play short melodies through the controller's actuator: each note is a `HAPTIC_LFO_TONE` OUTPUT report
 `0x83` (§ "Two different `0x8x` id spaces") relayed like rumble, once per side (0 and 1), with `gain_db` = the volume
-setting and no LFO (the report layout comes from SDL; its audibility and the meaning of `side` were not checked on hardware yet). The sequencer runs in `loop()` without blocking; every rest and the end of a melody send the zero
+setting and no LFO (the report layout comes from SDL; `side` was checked on hardware, see below). The sequencer runs in `loop()` without blocking; every rest and the end of a melody send the zero
 `0x80` rumble report, so the actuator cannot stay latched if a tone ignores its duration.
 
 Sounds blob (`sounds.h`, 1048 bytes, read/written in 96-byte chunks, 11 chunks): `[0xB8][version 1][payload length u16 LE]`,
@@ -796,6 +796,18 @@ preview commands `0x30` / `0x31` play whatever the setting is.
 
 Console: `SNL` list, `SNP <n>` play melody n, `SNE <e>` play the melody of event e, `SNM <0..3>` confirmations,
 `SNG <-60..0>` volume.
+
+Piano roll and live playback (configurator page only, no firmware change). The piano roll edits the same sequential
+`{freq, ms}` list and writes nothing new to the puck: the blob and its 32-entry limit are unchanged, and the page refuses to
+save or play on the puck a melody with more than 32 entries or values out of limits (a MIDI import keeps every entry and
+no longer shifts octaves; on hardware a sweep was audible over MIDI 24-48 and 84-108 on the trackpad (side 0) and the
+grip (side 3) at -24 dB). "Play on controller" plays the
+melody over WebHID instead of the puck sequencer: an OpenPuck in Steam mode (28DE:1304, relays OUTPUT `0x80`-`0x86` of the
+interface whose slot has a linked controller), an official Valve puck, or a controller on a cable (28DE:1302). Hardware
+results: `side` 0 left trackpad, 1 right trackpad, 2 both trackpads, 3 left grip, 4 right grip; `dur_ms` ends the tone by
+itself; an off tone (`gain_db` -128, `freq` 0, `dur_ms` 0x8000) stops that side. Each note is one `0x83` on side 0 and one on side
+1 with `dur_ms` = the note length, a rest is the off tone on both, the end and Stop send the off tone. The report is zero-padded to
+the length the HID descriptor gives (63 bytes on OpenPuck).
 
 ### 10.6 Back4 chords set to None (status blob 26)
 

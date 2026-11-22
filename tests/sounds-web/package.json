@@ -1,0 +1,7 @@
+{
+  "name": "openpuck-sounds-web-test",
+  "private": true,
+  "description": "Browser test of the Sounds piano roll and live playback (docs/index.html) in Playwright's bundled Chromium",
+  "scripts": { "test": "node run.js" },
+  "devDependencies": { "playwright": "^1.49.0" }
+}

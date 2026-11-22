@@ -11,3 +11,8 @@ __pycache__/
 
 # generated build-provenance header (gen_version.sh); never commit
 OpenPuck/git_version.h
+
+# web page tests
+tests/sounds-web/node_modules/
+!tests/sounds-web/package.json
+!tests/sounds-web/package-lock.json

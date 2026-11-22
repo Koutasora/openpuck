@@ -58,7 +58,7 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [x] Melodia po zmianie trybu (back4 + przycisk) osobno dla rodzin PlayStation, Xbox, Switch i other
 - [x] Melodia przy połączeniu pada, najwyżej raz na 20 s (szybkie wyłączenie i włączenie pada nie gra jej drugi raz)
 - [x] Import pliku MIDI i odsłuch zaimportowanej melodii
-- [x] Import MIDI z niskimi nutami: melodia przesunięta w górę i słyszalna; Octave up/down
+- [x] Octave up/down przesuwa melodię o oktawę (import MIDI sam już nie przesuwa oktaw, patrz sekcja 9)
 - [x] Szybka melodia (import MIDI z krótkimi nutami) gra płynnie, pad nie gubi połączenia ani ustawień
 - [x] Zaznaczanie tekstu na stronie nie znika (strona nie przebudowuje kart w trakcie)
 - [x] Przycisk Copy w polu Version kopiuje wersję
@@ -82,3 +82,15 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Mapping -> Sounds, Events: listy melodii węższe, etykieta i lista w jednym wierszu
 - [ ] Rolka myszy zmienia ustawienie w klikniętej (aktywnej) liście, jeden krok na ząbek, bez zawijania; bez kliknięcia lista nie reaguje i rolka przewija stronę
 - [ ] Status -> Modes: kafelki trybów USB równej wielkości w równych kolumnach (4 przy pełnej szerokości, mniej w wąskim oknie), bez poziomego przewijania
+
+### 9. Sounds: piano roll i granie na żywo (etap 03)
+- [ ] Mapping -> Sounds: piano roll pokazuje melodię; klik w puste pole dodaje nutę, przeciągnięcie przesuwa w czasie i wysokości, prawa krawędź zmienia długość, Delete usuwa; tabela pod spodem zmienia się razem z nim i odwrotnie
+- [ ] Przyciąganie Off / 10 / 50 / 100 ms działa; nuta nałożona na inną przycina ją, żadne nuty się nie nakładają
+- [ ] Przeciągnięcie po linijce czasu zaznacza zakres; Clear selection czyści; Crop to selection zostawia tylko zakres
+- [ ] Zoom (przyciski i Ctrl + kółko), przewijanie (kółko, Shift + kółko, suwak pod rolką), Fit
+- [ ] Przeciągnięcie pliku .mid na piano roll otwiera wybór ścieżki; Import wstawia wszystkie wpisy (także ponad 32), bez przesunięcia o oktawy
+- [ ] Melodia ponad 32 wpisów: licznik na żółto z podpowiedzią, Save to device i Play on puck nieaktywne; po Crop wracają
+- [ ] Connect controller (WebHID): OpenPuck w trybie Steam, puck Valve i pad na kablu; interfejs z padem wybierany sam; Play on controller gra melodię na gładzikach, Stop ją kończy, czerwona kreska idzie za dźwiękiem
+- [ ] Play on controller z zaznaczonym zakresem gra tylko zakres; Disconnect i zamknięcie karty wyciszają pad
+- [ ] Status -> Debug: Haptic test panel gra ton na każdym side (0 lewy gładzik, 1 prawy, 2 oba, 3 lewy uchwyt, 4 prawy uchwyt), Stop all wycisza
+- [ ] Zakładki Player już nie ma
