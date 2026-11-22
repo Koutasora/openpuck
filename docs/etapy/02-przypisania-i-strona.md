@@ -88,6 +88,14 @@ Test i wydanie
 - Dźwięki: oryginalne dźwięki PlayStation/Xbox/Switch nie są przepisywane ani dołączane (utwory i znaki dźwiękowe tych firm); użytkownik może wgrać własne melodie przez import MIDI. Domyślne motywy własne.
 - Do decyzji użytkownika w nowym czacie: nazwy profili, kopiowanie profilu i reset przypisań, eksport/import samych przypisań i makr, nowe nazwy myszy w Lizard mapping.
 - Użytkownik (2026-11-22): pozostałe kroki jednym ciągiem bez przystanków; dźwięki w pełnym zakresie, edytor tonów bez makiety (pokazany przy teście końcowym); dołączone nazwy profili, kopiowanie/reset profilu, eksport/import przypisań, nazwy myszy w Lizard; repo `Koutasora/openpuck` będzie publiczne dla GitHub Pages (zmienia użytkownik).
+- `d47ac39` (sendState najwyżej raz na ms) sprawdzony: ograniczenie tylko odracza wywołanie, `kbmFwTask` biegnie w każdej iteracji loop(), więc ostatni stan (np. puszczenie klawisza) wychodzi najpóźniej w następnej milisekundzie; bez zmian.
+- Dźwięki: plik `sounds.bin` (magic 0xB8, wersja 1, suma kontrolna, 1048 B), 8 slotów melodii po 32 nuty {freq u16, ms u16}: prosty stały układ, bez kompresji, mieści się w jednym bloku flash jak `binds.bin`.
+- Dźwięki: jedna tabela 8 zdarzeń -> numer melodii (profil 1/2/3 osobno, tryb PlayStation/Xbox/Switch/inne, połączenie), domyślnie melodia i dla zdarzenia i: prościej niż liczba nut i pozwala użytkownikowi dowolnie przypisać.
+- Dźwięki: ustawienie potwierdzeń (wył./wibracja/dźwięk/oba) dotyczy zmiany profilu (wibracja = N impulsów jak dotąd); melodie trybu i połączenia grają tylko gdy ustawienie zawiera dźwięk. Domyślnie wibracja, więc zachowanie sprzed zmiany bez zmian, dopóki 0x83 nie sprawdzony na sprzęcie.
+- Dźwięki: nuta = raport 0x83 (side 0 i 1, gain_db = głośność, bez LFO) przez relayEnqueue jak wibracja; znaczenie `side` i słyszalność nie potwierdzone na sprzęcie, więc oba boki; każda pauza i koniec melodii wysyłają zerowy raport 0x80 (haptyka się zatrzaskuje, nie wiadomo czy `dur` kończy ton).
+- Dźwięki: zmiana trybu to reboot (modeSwitchReboot), więc flaga w pliku `/sndmode.bin` (RAM nie przeżywa); melodia trybu gra przy pierwszym połączeniu po starcie i zastępuje melodię połączenia. Melodia połączenia najwyżej raz na 20 s na pada (łącze potrafi migotać).
+- Dźwięki: WebUSB 0x2D-0x31 (odczyt/zapis bloku we fragmentach po 96 B, odsłuch slotu, odsłuch podanej melodii), odpowiedzi 0xB5/0xB6; wersja bloku statusu 25 (opis w `docs/PROTOCOL.md` §10.5).
+- Zakres częstotliwości nut 1-4000 Hz i czasu 1-5000 ms, głośność -60..0 dB, domyślnie -6: granice tylko po to, by zły blok z przeglądarki nie wysłał śmieci do pada.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

@@ -458,6 +458,12 @@ Messages:
   - `0x2B <setting>`: manual host setting, `0` auto, `1` always PC, `2` always console (saved in `host.bin`),
     acked with `0xB3`. **Requires status-blob version ≥ 24.** See §10.3.
   - `0x2C`: diagnostics, reply `0xB4` (§10.4). Sent only while the panel is connected.
+  - `0x2D <idx>`: read chunk `idx` of the sounds blob (reply `0xB5`). **Requires status-blob version ≥ 25** (older
+    firmware drops `0x2D`–`0x31` silently). See §10.5.
+  - `0x2E <idx> <len> <data>`: stage sounds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks in order)
+  - `0x2F`: validate + apply + save the staged blob (`sounds.bin`)
+  - `0x30 <n>`: play stored melody `n` (0..7) now
+  - `0x31 <count> <count x 4 bytes>`: play the given melody now, not stored
   - `0x20`–`0x24`: staged firmware update (begin/data/end/reboot/abort), acked with `0xAB` frames
   - `0x25 0x57 0x49 0x50 0x45`: **full board wipe** (`"WIPE"` magic, debug panel only). Erases the app
     region + LittleFS (settings + bonds) + bootloader-settings page and reboots app-less, so the board mounts
@@ -473,6 +479,9 @@ Messages:
   - `0xB0 25 <payload>`: live state (§10.2)
   - `0xB2 <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
   - `0xB4 119 <payload>`: diagnostics (§10.4)
+  - `0xB5 <2+n> <idx> <total> <n bytes>`: sounds blob chunk (§10.5)
+  - `0xB6 3 <op> <ok> 0`: ack for `0x2E` / `0x2F` / `0x30` / `0x31` (`ok` 1 = done; for `0x30` / `0x31` 0 also means no
+    controller was linked and ready, so nothing played)
   - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` / `0x2B` (`ok` 1 = done); for `0x2B` the last byte
     is the host byte of §10.3 instead of the profile
 
@@ -746,6 +755,40 @@ bits of §8.1 (paddles: R4 `0x80`, R5 `0x100`, L4 `0x20000`, L5 `0x40000`).
 
 The `0xB0` live state with slot `0xFF` now picks a linked controller that has input in hand (else the first linked
 one) instead of the slot the poll happened to be on.
+
+### 10.5 Melodies (sounds blob version 1, status blob 25)
+
+The puck can play short melodies through the controller's actuator: each note is a `HAPTIC_LFO_TONE` OUTPUT report
+`0x83` (§ "Two different `0x8x` id spaces") relayed like rumble, once per side (0 and 1), with `gain_db` = the volume
+setting and no LFO (the report layout comes from SDL; its audibility and the meaning of `side` were not checked on hardware yet). The sequencer runs in `loop()` without blocking; every rest and the end of a melody send the zero
+`0x80` rumble report, so the actuator cannot stay latched if a tone ignores its duration.
+
+Sounds blob (`sounds.h`, 1048 bytes, read/written in 96-byte chunks, 11 chunks): `[0xB8][version 1][payload length u16 LE]`,
+payload, `u16 LE` sum of the payload bytes. Payload (1042 bytes):
+
+| offset | size | field |
+|---|---|---|
+| 0 | 1 | confirmations: `0` off, `1` vibration, `2` sound, `3` both |
+| 1 | 1 | volume = `gain_db`, signed, `-60..0` (`0` loudest), default `-6` |
+| 2 | 8 | melody index (0..7) per event, `0xFF` = no melody |
+| 10 | 8 x 129 | melodies: `{count 0..32, 32 x {freq u16 LE, ms u16 LE}}`; notes past `count` are ignored |
+
+Events (index into the event table): `0` profile 1, `1` profile 2, `2` profile 3, `3` mode change to a PlayStation mode
+(PS5, PS5 game, PS5 auth, HID gyro/DS4, DS4 game, PS3), `4` mode change to Xbox (Xbox, Xbox OG), `5` mode change to Switch
+(HORI, Pro), `6` mode change to any other mode (Steam, Lizard, DirectInput, SInput), `7` a controller connected.
+Notes: `freq` 0 = rest, otherwise `1..4000` Hz; `ms` is `1..5000`. A bad blob is rejected whole (`0x2F` acks `ok = 0`) and a
+bad or missing `sounds.bin` means the defaults (own short motifs, melody `i` for event `i`, confirmations = vibration).
+
+The confirmations setting decides how a profile switch is confirmed (vibration = N pulses as before, sound = the
+profile's melody). The melodies of the other events play only when it includes sound. A mode change plays the melody
+of the new mode's family on the first connection after the reboot (a flag file lives across the reboot); a connection
+plays the connect melody once per 20 s per controller. A melody starts only for controllers that are linked. The
+preview commands `0x30` / `0x31` play whatever the setting is.
+
+`0x31` payload is the melody as in the blob without padding: `[count][count x {freq u16 LE, ms u16 LE}]`, `count` 0..32.
+
+Console: `SNL` list, `SNP <n>` play melody n, `SNE <e>` play the melody of event e, `SNM <0..3>` confirmations,
+`SNG <-60..0>` volume.
 
 ## 11. Timing notes
 
