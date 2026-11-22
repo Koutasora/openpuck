@@ -512,10 +512,13 @@
       <div class="row" style="margin-top:0"><label>Name</label><input id="sndName" class="mtxt" type="text" maxlength="24"><span class="note" id="sndUsed" style="margin:0;flex:1 1 200px"></span></div>
       <div class="timeline" id="sndTimeline"></div>
       <div class="row mmeta"><span id="sndCount"></span><span id="sndTotal"></span></div>
+      <p class="note" id="sndLow" style="margin:0 0 10px;color:var(--warn)"></p>
       <table class="steps" id="sndNotes"></table>
       <div class="row" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
         <button id="sndAddNote">Add note</button>
         <button id="sndAddRest">Add rest</button>
+        <button id="sndOctUp">Octave up</button>
+        <button id="sndOctDown">Octave down</button>
         <button id="sndClear">Clear</button>
         <button id="midiBtn">Import MIDI file...</button>
         <input type="file" id="midiFile" accept=".mid,.midi,audio/midi" style="display:none">
@@ -4395,7 +4398,7 @@ function bindsOnBlob(p){
 // ===================== Melodies (sounds blob v1, status blob 25+) =====================
 // Wire format and ops: docs/PROTOCOL.md §10.5. Hidden below status protocol 25: older firmware drops 0x2D..0x31
 // silently, so they must never be sent blind. Transfers use bindsXfer (one pipe reader, paused during updates).
-const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
+const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_AUDIBLE_MIN=130, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
 const SND_EVENTS=["Profile 1","Profile 2","Profile 3","Mode: PlayStation","Mode: Xbox","Mode: Switch",
   "Mode: other","Controller connected"];
 const SND_CONFIRM=[[1,"Vibration"],[2,"Sound"],[3,"Both"],[0,"Off"]];
@@ -4561,6 +4564,9 @@ function sndTotals(){
   const st=sndNotes(); let total=0; for(const n of st) total+=n.ms;
   $("#sndCount").textContent=st.length+" / "+SND_NOTES+" notes";
   $("#sndTotal").textContent=st.length?"Total "+(total/1000).toFixed(2)+" s":"";
+  let low=0; st.forEach((n,k)=>{ const is=n.freq>0&&n.freq<SND_AUDIBLE_MIN; if(is) low++;
+    const tr=$("#snote"+k); if(tr) tr.style.color=is?"var(--warn)":""; });
+  $("#sndLow").textContent=low?low+(low>1?" notes":" note")+" below "+SND_AUDIBLE_MIN+" Hz may be inaudible on the controller.":"";
   const tl=$("#sndTimeline"); tl.textContent="";
   st.forEach(n=>{
     const seg=document.createElement("div"); seg.className="tl "+(n.freq?"press":"wait"); seg.style.flexGrow=n.ms;
@@ -4599,6 +4605,7 @@ function sndRowsRender(){
   const full=st.length>=SND_NOTES;
   $("#sndAddNote").disabled=full; $("#sndAddRest").disabled=full; $("#sndClear").disabled=!st.length;
   $("#sndPrev").disabled=!st.length; $("#sndPlayPuck").disabled=!st.length;
+  $("#sndOctUp").disabled=!st.some(n=>n.freq); $("#sndOctDown").disabled=!st.some(n=>n.freq);
   sndTotals();
 }
 // browser preview: the same notes through Web Audio (a plain square tone, not what the actuator sounds like)
@@ -4623,6 +4630,14 @@ function sndPreview(){
     $("#sndPrev").textContent="Stop preview";
     sndPrevTimer=setTimeout(sndPreviewStop,(t-sndCtx.currentTime)*1000+100);
   }catch(e){ sndMsg("preview failed: "+e.message); }
+}
+// moves every note of the melody by whole octaves (note names stay exact); rests stay; refuses to leave 1..SND_FREQ_MAX
+function sndOctave(dir){
+  if(!sounds) return; const st=sndNotes();
+  const to=n=>{ const k=noteOf(n.freq); return k==="custom"?(dir>0?n.freq*2:Math.round(n.freq/2)):noteHz(+k+12*dir); };
+  const nf=st.map(n=>n.freq?to(n):0);
+  if(nf.some(f=>f>SND_FREQ_MAX||(f&&f<1))){ sndMsg("can't move "+(dir>0?"up":"down")+": a note would leave 1-"+SND_FREQ_MAX+" Hz"); return; }
+  st.forEach((n,k)=>{ n.freq=nf[k]; }); sndDirty(); sndRender();
 }
 function sndAdd(freq){
   if(!sounds) return; const st=sndNotes(); if(st.length>=SND_NOTES) return;
@@ -4694,12 +4709,24 @@ function midiLine(m,track){
   for(const s of segs){
     const raw=Math.round(ms(s.b)-ms(s.a));
     if(raw<SND_MS_MIN){ merged++; if(notes.length) notes[notes.length-1].ms+=raw; else carry+=raw; continue; }
-    let f=0;
-    if(s.id>=0){ f=noteHz(s.p); if(f>SND_FREQ_MAX){ f=SND_FREQ_MAX; clipped++; } else if(f<1) f=1; }
-    notes.push({freq:f,ms:raw+carry}); carry=0;
+    notes.push({p:s.id>=0?s.p:-1,ms:raw+carry}); carry=0;
   }
-  for(const n of notes) if(n.ms>SND_MS_MAX){ n.ms=SND_MS_MAX; clipped++; }
-  return {notes,clipped,merged};
+  // The actuator does not play low notes audibly: the whole melody moves up by full octaves (MIDI note +12 each,
+  // so the note names stay right) until its lowest note reaches SND_AUDIBLE_MIN, as far as the top note allows.
+  const ps=notes.filter(n=>n.p>=0).map(n=>n.p); let shift=0, limited=false;
+  if(ps.length){
+    const lo=Math.min(...ps), hi=Math.max(...ps); let need=0;
+    while(noteHz(lo+12*need)<SND_AUDIBLE_MIN && need<10) need++;
+    while(shift<need && noteHz(hi+12*(shift+1))<=SND_FREQ_MAX) shift++;
+    limited=shift<need;
+  }
+  for(const n of notes){
+    n.freq=0;
+    if(n.p>=0){ n.freq=noteHz(n.p+12*shift); if(n.freq>SND_FREQ_MAX){ n.freq=SND_FREQ_MAX; clipped++; } else if(n.freq<1) n.freq=1; }
+    delete n.p;
+    if(n.ms>SND_MS_MAX){ n.ms=SND_MS_MAX; clipped++; }
+  }
+  return {notes,clipped,merged,shift,limited};
 }
 function midiTrackLabel(tr,i){
   return "Track "+(i+1)+(tr.name?" - "+tr.name:"")+" ("+tr.notes.length+" notes"+(tr.drums?", drums":"")+")";
@@ -4732,6 +4759,8 @@ function midiImport(){
   if(line.notes.length>SND_NOTES) parts.push("Cut to the first "+SND_NOTES+": a melody holds at most "+SND_NOTES+" notes.");
   if(line.clipped) parts.push(line.clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
   if(line.merged) parts.push(line.merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
+  if(line.shift) parts.push("Moved up "+line.shift+(line.shift>1?" octaves":" octave")+" so low notes are audible.");
+  if(line.limited) parts.push("Some notes stay below "+SND_AUDIBLE_MIN+" Hz: moving higher would pass "+SND_FREQ_MAX+" Hz.");
   $("#midiNote").textContent=parts.join(" ");
   $("#midiRow").classList.add("hide"); midiData=null;
   sndDirty(); sndRender();
@@ -4747,6 +4776,8 @@ function midiImport(){
   $("#sndName").oninput=()=>{ soundSetName(curMel,$("#sndName").value.slice(0,24)); if(sounds) sndRender(); };
   $("#sndAddNote").onclick=()=>sndAdd(440);
   $("#sndAddRest").onclick=()=>sndAdd(0);
+  $("#sndOctUp").onclick=()=>sndOctave(1);
+  $("#sndOctDown").onclick=()=>sndOctave(-1);
   $("#sndClear").onclick=()=>{ if(!sounds) return; sndNotes().length=0; sndDirty(); sndRender(); };
   $("#sndPrev").onclick=sndPreview;
   $("#sndPlayPuck").onclick=()=>{ const st=sndNotes(); soundsPlay(0x31,[st.length,...st.flatMap(n=>[n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8])]); };

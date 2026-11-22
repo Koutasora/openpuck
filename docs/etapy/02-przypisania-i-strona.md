@@ -63,6 +63,7 @@ Test i wydanie
 - Melodie NIE respektują `g_rumble` (wyłączona wibracja dla typu pada): dźwięk to osobne ustawienie Confirmations.
 - Strona: zmiana głośności/potwierdzeń zapisuje tylko te pola na bazie ostatnio odczytanego/zapisanego bloku (bez niezapisanych edycji melodii); zapis w trakcie zapisu jest kolejkowany; import przypisań czeka na trwający zapis.
 - Dawne etapy 02-05 połączone w jeden: użytkownik chce w openpuck jednej gałęzi bez pośrednich PR i jednego testu na sprzęcie na końcu.
+- Dźwięki: import MIDI przesuwa melodię o pełne oktawy w górę (do 130 Hz najniższej nuty, w granicach 4000 Hz), edytor ma przyciski Octave up/down i ostrzeżenie; powód: aktuator nie gra niskich nut, próg `SND_AUDIBLE_MIN` 130 Hz jest tymczasowy do testu na sprzęcie.
 - Bateria w poleceniu stanu na żywo: firmware już czyta `g_battery`/`g_batteryState`, strona tylko je pokazuje.
 - Plik `binds.bin`: magic 0xB1, suma kontrolna, 1079 B; zły plik = wartości domyślne. Wersja 2 dodaje akcje Key/Mouse w tym samym układzie; wersja 1 nadal się wczytuje.
 - WebUSB: polecenia 0x26-0x2A, odpowiedzi 0xAC (stan na żywo), 0xAE (fragment bloku), 0xAF (potwierdzenie); wersja bloku statusu 23 (opis w `docs/PROTOCOL.md` §10.2). Kody odpowiedzi zastąpione, patrz niżej (0xB0/0xB2/0xB3).
