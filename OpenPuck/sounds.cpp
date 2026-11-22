@@ -262,7 +262,7 @@ size_t soundsSerialize(const SoundsCfg &c, uint8_t *buf, size_t cap)
 
 // Reads one voice from the blob and range-checks it. d == nullptr only checks: the blob is validated in
 // place first and decoded after, so no second copy of the config is ever on the small loop stack.
-static bool readVoice(Voice *d, const uint8_t *&p)
+static bool readVoice(Voice *d, const uint8_t *&p, bool padded)
 {
 	const uint8_t count = *p++;
 	if (count > SOUNDS_NOTES)
@@ -279,7 +279,8 @@ static bool readVoice(Voice *d, const uint8_t *&p)
 		if (d)
 			d->note[k] = n;
 	}
-	p += SOUNDS_NOTES * SOUNDS_NOTE_BYTES;
+	// a stored voice always takes SOUNDS_NOTES slots, a preview only its notes
+	p += (padded ? SOUNDS_NOTES : count) * SOUNDS_NOTE_BYTES;
 	if (d)
 		d->count = count;
 	return ok;
@@ -306,14 +307,14 @@ static bool readPayload(SoundsCfg *c, const uint8_t *p, bool v1)
 	for (int m = 0; m < SOUNDS_MELODIES; m++) {
 		Melody *d = c ? &c->melody[m] : nullptr;
 		if (v1) {
-			if (!readVoice(d ? &d->voice[0] : nullptr, p))
+			if (!readVoice(d ? &d->voice[0] : nullptr, p, true))
 				return false;
 			if (d)
 				d->voice[1] = d->voice[0];
 			continue;
 		}
 		for (int v = 0; v < SOUNDS_VOICES; v++)
-			if (!readVoice(d ? &d->voice[v] : nullptr, p))
+			if (!readVoice(d ? &d->voice[v] : nullptr, p, true))
 				return false;
 	}
 	return true;
@@ -354,11 +355,11 @@ bool soundsParseMelody(Melody &m, const uint8_t *buf, size_t len)
 		return false;
 	// the count byte and the notes are laid out as in a blob voice
 	const uint8_t *p = buf;
-	if (!readVoice(nullptr, p))
+	if (!readVoice(nullptr, p, false))
 		return false;
 	memset(&m, 0, sizeof m);
 	p = buf;
-	readVoice(&m.voice[0], p);
+	readVoice(&m.voice[0], p, false);
 	m.voice[1] = m.voice[0];
 	return true;
 }

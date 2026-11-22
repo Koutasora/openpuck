@@ -11,7 +11,7 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - [x] Zapis do slotu tylko w limitach pucka (licznik N/32, Crop to selection); format bloba bez zmian.
 - [x] Zakładka Player usunięta, połączenie WebHID w Sounds, panel testowy w Status > Debug.
 - [x] Test Playwright (`tests/sounds-web/`) przechodzi.
-- [ ] Test użytkownika na padzie (główny PC).
+- [x] Test użytkownika na padzie (główny PC).
 - [x] `docs/PROTOCOL.md`, README i CHECKLISTA zaktualizowane.
 
 ## Plan
@@ -28,7 +28,7 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - [x] 10. Firmware (`OpenPuck/sounds.h`, `sounds.cpp`, `sounds_fw.cpp`, `sounds_fw.h`, `webusb_config.cpp`, `serial_console.cpp`): melodia = 4 głosy (side 0, 1, 3, 4) po 32 pozycje, blob `sounds.bin` wersja 2 (v1 wczytywany: melodia do obu gładzików), 4 sekwencery ze wspólnym startem, pauza głosu = off tone na jego side, koniec = zerowy 0x80, protokół statusu 27 (26 już zajęty); 0x31 bez zmian (jeden głos).
 - [x] 11. `docs/index.html`: przełącznik toru LT/RT/LG/RG, nuty do aktywnego toru, inne przygaszone, tabela i licznik N/32 aktywnego toru, import MIDI do aktywnego toru, Crop to 32 tnie zakres we wszystkich torach, odsłuch 4 torów naraz, zapis bloba v2 (protokół >= 27), przy protokole 25-26 zapis tylko toru LT z ostrzeżeniem; "Play on puck" usunięty.
 - [x] 12. Testy: `tests/sounds` (v2, wczytanie v1, 4 głosy), build firmware z RAM/flash przed i po, clang-format 18 i lint, `tests/sounds-web` (tory).
-- [ ] 13. `docs/PROTOCOL.md`, README, CHECKLISTA; test użytkownika: wgranie UF2, zapis i granie 4 głosów z pucka.
+- [x] 13. `docs/PROTOCOL.md`, README, CHECKLISTA; test użytkownika: wgranie UF2, zapis i granie 4 głosów z pucka.
 - [x] 14. `docs/index.html`, `tests/sounds-web/run.js`, CHECKLISTA: import MIDI do 4 torów naraz: lista źródła przy każdym torze (ścieżka, kanał ścieżki z kilkoma kanałami, Keep current, Empty), domyślnie źródła bez perkusji od najwyższej średniej wysokości na LT, RT, LG, RG (jedno źródło: tylko LT), liczba pozycji przy każdym, jeden Import, BPM z pliku.
 - Sprawdzenie: test Playwright z kroku 7, przegląd managera, test użytkownika na padzie.
 
@@ -59,6 +59,9 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - "Zawijanie zakresu nut" znaczyło zwijanie tabeli nut (źle odczytane jako Fold): tabela nut w Sounds zwinięta domyślnie pod nagłówkiem "Note list (N)"; Fold zostaje.
 
 - Import MIDI: źródło bez grywalnych nut zostawia tor bez zmian (komunikat); na pucku z jednym głosem domyślnie wypełniany tylko LT.
+
+- Test 2026-11-22 (główny PC, firmware z protokołem 27): po wgraniu UF2 piano roll, import MIDI do torów, odsłuch na padzie i melodie z pucka grają tak, jak użytkownik chciał ("gra idealnie").
+- Porządki przed zamknięciem: `readVoice` nie przesuwa wskaźnika poza krótki bufor podglądu (0x31); 5 długich komentarzy na końcu linii w `webusb_config.cpp` (sprzed etapu) przeniesionych nad instrukcje, lint komentarzy czysty.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)

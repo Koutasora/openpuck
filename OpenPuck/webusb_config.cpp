@@ -234,9 +234,8 @@ static void webusbSendBlob()
 		[g_curSlot >= 0 && g_curSlot < NSLOT ?
 			 g_curSlot :
 			 0]; // controller battery % (report 0x43); 0=unknown
-	p[39] = g_linkRssi[g_curSlot >= 0 && g_curSlot < NSLOT ?
-				   g_curSlot :
-				   0]; // RAW signal strength |dBm| (0=no sample)
+	// RAW signal strength |dBm| (0=no sample)
+	p[39] = g_linkRssi[g_curSlot >= 0 && g_curSlot < NSLOT ? g_curSlot : 0];
 	// Release builds are tagged and easier to trace by semver; local/dev builds
 	// still expose git hash when no version tag is available.
 	p[40] = OPK_GIT_DIRTY ? 1 : 0;
@@ -503,8 +502,9 @@ static void webusbDrainFlight(bool restart)
 	uint16_t budget = 64;
 	bool done = false;
 	while (budget--) {
+		// FIFO full -> resume on the panel's next 0x10 poll
 		if (tud_vendor_write_available() < 2 + 9)
-			break; // FIFO full -> resume on the panel's next 0x10 poll
+			break;
 		if (!faultDiagFlightPull(&dt, &evt, &stage, &arg)) {
 			done = true;
 			break;
@@ -653,8 +653,8 @@ extern "C" void tud_sof_cb(uint32_t frame_count)
 {
 	(void)frame_count;
 	uint32_t stall = faultDiagStallMs();
-	if (stall <
-	    1000) // loop() healthy -> nothing to report (the common case: near-zero overhead)
+	// loop() healthy -> nothing to report (the common case: near-zero overhead)
+	if (stall < 1000)
 		return;
 	static uint32_t lastMs = 0;
 	uint32_t now = millis();
@@ -814,8 +814,8 @@ static void webusbDrainCapture()
 {
 	if (!usb_web.connected())
 		return;
-	TxBoostScope
-		boost; // capture streams at flood rate through the same dcd DMA window
+	// capture streams at flood rate through the same dcd DMA window
+	TxBoostScope boost;
 	uint32_t ms = 0;
 	uint8_t slot = 0, rid = 0, nb = 0, b[16];
 	uint16_t budget = 128;
@@ -1091,8 +1091,8 @@ void webusbPoll()
 				continue;
 			}
 			if (op == 0x01) {
-				g_blobRequest =
-					true; // sent from the usbd task (webusbSofDrain)
+				// sent from the usbd task (webusbSofDrain)
+				g_blobRequest = true;
 			}
 			// 0x09: export all bond slots (clone backup). One 0xA7 frame, sent from the usbd task.
 			else if (op == 0x09) {
