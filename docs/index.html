@@ -260,13 +260,6 @@
         <div class="stat"><div class="k">Status protocol</div><div class="v" id="stVersionProto">—</div></div>
         <div class="stat"><div class="k">Panel update</div><div class="v" id="stVersionUpdate">—</div></div>
       </div>
-      <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
-        <button id="verCopy" title="Copy the firmware build and status protocol to the clipboard">Copy</button>
-        <span class="note" id="verMsg" style="margin:0"></span>
-        <button id="diagCap" title="Collects the live state and the firmware counters every 100 ms for 3 s: hold a paddle or press the buttons while it runs">Capture 3 s and copy</button>
-        <span class="note" id="diagMsg" style="margin:0"></span>
-      </div>
-      <textarea id="diagOut" class="hide" readonly rows="8" style="width:100%;margin-top:8px;background:#0e1017;color:var(--fg);border:1px solid #232a3a;border-radius:3px;font:12px ui-monospace,Menlo,monospace"></textarea>
       <p class="note">This section reflects the connected puck. Reconnect after flashing or changing modes to verify what is currently running.</p>
     </div>
 
@@ -637,6 +630,13 @@
     </div>
     <div class="card wide" id="logCard" data-sub="status/log">
       <h2>Page log</h2>
+      <div class="row" style="margin:0 0 12px;flex-wrap:wrap;gap:8px">
+        <button id="verCopy" title="Copy the firmware build and status protocol to the clipboard">Copy version</button>
+        <span class="note" id="verMsg" style="margin:0"></span>
+        <button id="diagCap" title="Collects the live state and the firmware counters every 100 ms for 3 s: hold a paddle or press the buttons while it runs">Capture 3 s and copy</button>
+        <span class="note" id="diagMsg" style="margin:0"></span>
+      </div>
+      <textarea id="diagOut" class="hide" readonly rows="8" style="width:100%;margin-top:8px;background:#0e1017;color:var(--fg);border:1px solid #232a3a;border-radius:3px;font:12px ui-monospace,Menlo,monospace"></textarea>
       <div class="row" style="margin:0 0 8px;flex-wrap:wrap">
         <span class="note" style="flex:1;margin:0">What the page itself did and saw, newest first.</span>
         <button id="logCopy">Copy</button>
