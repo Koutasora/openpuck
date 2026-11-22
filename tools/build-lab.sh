@@ -5,6 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 PATH="$LOCALAPPDATA/Programs/arduino-cli:$PATH"
 OUT=build/openpuck
+sh gen_version.sh
 arduino-cli compile -b adafruit:nrf52:feather52840 --clean \
 	--build-path build/cache/openpuck --output-dir "$OUT" \
 	--build-property "build.extra_flags=-DNRF52840_XXAA {build.flags.usb} -DCFG_TUD_HID=6 -DCFG_TUD_TASK_QUEUE_SZ=512 -DCFG_TUD_VENDOR_TX_BUFSIZE=256 -DOPK_RF_JOURNAL_BASE=0x86000 $EXTRA_FLAGS" \
