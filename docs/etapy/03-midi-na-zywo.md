@@ -66,5 +66,7 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 
 - Porządek na stronie (użytkownik 2026-11-22): skróty, tryby, melodie i dźwięk/wibracja w jednej tabeli w Mapping > Shortcuts zamiast trzech kart; melodie dalej per rodzina trybów (firmware bez zmian), wiersz pokazuje, gdy melodia jest wspólna z innym skrótem.
 
+- Poza etapem (użytkownik 2026-11-22): nacisk analogowy w trybach PS3 i OG Xbox (spust steruje siłą wybranego przycisku, np. □ w MGS2; sprawdzić, czy kliknięcie spustu nie daje 255 za wcześnie) odłożony do etapu 04 PLANOWANY, bo nie ma jak tego teraz przetestować.
+
 ## Podsumowanie
 (wypełnia /etap-zamknij)
