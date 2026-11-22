@@ -6,6 +6,8 @@
 //           the BUTTON codes of the active profile -- see binds_fw.cpp).
 //   COMBO / MACRO: the paddle bit is cleared and the TB_* bits of the combo / current macro step are ORed in,
 //           so every mode (push or stream) just sees ordinary buttons.
+//   KEY / MOUSE: the paddle bit is cleared and the action is reported through BindsKbm instead; the caller sends it
+//           to a USB keyboard / mouse (only on a PC host, see host_detect.h) -- elsewhere it does nothing.
 // Macros are shared by all profiles (pool of BINDS_MACROS). A macro fires on the paddle press and plays to the
 // end once; releasing does not abort it and a press while it is running is ignored.
 #pragma once
@@ -24,7 +26,39 @@
 #define BA_BUTTON 0
 #define BA_COMBO 1 // mask = TB_* bits pressed together
 #define BA_MACRO 2 // arg = macro index
+// arg = HID keyboard usage BINDS_KEY_MIN..BINDS_KEY_MAX, mask = modifier byte (KM_*); held while the paddle is held
+#define BA_KEY 3
+// arg = BMO_* code. Buttons are held with the paddle; wheel codes are notches (see below)
+#define BA_MOUSE 4
 #define BINDS_CODE_MAX 20
+
+// usage 0..3 are the HID rollover / error codes, 0xE0..0xE7 are the modifier keys themselves
+#define BINDS_KEY_MIN 0x04
+#define BINDS_KEY_MAX 0xE7
+// KEY mask = the HID keyboard modifier byte
+#define KM_LCTRL 0x01u
+#define KM_LSHIFT 0x02u
+#define KM_LALT 0x04u
+#define KM_LGUI 0x08u
+#define KM_RCTRL 0x10u
+#define KM_RSHIFT 0x20u
+#define KM_RALT 0x40u
+#define KM_RGUI 0x80u
+
+// BA_MOUSE arg. 1..5 = HID mouse buttons 1..5 (held with the paddle). 6 / 7 = one wheel notch up / down per press.
+// 8 / 9 = same, but repeated every BINDS_WHEEL_REPEAT_MS while the paddle stays held.
+#define BMO_LEFT 1
+#define BMO_RIGHT 2
+#define BMO_MIDDLE 3
+#define BMO_BACK 4
+#define BMO_FORWARD 5
+#define BMO_WHEEL_UP 6
+#define BMO_WHEEL_DOWN 7
+#define BMO_WHEEL_UP_REP 8
+#define BMO_WHEEL_DOWN_REP 9
+#define BMO_MAX 9
+#define BINDS_WHEEL_REPEAT_MS 100u
+#define BINDS_KEYS_MAX 6 // boot-keyboard report: 6 simultaneous keys
 
 // MacroDef.flags: 0 = play once. BM_REPEAT is reserved for a future "repeat while held" mode, NOT implemented
 // (the loader rejects non-zero flags).
@@ -55,14 +89,23 @@ struct BindsCfg {
 
 extern BindsCfg g_binds;
 
+// What bindsApply asks the USB keyboard / mouse to do for one slot, right now.
+struct BindsKbm {
+	uint8_t mods; // keyboard modifier byte
+	uint8_t keys[BINDS_KEYS_MAX]; // pressed usages, 0 = free
+	uint8_t buttons; // mouse buttons, bit n = button n+1 (L R M Back Forward)
+	int8_t wheel; // notches to emit with THIS call (+ up); 0 on every other call
+};
+
 // All profiles = BUTTON actions with the given codes (back[et][i]); NULL = 5,6,7,8 (LB,RB,L3,R3). No macros.
 void bindsInitDefaults(BindsCfg &c, const uint8_t (*back)[BINDS_BACKS]);
 
 // Apply the active profile to the raw buttons of one slot. etype = ET_* of the active mode (ET_NONE: unchanged).
 // Call on every report (also repeats): macro playback follows nowMs, not button edges. All four paddles held
-// (CHORD_BACK4, the mode/profile chord) returns raw untouched.
+// (CHORD_BACK4, the mode/profile chord) returns raw untouched. kbm (optional) is filled with the KEY / MOUSE
+// state of the slot; it is all zero for ET_NONE and during the chord.
 uint32_t bindsApply(uint8_t slot, uint32_t rawButtons, uint8_t etype,
-		    uint32_t nowMs);
+		    uint32_t nowMs, BindsKbm *kbm = nullptr);
 // Forget running macros / edge state (tests).
 void bindsResetRuntime();
 
@@ -77,8 +120,10 @@ bool bindsSetMacro(BindsCfg &c, uint8_t idx, const MacroStep *steps, uint8_t n);
 // ---- blob: [0]=magic [1]=version [2..3]=payload length LE, payload, u16 checksum LE (sum of payload bytes) ----
 // payload: active, act[profile][etype][paddle] as {type, arg, mask u32 LE}, macro[] as
 //          {flags, count, 16 x {mask u32 LE, ms u16 LE}}
+// Version 2 has the layout of version 1; it only adds the action types BA_KEY / BA_MOUSE. Version 1 blobs are
+// still read (types above BA_MACRO are rejected in them); serializing always writes version 2.
 #define BINDS_MAGIC 0xB1
-#define BINDS_VERSION 1
+#define BINDS_VERSION 2
 #define BINDS_ACTION_BYTES 6
 #define BINDS_STEP_BYTES 6
 #define BINDS_PAYLOAD_BYTES                                                    \

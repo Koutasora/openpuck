@@ -14,11 +14,14 @@ struct MacroRun {
 static MacroRun g_run[NSLOT][BINDS_BACKS];
 // paddle bits of the previous call (rising-edge detection)
 static uint32_t g_prevPaddles[NSLOT];
+// per slot and paddle: when a held repeating wheel code notches next
+static uint32_t g_wheelNextMs[NSLOT][BINDS_BACKS];
 
 void bindsResetRuntime()
 {
 	memset(g_run, 0, sizeof g_run);
 	memset(g_prevPaddles, 0, sizeof g_prevPaddles);
+	memset(g_wheelNextMs, 0, sizeof g_wheelNextMs);
 }
 
 void bindsInitDefaults(BindsCfg &c, const uint8_t (*back)[BINDS_BACKS])
@@ -67,6 +70,18 @@ bool bindsSetAction(BindsCfg &c, uint8_t profile, uint8_t etype, uint8_t i,
 		a.arg = arg;
 		a.mask = 0;
 		break;
+	case BA_KEY:
+		if (arg < BINDS_KEY_MIN || arg > BINDS_KEY_MAX || (mask >> 8))
+			return false;
+		a.arg = arg;
+		a.mask = mask;
+		break;
+	case BA_MOUSE:
+		if (arg < 1 || arg > BMO_MAX)
+			return false;
+		a.arg = arg;
+		a.mask = 0;
+		break;
 	default:
 		return false;
 	}
@@ -102,8 +117,50 @@ static void macroAdvance(MacroRun &r, const MacroDef &m, uint32_t nowMs)
 	}
 }
 
-uint32_t bindsApply(uint8_t slot, uint32_t raw, uint8_t etype, uint32_t nowMs)
+// Add the KEY / MOUSE action `a` of one paddle to kbm.
+static void kbmAdd(BindsKbm &k, const BindAction &a, bool rising, bool held,
+		   uint32_t nowMs, uint32_t &wheelNext)
 {
+	if (a.type == BA_KEY) {
+		if (!held)
+			return;
+		k.mods |= (uint8_t)a.mask;
+		for (int n = 0; n < BINDS_KEYS_MAX; n++) {
+			if (k.keys[n] == a.arg)
+				return;
+			if (!k.keys[n]) {
+				k.keys[n] = a.arg;
+				return;
+			}
+		}
+		return;
+	}
+	if (a.arg <= BMO_FORWARD) {
+		if (held)
+			k.buttons |= (uint8_t)(1u << (a.arg - 1));
+		return;
+	}
+	const int8_t dir = (a.arg == BMO_WHEEL_UP || a.arg == BMO_WHEEL_UP_REP) ?
+				   1 :
+				   -1;
+	const bool rep = a.arg >= BMO_WHEEL_UP_REP;
+	bool notch = rising;
+	if (rising)
+		wheelNext = nowMs + BINDS_WHEEL_REPEAT_MS;
+	else if (rep && held && (int32_t)(nowMs - wheelNext) >= 0) {
+		notch = true;
+		// from now, not from the missed tick: no burst after a gap in the reports
+		wheelNext = nowMs + BINDS_WHEEL_REPEAT_MS;
+	}
+	if (notch && k.wheel > -127 && k.wheel < 127)
+		k.wheel = (int8_t)(k.wheel + dir);
+}
+
+uint32_t bindsApply(uint8_t slot, uint32_t raw, uint8_t etype, uint32_t nowMs,
+		    BindsKbm *kbm)
+{
+	if (kbm)
+		memset(kbm, 0, sizeof *kbm);
 	if (etype >= ET_COUNT || slot >= NSLOT)
 		return raw;
 	const uint32_t held = raw & CHORD_BACK4;
@@ -137,6 +194,12 @@ uint32_t bindsApply(uint8_t slot, uint32_t raw, uint8_t etype, uint32_t nowMs)
 				out |= a.mask;
 		} else if (a.type == BA_MACRO) {
 			out &= ~PADDLE_BIT[i];
+		} else if (a.type == BA_KEY || a.type == BA_MOUSE) {
+			out &= ~PADDLE_BIT[i];
+			if (kbm)
+				kbmAdd(*kbm, a, rising & PADDLE_BIT[i],
+				       held & PADDLE_BIT[i], nowMs,
+				       g_wheelNextMs[slot][i]);
 		}
 	}
 	return out;
@@ -202,7 +265,7 @@ size_t bindsSerialize(const BindsCfg &c, uint8_t *buf, size_t cap)
 bool bindsDeserialize(BindsCfg &c, const uint8_t *buf, size_t len)
 {
 	if (!buf || len != BINDS_BLOB_BYTES || buf[0] != BINDS_MAGIC ||
-	    buf[1] != BINDS_VERSION ||
+	    (buf[1] != 1 && buf[1] != BINDS_VERSION) ||
 	    (buf[2] | (buf[3] << 8)) != BINDS_PAYLOAD_BYTES)
 		return false;
 	const uint8_t *payload = buf + 4;
@@ -222,8 +285,10 @@ bool bindsDeserialize(BindsCfg &c, const uint8_t *buf, size_t len)
 				uint8_t type = p[0], arg = p[1];
 				p += 2;
 				uint32_t mask = get32(p);
-				// the setter holds the one set of range rules
-				if (!bindsSetAction(t, (uint8_t)a, (uint8_t)e,
+				// the setter holds the one set of range rules;
+				// version 1 predates KEY / MOUSE
+				if ((buf[1] == 1 && type > BA_MACRO) ||
+				    !bindsSetAction(t, (uint8_t)a, (uint8_t)e,
 						    (uint8_t)i, type, arg,
 						    mask))
 					return false;

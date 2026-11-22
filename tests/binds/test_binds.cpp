@@ -188,6 +188,210 @@ static void testCorrupt()
 	CHECK(c.active == 0x77);
 }
 
+static void testKey()
+{
+	fresh();
+	BindsKbm k;
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x06,
+			     KM_LCTRL | KM_RSHIFT)); // Ctrl+Shift+C
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 1, BA_KEY, 0x2C, 0)); // space
+	uint32_t out = bindsApply(0, TB_L4 | TB_A, ET_DS5, 10, &k);
+	CHECK(out == TB_A); // paddle bit is gone
+	CHECK(k.mods == (KM_LCTRL | KM_RSHIFT) && k.keys[0] == 0x06 &&
+	      k.keys[1] == 0 && k.buttons == 0 && k.wheel == 0);
+	out = bindsApply(0, TB_L4 | TB_R4, ET_DS5, 14, &k);
+	CHECK(out == 0);
+	CHECK(k.keys[0] == 0x06 && k.keys[1] == 0x2C);
+	// release: all clear
+	bindsApply(0, 0, ET_DS5, 18, &k);
+	CHECK(k.mods == 0 && k.keys[0] == 0 && k.keys[1] == 0);
+	// a modifier key as the key itself
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 2, BA_KEY, 0xE1, 0));
+	bindsApply(0, TB_L5, ET_DS5, 22, &k);
+	CHECK(k.keys[0] == 0xE1 && k.mods == 0);
+	// other slots do not see it
+	BindsKbm k2;
+	bindsApply(1, 0, ET_DS5, 22, &k2);
+	CHECK(k2.keys[0] == 0 && k2.mods == 0);
+	// ranges: usage 0..3 and above 0xE7, mask above 8 bits
+	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x03, 0));
+	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0xE8, 0));
+	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x04, 0x100));
+	CHECK(g_binds.act[0][ET_DS5][0].arg == 0x06); // unchanged by the failures
+	CHECK(bindsBackCode(g_binds, ET_DS5, 0) == 0);
+	// ET_NONE: no kbm, buttons untouched
+	CHECK(bindsApply(0, TB_L4, ET_NONE, 30, &k) == TB_L4);
+	CHECK(k.keys[0] == 0 && k.mods == 0);
+}
+
+static void testKeyDuplicates()
+{
+	fresh();
+	BindsKbm k;
+	for (int i = 0; i < BINDS_BACKS; i++)
+		CHECK(bindsSetAction(g_binds, 0, ET_DS4, (uint8_t)i, BA_KEY, 0x04,
+				     KM_LALT));
+	bindsApply(0, CHORD_BACK4 & ~TB_R5, ET_DS4, 0, &k);
+	CHECK(k.keys[0] == 0x04 && k.keys[1] == 0 && k.mods == KM_LALT);
+}
+
+static void testMouseButtons()
+{
+	fresh();
+	BindsKbm k;
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_LEFT, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 1, BA_MOUSE, BMO_RIGHT, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 2, BA_MOUSE, BMO_BACK, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 3, BA_MOUSE, BMO_FORWARD, 0));
+	uint32_t out = bindsApply(0, TB_L4 | TB_L5, ET_DS5, 5, &k);
+	CHECK(out == 0);
+	CHECK(k.buttons == (1u | 8u) && k.wheel == 0);
+	bindsApply(0, TB_R4 | TB_R5, ET_DS5, 9, &k);
+	CHECK(k.buttons == (2u | 16u));
+	bindsApply(0, 0, ET_DS5, 13, &k);
+	CHECK(k.buttons == 0);
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_MIDDLE, 0));
+	bindsApply(0, TB_L4, ET_DS5, 17, &k);
+	CHECK(k.buttons == 4u);
+	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, 0, 0));
+	CHECK(!bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_MAX + 1, 0));
+}
+
+static void testWheel()
+{
+	fresh();
+	BindsKbm k;
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_WHEEL_UP, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 1, BA_MOUSE, BMO_WHEEL_DOWN, 0));
+	// one notch on the press, none while held, one more per new press
+	bindsApply(0, TB_L4, ET_DS5, 1000, &k);
+	CHECK(k.wheel == 1);
+	bindsApply(0, TB_L4, ET_DS5, 1004, &k);
+	CHECK(k.wheel == 0);
+	bindsApply(0, TB_L4, ET_DS5, 1500, &k);
+	CHECK(k.wheel == 0);
+	bindsApply(0, 0, ET_DS5, 1504, &k);
+	bindsApply(0, TB_R4, ET_DS5, 1508, &k);
+	CHECK(k.wheel == -1);
+	bindsApply(0, 0, ET_DS5, 1512, &k);
+	bindsApply(0, TB_L4, ET_DS5, 1516, &k);
+	CHECK(k.wheel == 1);
+	// both paddles at once cancel out within one call
+	bindsApply(0, 0, ET_DS5, 1520, &k);
+	bindsApply(0, TB_L4 | TB_R4, ET_DS5, 1524, &k);
+	CHECK(k.wheel == 0);
+}
+
+static void testWheelRepeat()
+{
+	fresh();
+	BindsKbm k;
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_MOUSE, BMO_WHEEL_DOWN_REP,
+			     0));
+	bindsApply(0, TB_L4, ET_DS5, 2000, &k);
+	CHECK(k.wheel == -1);
+	bindsApply(0, TB_L4, ET_DS5, 2050, &k);
+	CHECK(k.wheel == 0);
+	bindsApply(0, TB_L4, ET_DS5, 2100, &k);
+	CHECK(k.wheel == -1);
+	bindsApply(0, TB_L4, ET_DS5, 2150, &k);
+	CHECK(k.wheel == 0);
+	// a gap in the reports gives one notch, not a burst
+	bindsApply(0, TB_L4, ET_DS5, 3000, &k);
+	CHECK(k.wheel == -1);
+	bindsApply(0, TB_L4, ET_DS5, 3004, &k);
+	CHECK(k.wheel == 0);
+	// release stops it
+	bindsApply(0, 0, ET_DS5, 3100, &k);
+	CHECK(k.wheel == 0);
+	bindsApply(0, 0, ET_DS5, 3300, &k);
+	CHECK(k.wheel == 0);
+	// wrap-safe timer
+	bindsApply(0, TB_L4, ET_DS5, 0xFFFFFFC0u, &k);
+	CHECK(k.wheel == -1);
+	bindsApply(0, TB_L4, ET_DS5, 0xFFFFFFE0u, &k);
+	CHECK(k.wheel == 0);
+	bindsApply(0, TB_L4, ET_DS5, 0x40u, &k);
+	CHECK(k.wheel == -1);
+}
+
+static void testKbmChordAndPlainCalls()
+{
+	fresh();
+	BindsKbm k;
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x04, 0));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 1, BA_MOUSE, BMO_LEFT, 0));
+	// all four paddles = mode / profile chord: raw untouched, nothing for the host
+	CHECK(bindsApply(0, CHORD_BACK4, ET_DS5, 0, &k) == CHORD_BACK4);
+	CHECK(k.keys[0] == 0 && k.buttons == 0);
+	// the old four-argument call still works and still clears the paddle
+	bindsApply(0, 0, ET_DS5, 4);
+	CHECK(bindsApply(0, TB_L4 | TB_R4, ET_DS5, 8) == 0);
+}
+
+static void testMigrationV1()
+{
+	fresh();
+	CHECK(bindsSetAction(g_binds, 1, ET_SWITCH, 2, BA_COMBO, 0, TB_A | TB_B));
+	CHECK(bindsSetAction(g_binds, 2, ET_XBOX, 3, BA_BUTTON, 14, 0));
+	const MacroStep s[2] = { { TB_A, 30 }, { 0, 40 } };
+	CHECK(bindsSetMacro(g_binds, 3, s, 2));
+	CHECK(bindsSetAction(g_binds, 1, ET_XBOX, 0, BA_MACRO, 3, 0));
+	static uint8_t blob[BINDS_BLOB_BYTES];
+	CHECK(bindsSerialize(g_binds, blob, sizeof blob) == BINDS_BLOB_BYTES);
+	CHECK(blob[1] == 2);
+	// a version 1 blob has the same layout and checksum, only the version byte differs
+	uint8_t v1[BINDS_BLOB_BYTES];
+	memcpy(v1, blob, sizeof v1);
+	v1[1] = 1;
+	BindsCfg c;
+	memset(&c, 0, sizeof c);
+	CHECK(bindsDeserialize(c, v1, sizeof v1));
+	CHECK(c.act[1][ET_SWITCH][2].type == BA_COMBO &&
+	      c.act[1][ET_SWITCH][2].mask == (TB_A | TB_B));
+	CHECK(c.act[2][ET_XBOX][3].type == BA_BUTTON && c.act[2][ET_XBOX][3].arg == 14);
+	CHECK(c.act[1][ET_XBOX][0].type == BA_MACRO && c.macro[3].count == 2);
+	// re-saved, it is a version 2 blob with identical content
+	uint8_t again[BINDS_BLOB_BYTES];
+	CHECK(bindsSerialize(c, again, sizeof again) == BINDS_BLOB_BYTES);
+	CHECK(again[1] == 2 && memcmp(again + 2, blob + 2, BINDS_BLOB_BYTES - 2) == 0);
+	// version 1 cannot hold KEY / MOUSE, version 3 does not exist
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 0, BA_KEY, 0x04, 0));
+	bindsSerialize(g_binds, blob, sizeof blob);
+	memcpy(v1, blob, sizeof v1);
+	v1[1] = 1;
+	CHECK(!bindsDeserialize(c, v1, sizeof v1));
+	CHECK(bindsDeserialize(c, blob, sizeof blob));
+	blob[1] = 3;
+	CHECK(!bindsDeserialize(c, blob, sizeof blob));
+}
+
+static void testSerializeKeyMouse()
+{
+	fresh();
+	CHECK(bindsSetAction(g_binds, 2, ET_DS4, 1, BA_KEY, 0x52,
+			     KM_LGUI | KM_RALT));
+	CHECK(bindsSetAction(g_binds, 0, ET_DS5, 3, BA_MOUSE, BMO_WHEEL_UP_REP, 0));
+	static uint8_t blob[BINDS_BLOB_BYTES];
+	CHECK(bindsSerialize(g_binds, blob, sizeof blob) == BINDS_BLOB_BYTES);
+	BindsCfg c;
+	memset(&c, 0, sizeof c);
+	CHECK(bindsDeserialize(c, blob, sizeof blob));
+	CHECK(c.act[2][ET_DS4][1].type == BA_KEY && c.act[2][ET_DS4][1].arg == 0x52 &&
+	      c.act[2][ET_DS4][1].mask == (KM_LGUI | KM_RALT));
+	CHECK(c.act[0][ET_DS5][3].type == BA_MOUSE &&
+	      c.act[0][ET_DS5][3].arg == BMO_WHEEL_UP_REP);
+	// a damaged KEY (mask above 8 bits, fixed-up checksum) is rejected whole
+	const int off = 4 + 1 + ((2 * ET_COUNT + ET_DS4) * BINDS_BACKS + 1) * 6;
+	blob[off + 3] = 1;
+	uint16_t s = 0;
+	for (int i = 0; i < BINDS_PAYLOAD_BYTES; i++)
+		s = (uint16_t)(s + blob[4 + i]);
+	blob[4 + BINDS_PAYLOAD_BYTES] = (uint8_t)s;
+	blob[4 + BINDS_PAYLOAD_BYTES + 1] = (uint8_t)(s >> 8);
+	CHECK(!bindsDeserialize(c, blob, sizeof blob));
+}
+
 int main()
 {
 	testButtonPassthrough();
@@ -199,6 +403,14 @@ int main()
 	testChordUntouched();
 	testSerialization();
 	testCorrupt();
+	testKey();
+	testKeyDuplicates();
+	testMouseButtons();
+	testWheel();
+	testWheelRepeat();
+	testKbmChordAndPlainCalls();
+	testMigrationV1();
+	testSerializeKeyMouse();
 	printf("%d checks, %d failed\n", g_n, g_fail);
 	return g_fail ? 1 : 0;
 }
