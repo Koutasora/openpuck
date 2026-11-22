@@ -71,7 +71,7 @@ Decyzje:
 
 Zrobione:
 - Test haptyki na sprzęcie: mapa side 0-4, dur kończy ton, off tone, słyszalny zakres MIDI 24-48 i 84-108; panel testowy w Status > Debug.
-- Firmware: 4 sekwencery, blob v2 i zgodność z v1 (też zapis z starszej strony), bez kopii konfiguracji na stosie (było przepełnienie 4,2 KB przy stosie 4 KB), RAM +6,1 KB; `readVoice` w granicach bufora; 5 starych komentarzy w `webusb_config.cpp` przeniesionych.
+- Firmware: 4 sekwencery, blob v2 i zgodność z v1 (też zapis ze starszej strony), bez kopii konfiguracji na stosie (było przepełnienie 4,2 KB przy stosie 4 KB), RAM +6,1 KB; `readVoice` w granicach bufora; 5 starych komentarzy w `webusb_config.cpp` przeniesionych.
 - Strona: piano roll (rysowanie, przesuwanie, długość, siatka ms i w taktach, BPM, Fold, zaznaczenie, Crop to 32), tory LT/RT/LG/RG, Clear all voices, import MIDI do 4 torów (ścieżki i kanały), odsłuch na padzie i w przeglądarce, zwijana lista nut, jedna tabela skrótów; przycisk Play on puck usunięty.
 - Testy: `tests/sounds` 191, `tests/binds` 182, `tests/sounds-web` (Playwright) 131, zgodność bloba strona-firmware; clang-format 18 i lint czyste.
 - Test użytkownika na głównym PC: 4 głosy grają z pucka i na żywo, melodia zmiany trybu gra przy Confirm with = Sound.
@@ -85,4 +85,4 @@ Otwarte sprawy:
 Ryzyka:
 - Opóźnione nuty po zapchaniu kolejki przekaźnika idą seriami (czasy od startu); nie sprawdzone przy długich 4-głosowych melodiach.
 - Melodia rodziny trybów dzielona przez kilka skrótów; zmiana jednej zmienia wszystkie.
-- Testy strony na udawanym WebHID; zachowanie przy innych pucach/firmware sprawdzone tylko ręcznie.
+- Testy strony na udawanym WebHID; zachowanie przy innych puckach i firmware sprawdzone tylko ręcznie.
