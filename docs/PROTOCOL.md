@@ -455,6 +455,8 @@ Messages:
   - `0x28 <idx> <len> <data>`: stage binds blob chunk (`len` 1..96; chunk 0 restarts staging, chunks must be in order)
   - `0x29`: validate + apply + save the staged blob (`binds.bin`)
   - `0x2A <profile>`: set active profile 0..2 (saved, confirmation buzz of profile+1 pulses)
+  - `0x2B <setting>`: manual host setting, `0` auto, `1` always PC, `2` always console (saved in `host.bin`),
+    acked with `0xB3`. **Requires status-blob version ≥ 24.** See §10.3.
   - `0x20`–`0x24`: staged firmware update (begin/data/end/reboot/abort), acked with `0xAB` frames
   - `0x25 0x57 0x49 0x50 0x45`: **full board wipe** (`"WIPE"` magic, debug panel only). Erases the app
     region + LittleFS (settings + bonds) + bootloader-settings page and reboots app-less, so the board mounts
@@ -467,9 +469,10 @@ Messages:
   - `0xA9 ...`: live wedge report
   - `0xAA <count> <count×16-byte bindings>`: lizard binding map
   - `0xAB 5 <status> <nextOff u32 LE>`: firmware-update ack
-  - `0xB0 24 <payload>`: live state (§10.2)
+  - `0xB0 25 <payload>`: live state (§10.2)
   - `0xB2 <2+n> <idx> <total> <n bytes>`: binds blob chunk (§10.2)
-  - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` (`ok` 1 = done)
+  - `0xB3 3 <op> <ok> <profile>`: ack for `0x28` / `0x29` / `0x2A` / `0x2B` (`ok` 1 = done); for `0x2B` the last byte
+    is the host byte of §10.3 instead of the profile
 
 Lizard binding wire format (16 bytes), matching `LizardBinding` in `lizard_map.h`:
 
@@ -555,25 +558,122 @@ and all settings. Other settings (mouse, chords, per-type button maps, Switch Pr
 backup file as plain `0x02` field values, not in the bond commands.
 
 
-### 10.2 Back-paddle binds (blob version 23)
+### 10.2 Back-paddle binds (blob version 2, status blob 24)
 
 Status blob byte `p[197]` = active profile (0..2). Old fields `5..8` and `40+et*9+k` (k < 4) now set a plain
 button action in the active profile; `g_type[].back` / blob `p[8..11]` always show the button code of the active
 profile (0 for a combo or macro paddle).
 
-Binds blob (`binds.h`, 1079 bytes, read/written in 96-byte chunks, 12 chunks): `[0xB1][version=1][payload length u16 LE]`,
+Binds blob (`binds.h`, 1079 bytes, read/written in 96-byte chunks, 12 chunks): `[0xB1][version][payload length u16 LE]`,
 payload, `u16 LE` sum of the payload bytes. Payload: `active`, then actions `[profile 3][type 4: xbox, switch, ds4, ds5][paddle 4: L4 R4 L5 R5]`
-each `{kind, arg, mask u32 LE}` (kind 0 button: `arg` = code 0..20; 1 combo: `mask` = `TB_*` bits; 2 macro: `arg` = macro 0..7),
-then 8 macros `{flags (0), count 0..16, 16 x {mask u32 LE, ms u16 LE}}`. Macros are shared by all profiles; a macro
-fires on the paddle press and plays once to the end. A bad blob is rejected whole (`0x29` acks `ok = 0`). Stored in
-`binds.bin`; `cfg.bin` is unchanged.
+each `{kind, arg, mask u32 LE}`, then 8 macros `{flags (0), count 0..16, 16 x {mask u32 LE, ms u16 LE}}`.
+Macros are shared by all profiles; a macro fires on the paddle press and plays once to the end. A bad blob is
+rejected whole (`0x29` acks `ok = 0`). Stored in `binds.bin`; `cfg.bin` is unchanged.
 
-Live state `0xB0` payload (24 bytes): `[0..3]` raw buttons u32 LE (before binds), `[4..7]` buttons after binds
+Action kinds:
+
+| kind | name | `arg` | `mask` |
+|---|---|---|---|
+| 0 | button | button code 0..20 | 0 |
+| 1 | combo | 0 | `TB_*` bits pressed together |
+| 2 | macro | macro 0..7 | 0 |
+| 3 | key (version 2) | HID keyboard usage `0x04..0xE7` | modifier byte, bits 8..31 must be 0 |
+| 4 | mouse (version 2) | mouse code 1..9 (below) | 0 |
+
+Modifier byte of a key action = the HID keyboard modifier byte: `0x01` left Ctrl, `0x02` left Shift, `0x04` left Alt,
+`0x08` left Win, `0x10` right Ctrl, `0x20` right Shift, `0x40` right Alt, `0x80` right Win. The key (and its
+modifiers) is held while the paddle is held. `arg` is a usage from the HID "Keyboard/Keypad" page (`0x04` = A,
+`0x1E` = 1, `0x28` = Enter, `0x2C` = Space, `0x3A` = F1, `0x4F` = Right arrow, `0xE1` = Left Shift as a key, ...);
+`0x00..0x03` (rollover/error codes) are rejected.
+
+Mouse codes of a mouse action:
+
+| code | action |
+|---|---|
+| 1 | left button (held with the paddle) |
+| 2 | right button |
+| 3 | middle button |
+| 4 | back button (button 4) |
+| 5 | forward button (button 5) |
+| 6 | wheel up, one notch per press |
+| 7 | wheel down, one notch per press |
+| 8 | wheel up, one notch per press, repeated every 100 ms while held |
+| 9 | wheel down, repeated every 100 ms while held |
+
+Version 2 has exactly the layout of version 1 (same length, same checksum rule); it only allows kinds 3 and 4. A
+version 1 blob is still accepted (and rejected whole if it contains kind 3 or 4); the firmware always writes and
+sends version 2. A page that edits the blob must keep the version byte it read, or write 2 when it uses kinds 3/4.
+Key and mouse actions only act on a PC host in the modes listed in §10.3; in every other mode the paddle simply
+does nothing. Macro steps stay gamepad-only (no key steps).
+
+Live state `0xB0` payload (25 bytes since status blob version 24; a parser that reads the length byte ignores
+what it does not know): `[0..3]` raw buttons u32 LE (before binds), `[4..7]` buttons after binds
 (what the emulation modes see), `[8]` LT, `[9]` RT (0..255), `[10..17]` left X, left Y, right X, right Y (s16 LE),
 `[18]` active profile, `[19]` slot, `[20]` emulated type (0xFF = Steam/Lizard), `[21]` link up (1/0),
-`[22]` battery % (0 = no reading), `[23]` charge state (`EChargeState`: 2 charging, 4 charge complete, anything else discharging).
+`[22]` battery % (0 = no reading), `[23]` charge state (`EChargeState`: 2 charging, 4 charge complete, anything else discharging),
+`[24]` host byte (§10.3).
 
 Profile switch on the pad: all four paddles + RB = next, + LB = previous (cyclic, emulated modes only), N short buzzes = profile N.
+
+
+### 10.3 Keyboard and mouse on a PC host
+
+Goal: on a PC the puck shows the gamepad **and** a keyboard **and** a mouse as separate devices (Windows Device
+Manager: the pad, "HID Keyboard Device", "HID-compliant mouse"), and a back paddle can be a key or a mouse
+action (§10.2). On a console nothing changes: it must see the descriptor it always saw.
+
+Modes with keyboard / mouse: `MODE_PS5` (DualSense with panel) and `MODE_HIDGYRO` (DS4 + gyro). Everything else
+is untouched: the clean PlayStation modes, PS3, PS5 console via auth adapter, Switch, Xbox 360, Original Xbox
+(console personalities, or deliberately single-interface), DInput / SInput (no paddle actions at all) and
+Steam / Lizard (Steam does its own keyboard and mouse).
+
+- **Mouse** = the existing wake-mouse interface (boot mouse, 5 buttons + wheel), present in both modes already, so
+  the descriptor does not change. Mouse actions are sent on it only while the host is a PC.
+- **Keyboard** = one more HID interface (non-boot keyboard descriptor, 6 keys + modifiers), placed after the pad
+  interfaces and before WebUSB. HID instance numbers follow descriptor order, so the keyboard takes the pool object
+  right after the mounted pads and that object gets its pad role back on the next re-enumeration. It is present
+  only while the host is a PC and fewer than 4 pads are mounted. The USB serial carries a `k` suffix then, so hosts
+  do not reuse a cached configuration. 3 pads + wake mouse + keyboard + WebUSB use 6 IN endpoints, as many as the
+  existing 4 pads + wake mouse + WebUSB; a 4th pad plus the keyboard would need 7, the nRF52840 maximum.
+- The puck starts **without** the keyboard unless the host was a PC last time. When the host turns out to be a PC
+  (or the setting forces it), the device re-enumerates once (detach / attach, no reboot, RF links stay up) after the
+  result has held for 1.5 s; when it turns out to be a console it re-enumerates back without it.
+
+Detection (`host_detect.cpp`; nothing here is certain, so every result carries its reason):
+
+| signal | result | reason code |
+|---|---|---|
+| host fetches the MS OS 2.0 descriptor (vendor request 2, `wIndex` 7) | PC (Windows) | 1 |
+| host fetches the WebUSB landing page (vendor request 1) or connects the panel (class request `0x22`, `wValue` ≠ 0) | PC (a browser, any OS) | 2 |
+| pad identity feature reports read (DualSense `0x05 0x09 0x20`, DS4 `0x02 0x12 0x81 0xA3`) and 5 s later no auth report | PC (Linux / macOS / SDL), weak | 3 |
+| feature report `0xF0..0xF3` GET or SET on the pad interface (Sony auth) | console (PS4 / PS5) | 4 |
+| setting forced by hand | as set | 5 |
+| nothing new yet, result of the previous session (stored in `host.bin`) | as stored | 6 |
+| nothing seen, nothing stored | unknown (= no keyboard, no mouse actions) | 0 |
+
+A strong signal (1, 2, 4) beats a weak one; between two strong ones the latest wins. The Switch modes
+raise the Windows / browser signals too (shown, not acted on); a Switch console gives no signal and stays
+"unknown". The Xbox modes report nothing at all. Where it can be wrong: a PC that never asks for the MS OS descriptor again (Windows caches it) and
+never probes the pad shows "unknown" until a probe or the panel opens (the remembered result covers the next
+boots); a console that does not run the Sony auth in these modes looks like "PC" after 5 s of probes. The manual
+setting fixes both.
+
+Manual setting (`0` auto, `1` always PC, `2` always console), saved with the last auto result in `host.bin`
+(`[0xB7][setting][detected][setting ^ detected ^ 0xA5]`, 4 bytes; a bad file = auto). Set it with WebUSB `0x2B`
+or the serial console `HOST A|P|C` (`HOST` alone prints the state; the console exists on the debug-CDC boot, then
+restart into the mode: the setting is saved).
+
+Host byte (live state `0xB0` payload `[24]`, and the last byte of the `0xB3` ack for `0x2B`):
+
+```text
+bits 0-1  detected / effective host: 0 unknown, 1 PC, 2 console
+bits 2-3  manual setting: 0 auto, 1 PC, 2 console
+bits 4-7  reason code (table above)
+```
+
+Serial console (CDC): `BA <p> <et> <i> K<usage hex>[:<mods hex>]` (e.g. `BA 1 3 0 K06:03` = Ctrl+Shift+C),
+`BA <p> <et> <i> Mo<name>` with `L R M` buttons, `B` back, `F` forward, `U` / `D` wheel per press, `U+` / `D+`
+wheel repeating while held; `BL` lists them as `K06:03` / `MoU+`; `HOST [A|P|C]`.
 
 ## 11. Timing notes
 
