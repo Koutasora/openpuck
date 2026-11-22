@@ -1,6 +1,7 @@
 #include "webusb_config.h"
 #include "board_config.h"
 #include "config.h"
+#include "pressure.h"
 #include "bonds.h"
 #include "rf_link.h"
 #include "radio.h"
@@ -132,7 +133,9 @@ static bool boardCommand(uint8_t op)
 //                [v25: commands 0x2D..0x31 = melodies (sounds.h)]
 //                [v26: chord bytes may be 0xFE = None (the combination does nothing)]
 //                [v27: sounds blob version 2, 4 voices per melody (sounds.h)]
-#define WB_PAYLEN 196
+//                [v28: p[198..203] analog pressure {on, src, target} for PS3 then Original Xbox (pressure.h);
+//                 fields 88..90 PS3, 91..93 Original Xbox]
+#define WB_PAYLEN 202
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
 // panel / stale mappings). The Makefile sets -DCFG_TUD_VENDOR_TX_BUFSIZE=256; guard it here so a build without
@@ -159,7 +162,9 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (27 = sounds blob v2, 4 voices per melody (sounds.h): the panel MUST see >=27 before writing a v2 blob,
+	// (28 = +analog pressure for the PS3 / Original Xbox modes (fields 88..93, blob p[198..203]): the panel MUST
+	// see >=28 before writing those fields, older firmware ignores them;
+	// 27 = sounds blob v2, 4 voices per melody (sounds.h): the panel MUST see >=27 before writing a v2 blob,
 	// older firmware rejects it;
 	// 26 = back4 chord bytes (p[25..27], p[182..185]) may be 0xFE = None (CHORD_NONE): the panel offers it
 	// only from 26, older firmware would reject the write;
@@ -191,7 +196,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 27;
+	p[2] = 28;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -378,6 +383,12 @@ static void webusbSendBlob()
 	p[196] = 0x52;
 	// v23: active back-paddle profile
 	p[197] = g_binds.active;
+	// v28: analog pressure, PS3 then Original Xbox
+	for (int m = 0; m < PRESS_MODES; m++) {
+		p[198 + m * 3] = g_pressCfg[m].on;
+		p[199 + m * 3] = g_pressCfg[m].src;
+		p[200 + m * 3] = g_pressCfg[m].target;
+	}
 	// CRITICAL: usb_web.write() SPINS (`while (remain && _connected) yield();`) until the IN FIFO drains or the
 	// panel disconnects. If the panel holds the WebUSB interface open but stops reading its IN endpoint -- a
 	// backgrounded tab, or the host briefly not servicing transferIn under load -- the FIFO never empties and
@@ -1534,6 +1545,27 @@ void webusbPoll()
 						g_padStickCfg[et][pad] = v;
 						if (et == g_etype)
 							applyActiveType();
+					}
+					break;
+				}
+
+				// 88..93: analog pressure (pressure.h), field = 88 + mode*3 + k, mode 0 = PS3, 1 = Original
+				// Xbox; k 0 on, 1 src (LT/RT), 2 target. Protocol v28.
+				case 88:
+				case 89:
+				case 90:
+				case 91:
+				case 92:
+				case 93: {
+					uint8_t m = (uint8_t)((f - 88) / 3),
+						k = (uint8_t)((f - 88) % 3);
+					if (pressureFieldValid(m, k, v)) {
+						uint8_t *dst[3] = {
+							&g_pressCfg[m].on,
+							&g_pressCfg[m].src,
+							&g_pressCfg[m].target
+						};
+						*dst[k] = v;
 					}
 					break;
 				}

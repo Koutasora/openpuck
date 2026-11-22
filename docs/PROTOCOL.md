@@ -824,6 +824,29 @@ the length the HID descriptor gives (63 bytes on OpenPuck).
 
 The back4 + B/X/Y chords (fields `17..19`, blob `p[25..27]`) and back4 + D-pad chords (fields `34..37`, blob `p[182..185]`) take a mode number or `0xFE` = None: the combination does nothing. From status blob version 26; older firmware rejects `0xFE`. back4 + A (always Steam) and back4 + LB/RB (profiles) are not configurable.
 
+### 10.7 Analog pressure in the PS3 and Original Xbox modes (status blob 28)
+
+In the PS3 (DS3) and Original Xbox modes a trigger can set the pressure byte of one button (a game such as MGS2 reads a light press of Square as aiming and a full press as firing). Set separately for each of the two modes (not for the DS4 or Xbox 360 families they share a button config with); off by default.
+
+Fields (`0x02 <field> <value>`): `88 + mode*3 + k`, mode 0 = PS3, mode 1 = Original Xbox:
+
+| k | field PS3 / Xbox | value |
+|---|---|---|
+| 0 | `88` / `91` | on: 0 or 1 |
+| 1 | `89` / `92` | source trigger: 0 = LT, 1 = RT |
+| 2 | `90` / `93` | target button (the output button of the mode; the A/B swap does not apply) |
+
+Targets, PS3: 0 Square, 1 Triangle, 2 Circle, 3 Cross, 4 L1, 5 R1, 6 D-pad Up, 7 Right, 8 Down, 9 Left. Original Xbox: 0 A, 1 B, 2 X, 3 Y, 4 White, 5 Black. A value out of range is ignored. The field persists and is acked with a status blob. The status blob carries the six bytes at `p[198..203]` (`{on, src, target}` for PS3, then for Original Xbox; payload length 202), and the panel MUST see version `>= 28` and that length before showing or writing them; older firmware ignores the fields.
+
+Behaviour while on:
+
+- Pressure of the target = max(`0xFF` if the physical button (after back-paddle / QAM remap) is held, the analog trigger value `trigU8`). The click bit of the trigger (`TB_L2` / `TB_R2`) is not a source: it does not force `0xFF`.
+- PS3: the digital bit of the target comes on from pressure `10` (`PRESS_DIGITAL_MIN`, low so a light press already holds the button, above the noise of the trigger at rest). The Original Xbox has no digital bits for A/B/X/Y/White/Black, only the pressure bytes.
+- The source trigger stops being L2/R2 (PS3: bit and pressure byte `0`; Original Xbox: `left_trigger` / `right_trigger` `0`). A back paddle or QAM remapped to L2/R2 (LT/RT) still works, and the other trigger is unchanged.
+- While off the reports are byte for byte as before. The existing rule of the Original Xbox mode that a trigger click sets `LT`/`RT` to `0xFF` is unchanged.
+
+Stored at the end of `cfg.bin` (after the extension bytes) as `{on, src, target}` per mode; an older, shorter file or a value out of range reads as off, and every other setting is kept.
+
 ## 11. Timing notes
 
 - Default poll interval: `4000` microseconds (250 Hz, matches SC2 report rate)

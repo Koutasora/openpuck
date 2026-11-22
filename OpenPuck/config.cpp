@@ -1,6 +1,7 @@
 #include "config.h"
 #include "rf_link.h" // g_rxWin (poll RX window persisted here)
 #include "haptics.h" // g_hapticBlockOn, g_hapticBlockMs
+#include "pressure.h" // g_pressCfg (analog pressure setting persisted here)
 #include <Adafruit_LittleFS.h>
 #include <InternalFileSystem.h>
 #include <string.h>
@@ -112,6 +113,9 @@ struct Cfg {
 	// pre-tail file) -> compiled default (on)
 	uint8_t suspendOff;
 	uint8_t ext[CFG_EXT_STORAGE_BYTES];
+	// analog pressure for PS3 / Original Xbox ({on, src, target} per PRESS_*), after ext so an older file's
+	// ext bytes keep their offset; 0xFF (short older file) or out of range -> off
+	uint8_t pressure[PRESS_MODES][3];
 }; // rsvd0 = ex-padSmooth, now the one-shot debug-CDC arm
 
 // Shortest cfg.bin we still accept: the layout as of CFG_MAGIC 0xCF, i.e. everything before the appended tail.
@@ -155,8 +159,14 @@ void saveCfg()
 		  {},
 		  g_rumbleStyle,
 		  g_suspendOff,
+		  {},
 		  {} };
 	memcpy(c.ext, g_cfgExt, sizeof c.ext);
+	for (int m = 0; m < PRESS_MODES; m++) {
+		c.pressure[m][0] = g_pressCfg[m].on;
+		c.pressure[m][1] = g_pressCfg[m].src;
+		c.pressure[m][2] = g_pressCfg[m].target;
+	}
 	for (int i = 0; i < ET_COUNT; i++) {
 		c.type[i] = g_type[i];
 		c.padStick[i][0] = g_padStickCfg[i][0];
@@ -235,6 +245,10 @@ void loadCfg()
 					if (c.padStick[i][k] <= PS_MAX)
 						g_padStickCfg[i][k] =
 							c.padStick[i][k];
+			// analog pressure (PS3 / Original Xbox): a file predating it reads 0xFF here -> off
+			for (int m = 0; m < PRESS_MODES; m++)
+				pressureCfgLoad(&g_pressCfg[m], (uint8_t)m,
+						c.pressure[m]);
 			// Missing extension bytes alone do not force a config rewrite.
 			if (got < (int)offsetof(struct Cfg, ext))
 				consume = true;

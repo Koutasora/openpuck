@@ -123,6 +123,8 @@ Xbox mode deliberately has no WebUSB interface, including for firmware updates. 
 
 If you're running Linux and your browser still shows "disconnected" after selecting the OpenPuck in the device selector, it's probably a permissions issue. Check [this document](./docs/WEBUSB_LINUX.md) for more details.
 
+In PS3 and Original Xbox mode a trigger can set the analog pressure of one button instead of acting as L2/R2 (LT/RT), e.g. Square in MGS2: a light pull aims, a full pull fires. Off by default; set it per mode in the DS4 and Xbox tabs of the Button mapping card.
+
 You can copy configurations between OpenPucks using the export/import card in this webusb UI as well. This allows for some interesting [hotswapping capability](https://www.youtube.com/watch?v=6RnsXVlHAoM) where controllers can switch between pucks without needing to swap slots.
 
 # 3D Printed Cases

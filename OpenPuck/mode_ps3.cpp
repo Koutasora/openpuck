@@ -1,6 +1,7 @@
 #include "mode_ps3.h"
 #include "triton.h"
 #include "gamepad_util.h"
+#include "pressure.h"
 #include "config.h"
 #include "haptics.h"
 #include "bonds.h"
@@ -249,9 +250,14 @@ static void ds3Imu(uint8_t *out, int16_t v)
 // Offsets are the genuine report's rd[] minus one (rd[0] is the prepended id).
 static void ds3Build(uint8_t slot, uint8_t out[48])
 {
-	uint32_t b = psButtonsFromSteam(g_in[slot].buttons);
-	bool l2 = (g_in[slot].lt > SW_TRIG_ON) || (b & TB_L2);
-	bool r2 = (g_in[slot].rt > SW_TRIG_ON) || (b & TB_R2);
+	// A trigger set as the pressure source is taken out of L2/R2 before the back-paddle remap, so a paddle
+	// remapped to L2/R2 still works.
+	uint32_t raw = g_in[slot].buttons;
+	uint8_t lt = g_in[slot].lt, rt = g_in[slot].rt;
+	const uint8_t pv = pressureTake(&g_pressCfg[PRESS_PS3], &raw, &lt, &rt);
+	uint32_t b = psButtonsFromSteam(raw);
+	bool l2 = (lt > SW_TRIG_ON) || (b & TB_L2);
+	bool r2 = (rt > SW_TRIG_ON) || (b & TB_R2);
 	memset(out, 0, 48);
 
 	// out[0] reserved (rd[1]); if it were 0xFF the kernel/console would drop the report -- keep 0.
@@ -296,14 +302,15 @@ static void ds3Build(uint8_t slot, uint8_t out[48])
 	out[14] = (b & TB_DRT) ? 0xFF : 0;
 	out[15] = (b & TB_DDN) ? 0xFF : 0;
 	out[16] = (b & TB_DLF) ? 0xFF : 0;
-	out[17] = g_in[slot].lt;
-	out[18] = g_in[slot].rt;
+	out[17] = lt;
+	out[18] = rt;
 	out[19] = (b & TB_LB) ? 0xFF : 0;
 	out[20] = (b & TB_RB) ? 0xFF : 0;
 	out[21] = tri ? 0xFF : 0;
 	out[22] = cir ? 0xFF : 0;
 	out[23] = crs ? 0xFF : 0;
 	out[24] = sqr ? 0xFF : 0;
+	pressurePs3Apply(&g_pressCfg[PRESS_PS3], pv, out);
 
 	// out[28..30] (rd[29..31]): genuine DS3 link/power state.
 	// 0x02 = plugged, 0x05 = full power, 0x10 = wired + rumble capable.
