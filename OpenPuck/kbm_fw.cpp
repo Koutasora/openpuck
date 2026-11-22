@@ -72,6 +72,15 @@ void kbmFwInit()
 	}
 }
 
+// These modes are not accepted by a console without an adapter, so a host
+// that has not identified itself yet is treated as a PC; console auth still
+// switches the keyboard off.
+static bool hostIsPc()
+{
+	const uint8_t k = hostKind();
+	return k == HOST_PC || k == HOST_UNKNOWN;
+}
+
 // the keyboard interface could not be added to the descriptor
 static bool s_failedKbd;
 
@@ -79,7 +88,7 @@ static bool s_failedKbd;
 static bool wantKeyboard(uint8_t k)
 {
 	return !s_failedKbd && modeHasKbm(g_usbMode) && wakeHidPresent() &&
-	       hostKind() == HOST_PC && g_active && g_active->kbdCarrier(k);
+	       hostIsPc() && g_active && g_active->kbdCarrier(k);
 }
 
 // decision of the enumeration in progress (host state can move under us on the usbd task)
@@ -152,7 +161,7 @@ static void merge(hid_keyboard_report_t &kb, uint8_t &buttons)
 
 static void sendState()
 {
-	const bool allowed = modeHasKbm(g_usbMode) && hostKind() == HOST_PC;
+	const bool allowed = modeHasKbm(g_usbMode) && hostIsPc();
 	hid_keyboard_report_t kb;
 	uint8_t buttons;
 	if (allowed) {

@@ -251,7 +251,10 @@ uint8_t Ps5Controller::maxSlots() const
 void Ps5Controller::usbIdentity()
 {
 	USBDevice.setID(0x054C, 0x0CE6);
-	USBDevice.setVersion(0x0200);
+	// bcdUSB 2.10 makes Windows read the BOS / MS OS 2.0 descriptor, which binds
+	// WinUSB to the panel interface; at 2.00 Windows never asks and the panel
+	// cannot connect. Consoles do not accept this mode without an adapter.
+	USBDevice.setVersion(modeIsCleanPS(g_usbMode) ? 0x0200 : 0x0210);
 	USBDevice.setDeviceVersion(0x0110);
 	USBDevice.setManufacturerDescriptor("Sony Interactive Entertainment");
 	USBDevice.setProductDescriptor("DualSense Wireless Controller");

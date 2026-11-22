@@ -213,7 +213,10 @@ uint8_t HidGyroController::maxSlots() const
 void HidGyroController::usbIdentity()
 {
 	USBDevice.setID(0x054C, 0x05C4);
-	USBDevice.setVersion(0x0200);
+	// bcdUSB 2.10 makes Windows read the BOS / MS OS 2.0 descriptor, which binds
+	// WinUSB to the panel interface; at 2.00 Windows never asks and the panel
+	// cannot connect. Consoles do not accept this mode without an adapter.
+	USBDevice.setVersion(modeIsCleanPS(g_usbMode) ? 0x0200 : 0x0210);
 	USBDevice.setDeviceVersion(0x0120);
 	USBDevice.setManufacturerDescriptor("Sony Computer Entertainment");
 	USBDevice.setProductDescriptor("Wireless Controller");
