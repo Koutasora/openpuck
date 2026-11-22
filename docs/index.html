@@ -60,6 +60,8 @@
   .chord-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 24px}
   .chord-cols .row{margin:10px 0}
   .chord-cols .row label{flex:0 0 108px}
+  #sndEvents select{flex:0 1 320px;max-width:320px}
+  .chord-cols .chordDesc{margin:-6px 0 10px 122px}
   .colhead{color:var(--mut);font-size:12px;font-weight:600;margin:2px 0 0}
   .note{color:var(--mut);font-size:12px;margin-top:10px}
   #log{font:12px ui-monospace,Menlo,monospace;color:var(--mut);white-space:pre-wrap;margin-top:8px;max-height:140px;overflow:auto}
@@ -213,11 +215,10 @@
   <button id="debugCdc" title="Reboot ONCE with the CDC serial console enabled (WebUSB goes away for that boot); auto-reverts on the next boot">Debug CDC</button>
   <button id="dfuSerial" title="Reboot into serial DFU (adafruit-nrfutil), then replug">Serial DFU</button>
   <button id="dfuUf2" title="Reboot into the UF2 mass-storage bootloader; drop a .uf2 on the drive">UF2 DFU</button>
-  <button id="factoryErase" class="danger" title="Wipe ALL bonds + settings and reboot to defaults. You must re-pair. Cannot be undone.">Factory erase</button>
   <button id="wipeBoard" class="danger debugonly" title="ERASE THE ENTIRE BOARD: firmware + all settings + bonds. The board reboots app-less and mounts as the UF2 drive on every boot until you re-flash OpenPuck. Debug only. Cannot be undone.">Wipe board</button>
 </div>
 <div class="wrap">
-  <p class="sub">First connect uses the Chrome/Edge device picker; reconnects are automatic. If the picker is empty, quit any app holding the device or replug.</p>
+  <p class="sub" id="connNote">First connect uses the Chrome/Edge device picker; reconnects are automatic. If the picker is empty, quit any app holding the device or replug.</p>
 
   <!-- holds the clone section while no OpenPuck is connected (the Backup & clone card is hidden then) -->
   <div class="card" id="cloneHome"><h2>Clone pairings from an official puck</h2></div>
@@ -260,13 +261,6 @@
         <div class="stat"><div class="k">Status protocol</div><div class="v" id="stVersionProto">—</div></div>
         <div class="stat"><div class="k">Panel update</div><div class="v" id="stVersionUpdate">—</div></div>
       </div>
-      <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
-        <button id="verCopy" title="Copy the firmware build and status protocol to the clipboard">Copy</button>
-        <span class="note" id="verMsg" style="margin:0"></span>
-        <button id="diagCap" title="Collects the live state and the firmware counters every 100 ms for 3 s: hold a paddle or press the buttons while it runs">Capture 3 s and copy</button>
-        <span class="note" id="diagMsg" style="margin:0"></span>
-      </div>
-      <textarea id="diagOut" class="hide" readonly rows="8" style="width:100%;margin-top:8px;background:#0e1017;color:var(--fg);border:1px solid #232a3a;border-radius:3px;font:12px ui-monospace,Menlo,monospace"></textarea>
       <p class="note">This section reflects the connected puck. Reconnect after flashing or changing modes to verify what is currently running.</p>
     </div>
 
@@ -635,8 +629,20 @@
       <p class="note">Dump streams the whole ring (oldest→newest) and then keeps live-updating until you press Stop. <code>cmd</code> is the command/report byte, then the raw bytes.</p>
       <pre id="capOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin-top:10px;max-height:260px;overflow:auto;white-space:pre-wrap"></pre>
     </div>
+    <div class="card wide" data-sub="status/debug">
+      <h2>Factory erase</h2>
+      <p class="note" style="margin-top:0">Wipes the controller pairing and every saved setting, then reboots the puck to factory defaults. You must re-pair the controller. It cannot be undone; export a backup first (Pairing &amp; backup). The firmware stays.</p>
+      <div class="row" style="margin:0"><button id="factoryErase" class="danger" title="Wipe ALL bonds + settings and reboot to defaults. You must re-pair. Cannot be undone.">Factory erase</button></div>
+    </div>
     <div class="card wide" id="logCard" data-sub="status/log">
       <h2>Page log</h2>
+      <div class="row" style="margin:0 0 12px;flex-wrap:wrap;gap:8px">
+        <button id="verCopy" title="Copy the firmware build and status protocol to the clipboard">Copy version</button>
+        <span class="note" id="verMsg" style="margin:0"></span>
+        <button id="diagCap" title="Collects the live state and the firmware counters every 100 ms for 3 s: hold a paddle or press the buttons while it runs">Capture 3 s and copy</button>
+        <span class="note" id="diagMsg" style="margin:0"></span>
+      </div>
+      <textarea id="diagOut" class="hide" readonly rows="8" style="width:100%;margin-top:8px;background:#0e1017;color:var(--fg);border:1px solid #232a3a;border-radius:3px;font:12px ui-monospace,Menlo,monospace"></textarea>
       <div class="row" style="margin:0 0 8px;flex-wrap:wrap">
         <span class="note" style="flex:1;margin:0">What the page itself did and saw, newest first.</span>
         <button id="logCopy">Copy</button>
@@ -1016,13 +1022,23 @@ function setTab(et){
 })();
 for(const sel of document.querySelectorAll("select.chord")){
   MODE_NAMES.forEach((n,i)=>{ if(i===7||i===8) return;
-    const o=document.createElement("option"); o.value=i; o.textContent=modeFull(i); sel.appendChild(o); });
+    const o=document.createElement("option"); o.value=i; o.textContent=MODE_NAMES[i]||("mode "+i); o.title=modeDesc(i); sel.appendChild(o); });
 }
 // D-pad chords offer EVERY mode, including the game/clean ones the face selects skip: those modes drop WebUSB,
 // so a chord is the only way into them, and back4+A still gets you back to Steam.
 for(const sel of document.querySelectorAll("select.chordD")){
   MODE_NAMES.forEach((n,i)=>{
-    const o=document.createElement("option"); o.value=i; o.textContent=modeFull(i); sel.appendChild(o); });
+    const o=document.createElement("option"); o.value=i; o.textContent=MODE_NAMES[i]||("mode "+i); o.title=modeDesc(i); sel.appendChild(o); });
+}
+// one-line description (host · panel · keyboard/mouse) under every chord list, for the selected mode
+function chordDescSync(sel){
+  const row=sel.closest(".row"); let d=row.nextElementSibling;
+  if(!d||!d.classList.contains("chordDesc")){ d=document.createElement("div"); d.className="note chordDesc"; row.after(d); }
+  const v=+sel.value, t=v===CHORD_NONE?"Does nothing":modeDesc(v);
+  d.textContent=t; sel.title=t;
+}
+for(const sel of document.querySelectorAll("select.chord, select.chordD")){
+  chordDescSync(sel); sel.addEventListener("change",()=>chordDescSync(sel));
 }
 { const sel=document.getElementById("swGyroMap");
   for(const [lbl,v] of [["Corrected (default)",0],["Legacy (untrimmed)",1]]){
@@ -1492,7 +1508,7 @@ async function openDevice(d){
     $("#connState").textContent="connected"; $("#connState").className="pill up";
     $("#connState").title = dev.serialNumber ? (kind+" serial "+dev.serialNumber) : "";
     $("#connectBtn").textContent="Reconnect";
-    $("#panel").classList.remove("hide");
+    $("#panel").classList.remove("hide"); $("#connNote").classList.add("hide");
     applyDeviceProfile(); // show the controller UI + hide puck-only cards (or vice-versa)
     cloneRender();
     log(`connected — ${kind} ${dev.serialNumber||"?"} (VID ${dev.vendorId.toString(16)} PID ${dev.productId.toString(16)} iface ${ifNum})`);
@@ -1549,7 +1565,7 @@ function onGone(){
   cloneRender();
   checkUpdateNotice(); // no device = no notice
   $("#connState").textContent="reconnecting…"; $("#connState").className="pill dn";
-  $("#panel").classList.add("hide");
+  $("#panel").classList.add("hide"); $("#connNote").classList.remove("hide");
   log("device disconnected (mode-switch / watchdog reboot) — auto-reconnecting when it returns");
   // The puck re-enumerates after a reboot; retry without the picker. The "connect" event also triggers this,
   // but poll a few times in case the event is missed.
@@ -1917,6 +1933,7 @@ function applyBlob(p){
   $("#dpadChords").classList.toggle("hide", !dpadCap);
   $("#dpadOld").classList.toggle("hide", dpadCap);
   if(dpadCap) for(const sel of document.querySelectorAll("select.chordD")){ if(document.activeElement!==sel) sel.value=chordD[+sel.dataset.i]; }
+  for(const sel of document.querySelectorAll("select.chord, select.chordD")) chordDescSync(sel);
   bindsOnBlob(p);
   soundsOnBlob(p);
   if(scReady) scUpdate();
@@ -1998,8 +2015,7 @@ function applyDeviceProfile(){
   // reconnect restores them without clobbering the debugonly/lizard inline visibility rules.
   document.body.classList.toggle("dongle", d);
   const paired=$("#pairedCard"); if(paired) paired.style.display = d ? "" : "none";
-  // top-bar buttons: factory-erase is a puck-only op (0x0A); the dongle keeps DFU + (debug) wipe-board
-  const fe=$("#factoryErase"); if(fe) fe.style.display = d ? "none" : "";
+  // factory-erase (0x0A) is puck-only: its card sits in the Debug tab, which the dongle does not have
   // the GitHub "Update from a release" list is puck firmware; a dongle flashes via the local-file drop card
   const rc=$("#relCard"); if(rc) rc.style.display = d ? "none" : "";
   const ua=$("#updAvail"); if(ua && d) ua.classList.add("hide");
@@ -4297,8 +4313,10 @@ function liveRender(){
   const L=live, et=(L.et<TYPE_DEFS.length)?L.et:-1;
   $("#lvRaw").textContent=maskNames(L.raw,-1,", ")||"—";
   $("#lvOut").textContent=maskNames(L.out,et,", ")||"—";
-  $("#lvLs").textContent=L.lx+", "+L.ly; $("#lvRs").textContent=L.rx+", "+L.ry;
-  $("#lvTr").textContent=L.lt+" / "+L.rt;
+  // percent of full range (sticks +-32767, triggers 0-255); the raw values stay in the tooltip
+  const pc=(v,m)=>Math.round(v/m*100)+"%";
+  const setPct=(id,a,b,m)=>{ const e=$(id); e.textContent=pc(a,m)+(id==="#lvTr"?" / ":", ")+pc(b,m); e.title="raw: "+a+(id==="#lvTr"?" / ":", ")+b; };
+  setPct("#lvLs",L.lx,L.ly,32767); setPct("#lvRs",L.rx,L.ry,32767); setPct("#lvTr",L.lt,L.rt,255);
   $("#lvProf").textContent=profName(L.profile)+(et>=0?" · "+TYPE_DEFS[et].name:" · Steam");
   $("#lvLink").textContent=(L.link?"up":"down")+" · slot "+(L.slot+1);
   $("#lvBatt").textContent=L.batt?(L.batt+"%"+(L.charge===2?" charging":L.charge===4?" charged":"")):"—";
