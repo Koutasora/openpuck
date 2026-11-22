@@ -1,5 +1,17 @@
 # OpenPuck
 
+> [!NOTE]
+> **This fork** ([Koutasora/openpuck](https://github.com/Koutasora/openpuck)) adds to the original firmware:
+> - back paddles with Button / Combo / Macro / Key / Mouse actions;
+> - 3 profiles, switched on the pad with back4 + LB / RB;
+> - keyboard and mouse on PC in PS5 and DS4-gyro modes, with PC / console detection;
+> - confirmation sounds and melodies played through the controller's haptics, with MIDI import;
+> - an extended configurator.
+>
+> Configurator: https://koutasora.github.io/openpuck/ - firmware builds: https://github.com/Koutasora/openpuck/releases
+>
+> Flashing the original firmware over this one removes these features. The saved assignments and sounds stay in the puck's flash (`binds.bin`, `sounds.bin`; the original firmware never reads or deletes them), but only this fork's firmware uses them. A factory-reset build wipes them.
+
 [![BuyMeACoffee](https://raw.githubusercontent.com/pachadotdev/buymeacoffee-badges/main/bmc-yellow.svg)](https://github.com/safijari/openpuck/discussions/211)
 
 OpenPuck is an opensource firmware for NRF52840 Pro Micro that copycats the Steam Controller 2 Puck and allows emulation of Xbox, Original Xbox, Switch, and PS3/4/5 controllers and also includes an independant lizard mode (which can work on UAC prompts/task manager/etc). The Switch, PS3, and Original Xbox modes have been verified to work on real consoles and Switch, PS4/5 modes have gyro (and touchpad where available) hooked in. Back 4 buttons are mappable for all emulated modes.
@@ -88,7 +100,7 @@ and Steam + L4 ls Ctrl + Alt + Delete.
 
 [![OpenPuck Installation](https://img.youtube.com/vi/1YyDq-KX3dc/0.jpg)](https://www.youtube.com/watch?v=1YyDq-KX3dc)
 
-The easiest way to install is to grab a uf2 file from the GitHub releases and drag and drop it onto the folder that the microcontroller mounts when in DFU mode. Fresh microcontrollers should already be in DFU mode and present like a flash drive. If they are not in DFU mode you'll need to short the RST and GND pints twice in quick succession. If you've already flashed openpuck you can update it straight from the [webusb configurator](https://safijari.github.io/openpuck/)'s **Firmware update** tab: pick a version from the built-in releases list (with an optional factory-reset variant), or drag and drop a `.uf2` — the firmware is sent to the puck over the same WebUSB connection, verified on-device, and applied automatically on a reboot. A failed or interrupted transfer leaves the running firmware untouched, and even a power cut during the apply just leaves the puck in its UF2 bootloader (drag-and-drop recovery) — it can't end up half-flashed. The `UF2 DFU` button still reboots into the mass-storage bootloader for manual drag-and-drop.
+The easiest way to install is to grab a uf2 file from the GitHub releases and drag and drop it onto the folder that the microcontroller mounts when in DFU mode. Fresh microcontrollers should already be in DFU mode and present like a flash drive. If they are not in DFU mode you'll need to short the RST and GND pints twice in quick succession. If you've already flashed openpuck you can update it straight from the [webusb configurator](https://koutasora.github.io/openpuck/)'s **Firmware update** tab: pick a version from the built-in releases list (with an optional factory-reset variant), or drag and drop a `.uf2` — the firmware is sent to the puck over the same WebUSB connection, verified on-device, and applied automatically on a reboot. A failed or interrupted transfer leaves the running firmware untouched, and even a power cut during the apply just leaves the puck in its UF2 bootloader (drag-and-drop recovery) — it can't end up half-flashed. The `UF2 DFU` button still reboots into the mass-storage bootloader for manual drag-and-drop.
 
 See [build instructions document](./docs/BUILD_AND_DEPLOY.md) for  details on how to flash the MCU during development.
 
@@ -100,7 +112,7 @@ If you want to use the second slot for OpenPuck, you'll need to first turn the c
 Switching slots requires turning the controller off (Steam + Y if steam is running, Steam + Y held for 2 seconds if Steam isn't running or if you're in a different mode, or just hold the Steam button for an eternity until the controller shuts off) and then you hold RB for slot 1 and LB for slot 2 while holding A and Steam to turn the controller back on.
 
 # Configuration
-A webusb based configuration UI is available [here](https://safijari.github.io/openpuck/). It allows Switching the mode manually and changing the back button mapping for other modes among other things. This will likely only work in Chrome and Edge and needs the pro micro to be connected via USB to the same computer for it to function. Note that it might not work in all modes on all machines but should always work in the Steam Controller mode (which you can revert to with back-4 + A). Note that in some modes the webusb connection might not work. If you're encountering that try going back to the Steam Controller mode and unplugging and replugging the dongle.
+A webusb based configuration UI is available [here](https://koutasora.github.io/openpuck/). It allows Switching the mode manually and changing the back button mapping for other modes among other things. This will likely only work in Chrome and Edge and needs the pro micro to be connected via USB to the same computer for it to function. Note that it might not work in all modes on all machines but should always work in the Steam Controller mode (which you can revert to with back-4 + A). Note that in some modes the webusb connection might not work. If you're encountering that try going back to the Steam Controller mode and unplugging and replugging the dongle.
 
 Xbox mode deliberately has no WebUSB interface, including for firmware updates. Hold **L4 + R4 + L5 + R5 + A** to return to Steam mode on a PC, configure or update there, then use **back-4 + X** to return to Xbox (unless X has been reassigned). The A recovery chord is fixed; the B/X/Y assignments are configurable. Pair controllers in Steam mode first. Xbox selects the first fresh RF input source and keeps it until disconnect; four stored bonds do not become four Xbox gamepads.
 

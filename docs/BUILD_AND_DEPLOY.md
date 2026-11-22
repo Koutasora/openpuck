@@ -276,7 +276,7 @@ In Xbox 360 mode, first return to Steam mode with **back-4 + A** on a PC; the
 Xbox USB layout has no configuration/update interface.
 
 A board already running OpenPuck (status protocol v15+) can be updated entirely from the
-[WebUSB configurator](https://safijari.github.io/openpuck/)'s **Firmware update** tab: drag-and-drop a
+[WebUSB configurator](https://koutasora.github.io/openpuck/)'s **Firmware update** tab: drag-and-drop a
 `.uf2` (or click to browse), or pick a version from the built-in **releases list** — each release offers the
 standard build or, via its checkbox, the `-factory-reset` build (wipes settings + pairing once on first
 boot). Each entry shows the release's GitHub notes under a collapsible **release notes** toggle and, when
@@ -291,7 +291,7 @@ reboot copies staged→app from RAM (~5 s dark) and comes back up on the new fir
 > **Release downloads / the `firmware` branch:** GitHub's release-asset CDN sends no CORS headers, so the
 > browser cannot fetch release assets directly. The release workflow therefore mirrors every OpenPuck `.uf2`
 > onto the orphan **`firmware`** branch, and the panel downloads from
-> `raw.githubusercontent.com/safijari/openpuck/firmware/<asset>` (which is CORS-clean). If a release is
+> `raw.githubusercontent.com/Koutasora/openpuck/firmware/<asset>` (which is CORS-clean). If a release is
 > missing from the mirror, the panel falls back to opening the asset in a new tab for manual drag-and-drop.
 
 > **Release notes and the pre-release flag are owned by GitHub, not the workflow:** the release job uploads
