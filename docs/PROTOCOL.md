@@ -627,6 +627,28 @@ is untouched: the clean PlayStation modes, PS3, PS5 console via auth adapter, Sw
 (console personalities, or deliberately single-interface), DInput / SInput (no paddle actions at all) and
 Steam / Lizard (Steam does its own keyboard and mouse).
 
+**Xbox 360 mode (`MODE_XBOX`) was examined for a PC keyboard and deliberately left out.** Findings:
+
+- The personality is static and exact: `xi_open` accepts only the four XInput / XSM3 interfaces byte for byte, the
+  descriptor builder reserves IN/OUT endpoints 1..6, and `usbIdentity()` sets the *device* class to `0xFF/0xFF/0xFF`
+  like a real pad. Only IN endpoint 7 (`0x87`) is left, so at most **one** extra HID interface fits: keyboard and
+  mouse would have to share it (two report IDs, which Windows still shows as two devices).
+- With device class `0xFF` Windows binds the XInput driver to the whole device and does not load the composite
+  parent driver (`usbccgp`), so an added HID interface would most likely never be enumerated. Making it appear
+  means changing the device class (0 or EF/02/01 with IAD), i.e. a different descriptor than a real Xbox 360 pad,
+  which the console's XSM3 check and the PC XInput driver binding both depend on. This cannot be verified without
+  a Windows PC and an Xbox 360 console, and the requirement is that the console is not affected.
+- The mode has no WebUSB / BOS, so Windows' MS OS 2.0 request never arrives; `GET_DESCRIPTOR(string 0xEE)` does
+  arrive once per machine and is then cached by Windows, so it cannot drive auto detection. Console side the
+  only signal would be the XSM3 requests (`0x81 0x82 0x83 0x84 0x86 0x87`). Linux (`xpad`) and macOS give nothing.
+- The Xbox mode has no config channel (no WebUSB, no CDC), so the manual setting could only be made in another
+  mode (`HOST P` in the debug console) before switching.
+
+Alternative for push-to-talk and similar on a PC: use `MODE_PS5` or `MODE_HIDGYRO` (keyboard / mouse work there),
+or a Steam / Lizard binding. If Xbox 360 + keyboard is still wanted, the experiment would be an opt-in, manual-only
+setting (never auto, never remembered) that switches the device class to composite and adds one combined HID
+interface on endpoint `0x87`, tested first on a PC with the real XInput driver and only then offered.
+
 - **Mouse** = the existing wake-mouse interface (boot mouse, 5 buttons + wheel), present in both modes already, so
   the descriptor does not change. Mouse actions are sent on it only while the host is a PC.
 - **Keyboard** = one more HID interface (non-boot keyboard descriptor, 6 keys + modifiers), placed after the pad
