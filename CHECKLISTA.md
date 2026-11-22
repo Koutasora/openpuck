@@ -7,10 +7,12 @@
 - [ ] Wgrany .uf2 z LAB działa na głównym PC jak firmware autora
 
 ## Etap 02: przypisania i profile
-- [ ] Firmware wysyła do strony stan przycisków na żywo (pod podgląd w etapie 04)
-- [ ] Tylny przycisk: przycisk pada, kombinacja, makro
-- [ ] 3 profile, przełączanie back-4 + LB/RB, wibracja
-- [ ] Stary zapis ustawień dalej się wczytuje
+- [x] Logika akcji i makr w osobnym module `binds`, test na LAB (`sh tests/binds/run.sh`) przechodzi
+- [x] Build wpisuje wersję i commit (`gen_version.sh` w `tools/build-lab.sh`)
+- [ ] Firmware wysyła do strony stan przycisków na żywo (pod podgląd w etapie 04) — polecenie WebUSB `0x27` gotowe i zbudowane, test na sprzęcie czeka
+- [ ] Tylny przycisk: przycisk pada, kombinacja, makro — gotowe i zbudowane (konsola `BA`/`BM`), test na sprzęcie czeka (PS5, Xbox)
+- [ ] 3 profile, przełączanie back-4 + LB/RB, wibracja — gotowe i zbudowane, test na sprzęcie czeka
+- [ ] Stary zapis ustawień dalej się wczytuje — `cfg.bin` bez zmian, przypisania w `binds.bin`; test na sprzęcie czeka
 
 ## Etap 03: klawiatura i mysz na PC
 - [ ] Tryb PS5 (z panelem): klawisz i mysz z tylnych przycisków
@@ -22,6 +24,7 @@
 - [ ] Rysunek Steam Controllera z nazwami wg typu pada
 - [ ] Tabela przypisań i edytor makr
 - [ ] Podgląd na żywo: co wciskasz na padzie (nowy kanał WebUSB z firmware)
+- [ ] Procent baterii i stan ładowania pada
 - [ ] Podgląd na żywo: co dostaje komputer (Gamepad API + klawiatura/mysz w przeglądarce)
 - [ ] Przycisk "test makra" bez wychodzenia ze strony
 - [ ] Strona na GitHub Pages forka
