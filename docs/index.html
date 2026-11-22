@@ -764,7 +764,7 @@ const $ = s=>document.querySelector(s);
   const tc=Object.getOwnPropertyDescriptor(Node.prototype,"textContent");
   Object.defineProperty(Node.prototype,"textContent",{configurable:true,enumerable:tc.enumerable,get:tc.get,set(v){
     v=v==null?"":String(v); const c=this.childNodes;
-    if(c.length===1 && c[0].nodeType===3 ? c[0].data===v : !c.length && v==="") return;
+    if(this.nodeType===1 && (c.length===1 && c[0].nodeType===3 ? c[0].data===v : !c.length && v==="")) return;
     tc.set.call(this,v);
   }});
   const ih=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");
@@ -2085,20 +2085,23 @@ async function panelRestore(pn){
   if(Array.isArray(pn.profileNames)){
     profileNames=pn.profileNames.slice(0,BIND_PROFILES).map(x=>typeof x==="string"?x.slice(0,24):""); profSaveNames();
   }
-  let note="";
+  let note="", soundsDone=false;
   if(pn.sounds&&typeof pn.sounds==="object"){
     const sraw=new Uint8Array(hexDec(pn.sounds.blob||""));
     if(p[0]<25) note="Sounds were skipped: this puck's firmware is too old.";
     else if(!sndParse(sraw)) note="Sounds in the file were not valid and were skipped.";
     else if(!await soundsWrite([...sraw])) note="The puck rejected the sounds.";
-    else if(Array.isArray(pn.sounds.names)){
-      soundNames=pn.sounds.names.slice(0,SND_MELODIES).map(x=>typeof x==="string"?x.slice(0,24):"");
-      try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){}
+    else {
+      soundsDone=true;
+      if(Array.isArray(pn.sounds.names)){
+        soundNames=pn.sounds.names.slice(0,SND_MELODIES).map(x=>typeof x==="string"?x.slice(0,24):"");
+        try{ localStorage.setItem("openpuck.soundNames",JSON.stringify(soundNames)); }catch(e){}
+      }
     }
     if(note) log("import: "+note);
   }
   sounds=null; soundsLastTry=0;
-  log("paddle binds, profile, host setting, macro, profile and melody names and sounds restored");
+  log("paddle binds, profile, host setting, macro and profile names"+(soundsDone?", melody names and sounds":"")+" restored");
   return note;
 }
 async function exportBackup(){
@@ -3866,6 +3869,9 @@ async function assignImport(file){
   try{ r=assignParse(JSON.parse(await file.text())); }
   catch(e){ bindsMsg("import failed: "+(e instanceof SyntaxError?"not valid JSON":e.message)); $("#assignMsg").textContent="Import failed: "+(e instanceof SyntaxError?"not valid JSON":e.message); return; }
   if(!confirm("Replace the paddle assignments of all profiles, all macros and the macro and profile names with the contents of this file?\n\nPairings and other settings stay as they are.")){ return; }
+  // a save in progress ends with a read of the puck that would overwrite the imported assignments
+  while(bindsSaving) await new Promise(r=>setTimeout(r,50));
+  clearTimeout(bindsSaveTimer);
   binds=r.binds; profileNames=r.profileNames; macroNames=r.macroNames; profSaveNames();
   try{ localStorage.setItem("openpuck.macroNames",JSON.stringify(macroNames)); }catch(e){}
   bindsRender(); profRender();
@@ -4389,13 +4395,16 @@ function bindsOnBlob(p){
 // ===================== Melodies (sounds blob v1, status blob 25+) =====================
 // Wire format and ops: docs/PROTOCOL.md §10.5. Hidden below status protocol 25: older firmware drops 0x2D..0x31
 // silently, so they must never be sent blind. Transfers use bindsXfer (one pipe reader, paused during updates).
-const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
+const SND_MELODIES=8, SND_NOTES=32, SND_CHUNKS=11, SND_FREQ_MAX=4000, SND_MS_MIN=30, SND_MS_MAX=5000, SND_PAYLOAD=1042, SND_NONE=0xFF;
 const SND_EVENTS=["Profile 1","Profile 2","Profile 3","Mode: PlayStation","Mode: Xbox","Mode: Switch",
   "Mode: other","Controller connected"];
 const SND_CONFIRM=[[1,"Vibration"],[2,"Sound"],[3,"Both"],[0,"Off"]];
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const NOTE_LO=36, NOTE_HI=107; // C2 (65 Hz) .. B7 (3951 Hz), all under the 4000 Hz limit
 var sounds=null, soundsDev=null, soundsCap=null, soundsLastTry=0, soundsSaving=false, soundsSaveTimer=0;
+// soundsBase = the blob as last read from or written to the puck; soundsPending = a save asked for while one runs
+// ("all" or "fields"); sndUnsaved = melody or event edits not yet on the puck
+var soundsBase=null, soundsPending=null, sndUnsaved=false;
 let curMel=0, soundNames=[], midiData=null;
 try{ const n=JSON.parse(localStorage.getItem("openpuck.soundNames")||"[]"); if(Array.isArray(n)) soundNames=n; }catch(e){}
 function soundName(m){ const n=soundNames[m]; return (typeof n==="string"&&n.trim())?n.trim():"Melody "+(m+1); }
@@ -4452,7 +4461,7 @@ async function soundsRead(){
   if(!dev || !soundsCap || dfuBusy) return;
   soundsLastTry=Date.now();
   const raw=await bindsXfer(soundsReadRaw), s=raw&&sndParse(raw);
-  if(s){ sounds=s; sndMsg(""); sndRender(); } else sndMsg("read failed");
+  if(s){ sounds=s; soundsBase=JSON.parse(JSON.stringify(s)); sndUnsaved=false; sndMsg(""); sndRender(); } else sndMsg("read failed");
 }
 async function soundsWrite(blob){
   for(let idx=0,o=0;o<blob.length;idx++,o+=96){
@@ -4463,18 +4472,32 @@ async function soundsWrite(blob){
   await send([0x2F]);
   const f=await soundsAck(0x2F); return !!f&&f[1]===1;
 }
-async function soundsSave(){
-  if(!sounds || soundsSaving || !dev || dfuBusy) return;
+// fieldsOnly: write only the confirmations and volume on top of the last known puck state, so melody and event
+// edits that are not saved yet stay as they are (and are not sent half-finished).
+async function soundsSave(fieldsOnly){
+  if(!sounds || !dev || dfuBusy) return;
+  if(soundsSaving){ soundsPending=(soundsPending==="all"||!fieldsOnly)?"all":"fields"; return; }
   soundsSaving=true; sndMsg("saving…");
-  const blob=sndBuild(sounds);
-  const ok=await bindsXfer(()=>soundsWrite(blob));
+  const snap=JSON.parse(JSON.stringify(fieldsOnly&&soundsBase?soundsBase:sounds));
+  if(fieldsOnly){ snap.confirm=sounds.confirm; snap.gain=sounds.gain; }
+  const ok=await bindsXfer(()=>soundsWrite(sndBuild(snap)));
   soundsSaving=false;
-  if(ok){ await soundsRead(); sndMsg("saved"); }
+  if(ok){ soundsBase=snap; if(!fieldsOnly) sndUnsaved=false; }
+  if(soundsPending){
+    // a newer change waits: run it now; reading the puck first would overwrite it
+    const next=soundsPending; soundsPending=null;
+    if(!ok) sndMsg(ok===null?"not saved: the puck is busy, try again":"device rejected the sounds");
+    return soundsSave(next==="fields");
+  }
+  if(ok){
+    if(!fieldsOnly) await soundsRead();
+    sndMsg(sndUnsaved?"saved; melody changes are not saved yet":"saved");
+  }
   else sndMsg(ok===null?"not saved: the puck is busy, try again":"device rejected the sounds");
 }
-function soundsCommit(){ clearTimeout(soundsSaveTimer); soundsSaveTimer=setTimeout(soundsSave,400); }
+function soundsCommit(){ clearTimeout(soundsSaveTimer); soundsSaveTimer=setTimeout(()=>soundsSave(true),400); }
 function sndMsg(m){ if(/fail|reject|not saved/.test(m)) diagNote("sounds: "+m); for(const id of ["sndMsg","sndEvMsg"]) $("#"+id).textContent=m; }
-function sndDirty(){ sndMsg("unsaved"); }
+function sndDirty(){ sndUnsaved=true; sndMsg("unsaved"); }
 // 0x30 plays a stored melody, 0x31 the notes given (not stored); both are acked with 0xB6, ok 0 = nothing played
 async function soundsPlay(op,bytes){
   const f=await bindsXfer(async()=>{ await send([op,...bytes]); return await soundsAck(op); });
@@ -4482,7 +4505,7 @@ async function soundsPlay(op,bytes){
 }
 function soundsOnBlob(p){
   const cap=(p[0]>=25 && !isDongle);
-  if(soundsDev!==dev){ sounds=null; soundsDev=dev; soundsLastTry=0; }
+  if(soundsDev!==dev){ sounds=null; soundsBase=null; sndUnsaved=false; soundsDev=dev; soundsLastTry=0; }
   if(cap!==soundsCap){
     soundsCap=cap;
     for(const id of ["sndCard","sndEvCard","sndSetCard"]) $("#"+id).classList.toggle("hide",!cap);
@@ -4562,8 +4585,8 @@ function sndRowsRender(){
     hz.onchange=()=>{ n.freq=Math.max(1,Math.min(SND_FREQ_MAX,Math.round(+hz.value)||1)); sndDirty(); sndRowSync(k); };
     td2.appendChild(hz); tr.appendChild(td2);
     const td3=document.createElement("td"); td3.appendChild(document.createTextNode("ms "));
-    const ms=document.createElement("input"); ms.type="number"; ms.min=1; ms.max=SND_MS_MAX; ms.value=n.ms;
-    ms.onchange=()=>{ n.ms=Math.max(1,Math.min(SND_MS_MAX,Math.round(+ms.value)||1)); ms.value=n.ms; sndDirty(); sndTotals(); };
+    const ms=document.createElement("input"); ms.type="number"; ms.min=SND_MS_MIN; ms.max=SND_MS_MAX; ms.value=n.ms;
+    ms.onchange=()=>{ n.ms=Math.max(SND_MS_MIN,Math.min(SND_MS_MAX,Math.round(+ms.value)||1)); ms.value=n.ms; sndDirty(); sndTotals(); };
     td3.appendChild(ms); tr.appendChild(td3);
     const td4=document.createElement("td"); td4.className="acts";
     const mk=(txt,fn,dis)=>{ const b=document.createElement("button"); b.textContent=txt; b.disabled=!!dis; b.onclick=fn; td4.appendChild(b); };
@@ -4666,15 +4689,17 @@ function midiLine(m,track){
     if(last&&last.id===id) last.b=b; else segs.push({id,p:best?best.p:0,a,b});
   }
   while(segs.length&&segs[0].id<0) segs.shift();
-  const notes=[]; let clipped=0;
+  // A segment under SND_MS_MIN joins the note before it (before the first one: the next), so no time is lost.
+  const notes=[]; let clipped=0, merged=0, carry=0;
   for(const s of segs){
-    const raw=Math.round(ms(s.b)-ms(s.a)), dur=Math.max(1,Math.min(SND_MS_MAX,raw));
-    if(dur!==raw) clipped++;
+    const raw=Math.round(ms(s.b)-ms(s.a));
+    if(raw<SND_MS_MIN){ merged++; if(notes.length) notes[notes.length-1].ms+=raw; else carry+=raw; continue; }
     let f=0;
     if(s.id>=0){ f=noteHz(s.p); if(f>SND_FREQ_MAX){ f=SND_FREQ_MAX; clipped++; } else if(f<1) f=1; }
-    notes.push({freq:f,ms:dur});
+    notes.push({freq:f,ms:raw+carry}); carry=0;
   }
-  return {notes,clipped};
+  for(const n of notes) if(n.ms>SND_MS_MAX){ n.ms=SND_MS_MAX; clipped++; }
+  return {notes,clipped,merged};
 }
 function midiTrackLabel(tr,i){
   return "Track "+(i+1)+(tr.name?" - "+tr.name:"")+" ("+tr.notes.length+" notes"+(tr.drums?", drums":"")+")";
@@ -4705,7 +4730,8 @@ function midiImport(){
   if(!soundNames[curMel]) soundSetName(curMel,name.slice(0,24));
   const parts=["Imported "+kept.length+" of "+line.notes.length+" notes (rests count as notes)."];
   if(line.notes.length>SND_NOTES) parts.push("Cut to the first "+SND_NOTES+": a melody holds at most "+SND_NOTES+" notes.");
-  if(line.clipped) parts.push(line.clipped+" values were limited to 1-"+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
+  if(line.clipped) parts.push(line.clipped+" values were limited to "+SND_MS_MAX+" ms or "+SND_FREQ_MAX+" Hz.");
+  if(line.merged) parts.push(line.merged+" notes or rests shorter than "+SND_MS_MIN+" ms were merged into the neighbouring note.");
   $("#midiNote").textContent=parts.join(" ");
   $("#midiRow").classList.add("hide"); midiData=null;
   sndDirty(); sndRender();
@@ -4725,7 +4751,7 @@ function midiImport(){
   $("#sndPrev").onclick=sndPreview;
   $("#sndPlayPuck").onclick=()=>{ const st=sndNotes(); soundsPlay(0x31,[st.length,...st.flatMap(n=>[n.freq&255,n.freq>>>8,n.ms&255,n.ms>>>8])]); };
   $("#sndPlayStored").onclick=()=>soundsPlay(0x30,[curMel]);
-  for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(); };
+  for(const id of ["sndSave","sndEvSave"]) $("#"+id).onclick=()=>{ clearTimeout(soundsSaveTimer); soundsSave(false); };
   $("#midiBtn").onclick=()=>$("#midiFile").click();
   $("#midiFile").onchange=()=>{ midiLoad($("#midiFile").files[0]); $("#midiFile").value=""; };
   $("#midiGo").onclick=midiImport;
