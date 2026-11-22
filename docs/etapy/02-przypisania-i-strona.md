@@ -40,8 +40,8 @@ Test i wydanie
 - [x] Klawiatura i mysz: osobne interfejsy HID w trybach PC, rozpoznawanie PC/konsola, akcje klawisz/mysz w `binds`
 - [x] Makieta strony, akceptacja użytkownika (panel autora z rozszerzeniami, zrzuty z atrapą)
 - [x] Strona: panel autora w płaskim stylu, rysunki Valve, profile, Combo/Macro, Macros, Live view, bateria
-- [ ] Strona: akcje Key/Mouse, karta skrótów jako obrazek, usunięcie zielonych resztek
-- [ ] Makra prostsze w obsłudze (na końcu)
+- [x] Strona: akcje Key/Mouse, karta skrótów jako obrazek, usunięcie zielonych resztek
+- [x] Makra prostsze w obsłudze (na końcu)
 - [ ] GitHub Pages
 - [ ] Końcowy build, lista testów w `CHECKLISTA.md`, test użytkownika, wydanie
 - Sprawdzenie: test `tests/binds` i build na LAB po każdym kroku; test strony w Chromium (Playwright) na LAB bez sprzętu; jeden test na sprzęcie u użytkownika na końcu
@@ -70,6 +70,8 @@ Test i wydanie
 - Mysz = istniejący interfejs "wake mouse" (5 przycisków + kółko, deskryptor bez zmian); klawiatura = nowy interfejs niebootowy, tylko po wykryciu PC, nie przy 4 padach naraz (limit endpointów).
 - Rozpoznawanie hosta: zapytanie Windows o MS OS 2.0 albo połączenie panelu WebUSB = PC; auth Sony 0xF0-0xF3 = konsola; Linux/macOS: odczyt tożsamości pada i 5 s bez auth = PC. Start bez klawiatury (chyba że poprzednio PC), po wykryciu jedna przeenumeracja bez restartu. Ręcznie: auto / zawsze PC / zawsze konsola w `host.bin`.
 - Kroki makr z klawiszem pominięte: zmieniałyby układ kroków, a akcje Key/Mouse na łopatce pokrywają główny przypadek.
+- Makra na stronie: kroki opisane zdaniami (naciśnij/czekaj), szablony, nagrywanie z pada przez stan na żywo (~30 Hz), oś czasu, nazwy w przeglądarce (firmware nazw nie trzyma).
+- Strona do testu uruchamiana lokalnie (`python -m http.server -d docs`): repo prywatne, GitHub Pages wymaga płatnego planu; sposób publikacji do ustalenia przy wydaniu.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
