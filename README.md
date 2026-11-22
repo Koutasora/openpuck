@@ -13,6 +13,8 @@
 >
 > Flashing the original firmware over this one removes these features. The saved assignments and sounds stay in the puck's flash (`binds.bin`, `sounds.bin`; the original firmware never reads or deletes them), but only this fork's firmware uses them. A factory-reset build wipes them.
 
+---
+
 [![BuyMeACoffee](https://raw.githubusercontent.com/pachadotdev/buymeacoffee-badges/main/bmc-yellow.svg)](https://github.com/safijari/openpuck/discussions/211)
 
 OpenPuck is an opensource firmware for NRF52840 Pro Micro that copycats the Steam Controller 2 Puck and allows emulation of Xbox, Original Xbox, Switch, and PS3/4/5 controllers and also includes an independant lizard mode (which can work on UAC prompts/task manager/etc). The Switch, PS3, and Original Xbox modes have been verified to work on real consoles and Switch, PS4/5 modes have gyro (and touchpad where available) hooked in. Back 4 buttons are mappable for all emulated modes.
