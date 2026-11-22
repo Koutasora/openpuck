@@ -47,26 +47,42 @@ Zakładka Sounds ma edytor piano roll: przeciągnięty plik MIDI można edytowa�
 - Odsłuch na padzie z głośnością z Settings (ta sama, z którą gra puck); nuta = 0x83 na side 0 i 1 z dur = długość nuty, więc po zerwaniu połączenia nuta i tak kończy się sama (po odłączeniu urządzenia HID nie da się wysłać wyciszenia).
 - Połączenie WebHID dostępne tylko przy pucku OpenPuck połączonym przez WebUSB (Sounds i Debug są w panelu po połączeniu); wystarcza, bo zapis do slotu i tak wymaga OpenPucka. Puck Valve i pad na kablu bez OpenPucka nie są obsługiwane w tym etapie.
 - Raport 0x83 dopełniany zerami do długości z deskryptora urządzenia (domyślnie 9 B): deskryptor pucka Valve i pada na kablu może mieć inną długość niż OpenPuck.
-
 - Uwagi użytkownika po pierwszym teście 2026-11-22: Play za daleko od piano rolla, brak zawijania zakresu nut (wybrany Fold), rysowanie nieintuicyjne (wybrane: rysowanie przeciągnięciem, prawy klik usuwa, czytelne kursory i uchwyty, klik w klawisz gra nutę).
-
 - Zmiana zakresu 2026-11-22 (użytkownik): nuty osobno dla 4 aktuatorów, łącznie z firmware w tym etapie (puck zapisuje i gra 4 głosy); edycja przez przełącznik aktywnego toru.
 - Blob v2: payload = confirm, gainDb, event[8], 8 melodii x 4 głosy (kolejność side 0, 1, 3, 4) x {count, 32 x {freq u16, ms u16}}; ok. 4,1 KB zamiast 1 KB; v1 wczytywany do obu gładzików, żeby stare melodie brzmiały jak dotąd.
 - Op 0x31 (niezapisana melodia) zostaje jednogłosowy: bufor komend 160 B nie zmieści 4 x 32 nut; strona zamiast niego ma odsłuch na żywo przez WebHID.
 - Protokół statusu 27 dla bloba v2: 26 już oznacza "kombinacja back4 może być 0xFE = None"; strona przy 25-26 zapisuje tylko tor LT (bloba v1) z ostrzeżeniem i odsłuchuje LT na obu gładzikach, jak puck.
 - Przycisk "Play on puck" (op 0x31) usunięty ze strony: odsłuch na żywo przez WebHID go zastępuje, a 0x31 mieści tylko jeden głos; firmware dalej obsługuje 0x31 (zgodność).
 - Firmware: bez kopii SoundsCfg na stosie (4,2 KB przekraczało stos pętli 4 KB); blob sprawdzany w miejscu, potem dekodowany; bufor s_io usunięty (fragmenty serializowane w locie); zapis przyjmuje też blob v1 (starsza strona w pamięci przeglądarki).
-
 - "Zawijanie zakresu nut" znaczyło zwijanie tabeli nut (źle odczytane jako Fold): tabela nut w Sounds zwinięta domyślnie pod nagłówkiem "Note list (N)"; Fold zostaje.
-
 - Import MIDI: źródło bez grywalnych nut zostawia tor bez zmian (komunikat); na pucku z jednym głosem domyślnie wypełniany tylko LT.
-
 - Test 2026-11-22 (główny PC, firmware z protokołem 27): po wgraniu UF2 piano roll, import MIDI do torów, odsłuch na padzie i melodie z pucka grają tak, jak użytkownik chciał ("gra idealnie").
 - Porządki przed zamknięciem: `readVoice` nie przesuwa wskaźnika poza krótki bufor podglądu (0x31); 5 długich komentarzy na końcu linii w `webusb_config.cpp` (sprzed etapu) przeniesionych nad instrukcje, lint komentarzy czysty.
-
 - Porządek na stronie (użytkownik 2026-11-22): skróty, tryby, melodie i dźwięk/wibracja w jednej tabeli w Mapping > Shortcuts zamiast trzech kart; melodie dalej per rodzina trybów (firmware bez zmian), wiersz pokazuje, gdy melodia jest wspólna z innym skrótem.
-
 - Poza etapem (użytkownik 2026-11-22): nacisk analogowy w trybach PS3 i OG Xbox (spust steruje siłą wybranego przycisku, np. □ w MGS2; sprawdzić, czy kliknięcie spustu nie daje 255 za wcześnie) odłożony do etapu 04 PLANOWANY, bo nie ma jak tego teraz przetestować.
 
 ## Podsumowanie
-(wypełnia /etap-zamknij)
+
+Decyzje:
+- Zakres zmieniony w trakcie: zamiast osobnego odtwarzacza (zakładka Player) piano roll w Sounds z odsłuchem na padzie przez WebHID i zapisem do slotów pucka; potem 4 głosy razem z firmware.
+- Melodia = 4 głosy (side 0, 1, 3, 4) po 32 pozycje; blob `sounds.bin` v2, protokół statusu 27 (26 zajęty); v1 wczytywany do obu gładzików.
+- Odsłuch na żywo przez WebHID (0x83 do interfejsu slotu z padem), dostępny przy OpenPucku połączonym przez WebUSB; puck Valve i pad na kablu bez OpenPucka nieobsługiwane.
+- Skróty, tryby, melodie i dźwięk/wibracja w jednej tabeli (Mapping > Shortcuts); melodie dalej per rodzina trybów (firmware bez zmian).
+
+Zrobione:
+- Test haptyki na sprzęcie: mapa side 0-4, dur kończy ton, off tone, słyszalny zakres MIDI 24-48 i 84-108; panel testowy w Status > Debug.
+- Firmware: 4 sekwencery, blob v2 i zgodność z v1 (też zapis z starszej strony), bez kopii konfiguracji na stosie (było przepełnienie 4,2 KB przy stosie 4 KB), RAM +6,1 KB; `readVoice` w granicach bufora; 5 starych komentarzy w `webusb_config.cpp` przeniesionych.
+- Strona: piano roll (rysowanie, przesuwanie, długość, siatka ms i w taktach, BPM, Fold, zaznaczenie, Crop to 32), tory LT/RT/LG/RG, Clear all voices, import MIDI do 4 torów (ścieżki i kanały), odsłuch na padzie i w przeglądarce, zwijana lista nut, jedna tabela skrótów; przycisk Play on puck usunięty.
+- Testy: `tests/sounds` 191, `tests/binds` 182, `tests/sounds-web` (Playwright) 131, zgodność bloba strona-firmware; clang-format 18 i lint czyste.
+- Test użytkownika na głównym PC: 4 głosy grają z pucka i na żywo, melodia zmiany trybu gra przy Confirm with = Sound.
+- `docs/FORK_NOTES.md` dla autora oryginału; PROTOCOL, README, CHECKLISTA zaktualizowane.
+
+Otwarte sprawy:
+- Etap 04 nacisk-analogowy (PS3, OG Xbox) zaplanowany, bez testu.
+- CHECKLISTA §9-11: część punktów nieodhaczona (starszy firmware, kopia zapasowa v1/v2, nowa tabela skrótów na pucku).
+- Wydanie: tag i .uf2 w Releases oraz strona na GitHub Pages po scaleniu PR; wysłanie FORK_NOTES autorowi (decyzja użytkownika, akapit o licencji do potwierdzenia).
+
+Ryzyka:
+- Opóźnione nuty po zapchaniu kolejki przekaźnika idą seriami (czasy od startu); nie sprawdzone przy długich 4-głosowych melodiach.
+- Melodia rodziny trybów dzielona przez kilka skrótów; zmiana jednej zmienia wszystkie.
+- Testy strony na udawanym WebHID; zachowanie przy innych pucach/firmware sprawdzone tylko ręcznie.
