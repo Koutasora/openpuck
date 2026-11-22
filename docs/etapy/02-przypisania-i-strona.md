@@ -76,6 +76,7 @@ Test i wydanie
 - clang-format 18 z pip w venv (przenośnie), uruchamiany tylko na plikach zmienionych w gałęzi: CI autora blokuje PR bez formatowania.
 - Użytkownik (po nocy): klawiatura/mysz także w trybie Xbox na PC (gra w trybie Xbox, push-to-talk na F13), o ile konsola Xbox 360 zostaje bez zmian; kopia zapasowa obejmuje przypisania, makra, host i nazwy makr; publikacja strony po teście.
 - F13-F24 na stronie z notką: gry przełączają się w tryb klawiatura/mysz na każdy klawisz lub klik (problem użytkownika z Mouse 3 na pucku Valve), F13-F24 zwykle ignorują.
+- Tryby PS5 DualSense i HID gyro (DS4): bcdUSB 2.10 zamiast 2.00 (test użytkownika: Windows przy 2.00 nie czyta MS OS 2.0, brak WinUSB, panel się nie łączy, host nierozpoznany); nierozpoznany host w tych trybach = PC, bo konsola bez adaptera ich nie przyjmuje. Tryby clean bez zmian.
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
