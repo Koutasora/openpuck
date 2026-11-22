@@ -11,8 +11,8 @@ Firmware: przypisania i profile
 - [ ] 3 profile, back4 + RB następny / back4 + LB poprzedni, liczba krótkich wibracji = numer profilu
 - [ ] Profile i makra zostają po odłączeniu zasilania; stary `cfg.bin` dalej się wczytuje, obecne przypisania stają się profilem 1
 - [ ] Polecenia WebUSB: odczyt i zapis przypisań i profili, stan na żywo (przyciski, sticki, triggery, profil, bateria i stan ładowania)
-- [ ] Logika makr i kombinacji w osobnym module bez zależności od sprzętu, z testem uruchamianym na LAB
-- [ ] Build wpisuje wersję i commit (panel nie pokazuje "unknown")
+- [x] Logika makr i kombinacji w osobnym module bez zależności od sprzętu, z testem uruchamianym na LAB
+- [x] Build wpisuje wersję i commit (panel nie pokazuje "unknown")
 
 Firmware: klawiatura i mysz na PC
 - [ ] Tryb PS5 (z panelem) i DS4-gyro: tylny przycisk może dać klawisz (z modyfikatorami) albo przycisk/ruch myszy
@@ -34,7 +34,7 @@ Test i wydanie
 ## Plan
 - [x] `tools/build-lab.sh`: wersja i commit przez `gen_version.sh`
 - [x] `OpenPuck/binds.cpp/.h`: typy akcji, 3 profile × 4 typy padów × 4 przyciski, silnik makr; test `tests/binds` (w64devkit)
-- [ ] Integracja w firmware: plik `binds.bin`, hook w `rf_link.cpp`, back4 + LB/RB z wibracją, polecenia WebUSB (z baterią), polecenia konsoli
+- [x] Integracja w firmware: plik `binds.bin`, hook w `rf_link.cpp`, back4 + LB/RB z wibracją, polecenia WebUSB (z baterią), polecenia konsoli
 - [ ] Klawiatura i mysz: interfejsy HID w trybach PS5 i DS4-gyro, akcje klawisz/mysz w `binds`
 - [ ] Makieta strony (lokalny HTML), akceptacja użytkownika
 - [ ] Strona: nowy plik w `docs/` obok panelu autora, WebUSB do nowych poleceń, GitHub Pages
@@ -49,6 +49,13 @@ Test i wydanie
 - Gałąź autora `copilot/170-add-controller-mapping` pominięta: jej kombinacje back4 + D-pad są już w `main` (`g_chordDpad`).
 - Dawne etapy 02-05 połączone w jeden: użytkownik chce w openpuck jednej gałęzi bez pośrednich PR i jednego testu na sprzęcie na końcu.
 - Bateria w poleceniu stanu na żywo: firmware już czyta `g_battery`/`g_batteryState`, strona tylko je pokazuje.
+- Plik `binds.bin`: magic 0xB1, wersja 1, suma kontrolna, 1087 B; zły plik = wartości domyślne.
+- WebUSB: polecenia 0x26-0x2A, odpowiedzi 0xAC (stan na żywo), 0xAE (fragment bloku), 0xAF (potwierdzenie); wersja bloku statusu 23 (opis w `docs/PROTOCOL.md` §10.2).
+- Makro gra raz do końca, puszczenie go nie przerywa, ponowne wciśnięcie w trakcie ignorowane.
+- `g_type[].back` przepisywane z aktywnego profilu (0 dla kombinacji/makra): stary panel autora i `cfg.bin` zostają spójne.
+- Wynik akcji wpisywany też do surowego raportu (rep[2..5]), żeby trafiał do trybów push (Xbox, Xbox OG).
+- Przy trzymanych 4 łopatkach `g_back[]` zerowane, a LB/RB maskowane: łopatki i LB/RB nie przeciekają do hosta podczas kombinacji back4 (drobna zmiana względem autora).
+- Profil aktywny jeden dla wszystkich padów (nie osobno na slot).
 
 ## Podsumowanie
 (wypełnia /etap-zamknij)
