@@ -1109,7 +1109,7 @@ function setTab(et){
       src.addEventListener("change",()=>setField(PRESS_FIELD0+mode*3+1, +src.value));
       tgt.addEventListener("change",()=>setField(PRESS_FIELD0+mode*3+2, +tgt.value));
       sec.appendChild(wrap);
-      rec.press={mode,wrap,on,src,tgt};
+      rec.press={mode,wrap,on,src,tgt,note};
     });
     host.appendChild(sec); typeEls.push(rec);
   });
@@ -2002,7 +2002,7 @@ function applyBlob(p){
         const pr=rec.press, o=PRESS_BLOB0+pr.mode*3;
         pr.wrap.classList.toggle("hide", !pressCap);
         if(pressCap){
-          pr.on.textContent=p[o]?"on":"off"; pr.on.classList.toggle("active",!!p[o]);
+          pr.on.textContent=p[o]?"on":"off"; pr.on.classList.toggle("active",!!p[o]); pr.note.classList.toggle("hide",!p[o]);
           if(document.activeElement!==pr.src) pr.src.value=p[o+1];
           if(document.activeElement!==pr.tgt) pr.tgt.value=p[o+2];
         }
