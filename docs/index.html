@@ -201,6 +201,7 @@
   <span id="battTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <span id="hostTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <button id="connectBtn" class="primary">Connect</button>
+  <button id="diagCopy" title="Copy a plain-text report (puck, mode, host, assignments, live state, firmware counters, recent events) to paste into a chat">Copy diagnostics</button>
   <span id="updAvail" class="pill hide" title="A newer OpenPuck release is available — click to open the Firmware update tab">…</span>
   <span class="spacer"></span>
   <button id="betaBtn" class="beta" title="Show beta features warning and enable beta UI">Beta</button>
@@ -255,6 +256,11 @@
         <div class="stat"><div class="k">Status protocol</div><div class="v" id="stVersionProto">—</div></div>
         <div class="stat"><div class="k">Panel update</div><div class="v" id="stVersionUpdate">—</div></div>
       </div>
+      <div class="row" style="margin:10px 0 0;flex-wrap:wrap;gap:8px">
+        <button id="diagCap" title="Collects the live state and the firmware counters every 100 ms for 3 s: hold a paddle or press the buttons while it runs">Capture 3 s and copy</button>
+        <span class="note" id="diagMsg" style="margin:0"></span>
+      </div>
+      <textarea id="diagOut" class="hide" readonly rows="8" style="width:100%;margin-top:8px;background:#0e1017;color:var(--fg);border:1px solid #232a3a;border-radius:3px;font:12px ui-monospace,Menlo,monospace"></textarea>
       <p class="note">This section reflects the connected puck. Reconnect after flashing or changing modes to verify what is currently running.</p>
     </div>
 
@@ -736,7 +742,8 @@ $("#betaBtn").onclick=async()=>{
   u.searchParams.set("beta","true");
   location.href=u.toString();
 };
-function log(m){ const l=$("#log"); l.textContent=(new Date().toLocaleTimeString()+"  "+m+"\n"+l.textContent).slice(0,2000); }
+var diagEv=[]; // ring of the last page events, for Copy diagnostics
+function log(m){ diagNote(m); const l=$("#log"); l.textContent=(new Date().toLocaleTimeString()+"  "+m+"\n"+l.textContent).slice(0,2000); }
 
 // ---- Loop-state trail (persistent) ----
 // Every transition of the Loop pill lands here with a wall-clock timestamp, persisted in localStorage --
@@ -746,6 +753,7 @@ function log(m){ const l=$("#log"); l.textContent=(new Date().toLocaleTimeString
 const TRAIL_KEY="opk_loop_trail", TRAIL_MAX=400;
 let loopTrail=[]; try{ loopTrail=JSON.parse(localStorage.getItem(TRAIL_KEY))||[]; }catch(e){ loopTrail=[]; }
 function trailAdd(m){
+  diagNote(m);
   loopTrail.unshift({t:Date.now(), m});
   if(loopTrail.length>TRAIL_MAX) loopTrail.length=TRAIL_MAX;
   try{ localStorage.setItem(TRAIL_KEY, JSON.stringify(loopTrail)); }catch(e){}
@@ -1472,7 +1480,7 @@ function rawIn(len,timeoutMs){
     return timeoutMs?null:rawIn(len);
   });
 }
-const FRAME_TYPES=new Set([0xA5,0xA7,0xAB,0xAC,0xAD,0xB0,0xB2,0xB3]);
+const FRAME_TYPES=new Set([0xA5,0xA7,0xAB,0xAC,0xAD,0xB0,0xB2,0xB3,0xB4]);
 // state snapshots: only the newest is worth reading, and an old one must not pass for the reply to a new request
 const FRAME_SNAPSHOT=new Set([0xA5,0xAC,0xAD,0xB0]);
 const STASH_MAX_AGE=400;
@@ -3555,7 +3563,7 @@ async function bindsSave(){
   bindsMsg(m);
 }
 function bindsCommit(){ clearTimeout(bindsSaveTimer); bindsSaveTimer=setTimeout(bindsSave,300); }
-function bindsMsg(m){ $("#bindsMsg").textContent=m; $("#macroMsg").textContent=m; }
+function bindsMsg(m){ if(/fail|reject/.test(m)) diagNote("binds: "+m); $("#bindsMsg").textContent=m; $("#macroMsg").textContent=m; }
 async function bindsSetProfile(n){
   const ok=await bindsXfer(async()=>{
     await send([0x2A,n]); const k=await bindsAck(0x2A);
@@ -3947,7 +3955,8 @@ async function livePoll(){
   if(dfuBusy&&macroRec) macroRecStop();
   if(!dev||!bindsCap||dfuBusy||!polling||inflight||statusWanted||bindsSaving||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return;
   inflight=true;
-  try{ await send([0x27,0xFF]); const p=await readFrame(0xB0,24,256); if(p) live=parseLive(p); }
+  try{ await send([0x27,0xFF]); const p=await readFrame(0xB0,24,256);
+    if(p){ live=parseLive(p); diagLiveMiss=0; } else if(++diagLiveMiss===3) diagNote("live state: no 0xB0 reply (3 polls in a row)"); }
   catch(e){ log("live err: "+e.message); }
   finally{ inflight=false; }
   liveRender();
@@ -4219,6 +4228,140 @@ async function scSave(){
   $("#scSave").onclick=scSave;
   scReady=true; scUpdate();
 })();
+
+// ===================== Copy diagnostics =====================
+// One plain-text report for pasting into a chat: page, puck, mode, host, assignments, live sample, the last page
+// events and the firmware diagnostics frame (0x2C -> 0xB4, PROTOCOL.md 10.4). "Capture 3 s" also records what
+// changes while the user holds a paddle.
+var DIAG_EV_MAX=30;
+function diagNote(m){
+  const t=new Date().toLocaleTimeString(), last=diagEv[diagEv.length-1];
+  if(last && last.m===m){ last.n++; last.t=t; return; }
+  diagEv.push({t,m,n:1}); if(diagEv.length>DIAG_EV_MAX) diagEv.shift();
+}
+var diagLiveMiss=0;
+const DIAG_FLAGS=["keyboard in descriptor","keyboard add failed","wake mouse present","wake mouse ready","USB mounted","USB suspended"];
+const DIAG_HOSTKIND=["unknown","PC","console"];
+function diagDecode(p){
+  const u32=o=>((p[o]|(p[o+1]<<8)|(p[o+2]<<16)|(p[o+3]<<24))>>>0), hx=v=>"0x"+v.toString(16).padStart(8,"0");
+  const btn=v=>hx(v)+(v?" ("+maskNames(v,-1,", ")+")":"");
+  const keys=o=>[...p.slice(o,o+6)].filter(Boolean).map(k=>"0x"+k.toString(16)).join(" ")||"none";
+  const tx=o=>"enqueued "+u32(o)+", sent "+u32(o+4)+", sendFail "+u32(o+8)+", dropped "+u32(o+12)+", notReady "+u32(o+16);
+  const et=p[2], f=p[7], hset=HOST_SET.find(h=>h[0]===p[6]);
+  return [
+    ["layout version",p[0]],
+    ["USB mode",(MODE_NAMES[p[1]]||("mode "+p[1]))+" ("+p[1]+")"],
+    ["emulated type",et===0xFF?"none (Steam / Lizard)":(TYPE_DEFS[et]?TYPE_DEFS[et].name:et)],
+    ["active profile",p[3]+1],
+    ["host",(DIAG_HOSTKIND[p[4]]||p[4])+", "+(HOST_WHY[p[5]]||("reason "+p[5]))+", setting "+(hset?hset[1]:p[6])],
+    ["flags",DIAG_FLAGS.filter((n,i)=>f&(1<<i)).join(", ")||"none"],
+    ["mounted pads / pool",p[8]+" / "+p[9]],
+    ["binds filter calls",u32(10),1],
+    ["last raw buttons",btn(u32(14))],
+    ["last buttons after binds",btn(u32(18))],
+    ["calls with key/mouse state",u32(22),1],
+    ["last key/mouse state",
+      "mods 0x"+p[26].toString(16)+", keys "+keys(27)+", mouse buttons 0x"+p[33].toString(16)+", wheel "+((p[34]<<24)>>24)],
+    ["sendState allowed true / false",u32(35)+" / "+u32(39),1],
+    ["mouse reports accepted / refused",u32(43)+" / "+u32(47),1],
+    ["keyboard reports queued",u32(51),1],
+    ["last sent: mouse buttons, kbd mods, kbd keys","0x"+p[55].toString(16)+", 0x"+p[56].toString(16)+", "+keys(57)],
+    ["wake mouse channel",tx(63),1],
+    ["keyboard channel",tx(83),1],
+    ["raw buttons ever seen",btn(u32(103))],
+    ["after binds ever seen",btn(u32(107))]];
+}
+async function diagFetch(){
+  if(!dev||!lastP||lastP[0]<24) return {err:"not supported (firmware older than protocol v24)"};
+  const p=await bindsXfer(async()=>{ await send([0x2C]); return await readFrame(0xB4,111,256); });
+  if(!p) return {err:"not supported or no reply (no 0xB4 frame within 1 s)"};
+  if(p.length<111) return {err:"short frame ("+p.length+" bytes)"};
+  return {rows:diagDecode(p)};
+}
+async function diagLive(){
+  const p=await bindsXfer(async()=>{ await send([0x27,0xFF]); return await readFrame(0xB0,24,256); });
+  return p?parseLive(p):null;
+}
+function diagReport(diag,changes){
+  const L=[], hr=(t)=>L.push("","## "+t), now=new Date();
+  const p=lastP, mode=p?p[1]:null, et=mode!==null?etypeForMode(mode):-1;
+  L.push("# OpenPuck diagnostics","");
+  L.push("- date: "+now.toISOString()+" (local "+now.toString()+")");
+  L.push("- page: "+location.href+(document.lastModified?" (modified "+document.lastModified+")":"")+" (commit: not available)");
+  L.push("- user agent: "+navigator.userAgent);
+  hr("Puck");
+  L.push("- connection: "+(dev?("connected, "+(isDongle?"ReversePuck":"puck")+" "+dev.vendorId.toString(16)+":"+dev.productId.toString(16)):"disconnected")+(polling?"":" (polling stopped)"));
+  if(p){
+    const build=blobBuildId(p), dirty=p.length>38?p[38]:0;
+    L.push("- firmware build: "+(build||"?")+(dirty?" (dirty)":" (clean)")+", status protocol v"+p[0]);
+    L.push("- mode: "+modeFull(mode)+(et>=0?" -> type "+TYPE_DEFS[et].name:""));
+  }
+  if(live){
+    const hs=HOST_SET.find(h=>h[0]===((live.host>>2)&3));
+    if(live.host!==null) L.push("- host: "+hostText(live.host)+", reason: "+(HOST_WHY[(live.host>>4)&15]||"nothing seen yet")+", setting: "+(hs?hs[1]:"?"));
+    L.push("- battery: "+(battText(live).replace(/^Battery /,"")||"no reading")+", link "+(live.link?"up":"down")+", slot "+(live.slot+1));
+  }
+  if(binds && bindsCap){
+    const t=et>=0?et:curTab;
+    hr("Assignments (profile "+(binds.active+1)+", "+TYPE_DEFS[t].name+(et<0?" - tab shown, mode has no type":"")+")");
+    BACK_LABELS.forEach((lab,i)=>L.push("- "+lab.split(" ")[0]+": "+actText(binds.act[binds.active][t][i],t)));
+  }
+  if(live){
+    hr("Live sample");
+    L.push("- raw: "+(maskNames(live.raw,-1,", ")||"none")+" (0x"+live.raw.toString(16).padStart(8,"0")+")");
+    L.push("- after binds: "+(maskNames(live.out,live.et<TYPE_DEFS.length?live.et:-1,", ")||"none")+" (0x"+live.out.toString(16).padStart(8,"0")+")");
+    L.push("- sticks: L "+live.lx+","+live.ly+"  R "+live.rx+","+live.ry+"  triggers "+live.lt+" / "+live.rt+"  profile "+(live.profile+1));
+  }
+  hr("Firmware diag (0x2C / 0xB4)");
+  if(diag.err) L.push("- firmware diag: "+diag.err);
+  else for(const [k,v] of diag.rows) L.push("- "+k+": "+v);
+  if(changes){
+    hr("Capture, 3 s at 100 ms (changes only)");
+    L.push(...(changes.length?changes:["- no change"]));
+  }
+  hr("Page events (newest last, max "+DIAG_EV_MAX+")");
+  L.push(...(diagEv.length?diagEv.map(e=>"- "+e.t+"  "+e.m+(e.n>1?" (x"+e.n+")":"")):["- none"]));
+  return L.join("\n");
+}
+async function diagCopy(capture){
+  const msg=$("#diagMsg"), btns=[$("#diagCopy"),$("#diagCap")];
+  btns.forEach(b=>b.disabled=true); msg.textContent="";
+  try{
+    let changes=null;
+    if(capture && dev && bindsCap){
+      changes=[]; const t0=performance.now(); let prevL=null, prevD=null, firstD=null, lastD=null, lastLt=-99, lastRt=-99;
+      while(performance.now()-t0<3000){
+        const l=await diagLive(), d=await diagFetch();
+        const at="+"+((performance.now()-t0)/1000).toFixed(1)+" s";
+        if(l){ live=l;
+          const b=maskNames(l.raw,-1,", ")+" | "+maskNames(l.out,l.et<TYPE_DEFS.length?l.et:-1,", ");
+          // analog triggers only count when they moved noticeably
+          const trig=Math.abs(l.lt-lastLt)>=32||Math.abs(l.rt-lastRt)>=32;
+          if(prevL!==b||trig){ changes.push("- "+at+"  raw | after binds: "+(b===" | "?"none":b)+" | LT "+l.lt+" RT "+l.rt); prevL=b; lastLt=l.lt; lastRt=l.rt; } }
+        if(d.rows){ const cur=Object.fromEntries(d.rows.map(r=>[r[0],String(r[1])])), isC=Object.fromEntries(d.rows.map(r=>[r[0],!!r[2]]));
+          // counters tick all the time: only the first-to-last difference is reported
+          if(prevD) for(const k in cur) if(!isC[k] && cur[k]!==prevD[k]) changes.push("- "+at+"  "+k+": "+prevD[k]+" -> "+cur[k]);
+          if(!firstD) firstD=cur; lastD=cur; lastD.__c=isC;
+          prevD=cur; }
+        else if(!prevD){ changes.push("- "+at+"  firmware diag: "+d.err); prevD={}; }
+        msg.textContent="capturing… "+Math.max(0,(3-(performance.now()-t0)/1000)).toFixed(0)+" s";
+        await sleep(100);
+      }
+      if(firstD&&lastD) for(const k in lastD) if(k!=="__c" && lastD.__c[k] && lastD[k]!==firstD[k]) changes.push("- over 3 s  "+k+": "+firstD[k]+" -> "+lastD[k]);
+    }
+    const text=diagReport(await diagFetch(),changes);
+    let ok=false;
+    try{ await navigator.clipboard.writeText(text); ok=true; }catch(e){}
+    const ta=$("#diagOut"); ta.value=text;
+    ta.classList.toggle("hide",ok);
+    if(!ok){ ta.select(); try{ ok=document.execCommand("copy"); }catch(e){} }
+    msg.textContent=ok?"copied ("+text.length+" characters)":"clipboard blocked: select the text below and copy it";
+    if(ok) ta.classList.add("hide");
+  }catch(e){ msg.textContent="failed: "+e.message; diagNote("diagnostics failed: "+e.message); }
+  finally{ btns.forEach(b=>b.disabled=false); }
+}
+$("#diagCopy").onclick=()=>diagCopy(false);
+$("#diagCap").onclick=()=>diagCopy(true);
 </script>
 </body>
 </html>
