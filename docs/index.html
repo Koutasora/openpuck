@@ -50,8 +50,8 @@
   .stat{background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px}
   .stat .k{color:var(--mut);font-size:12px}
   .stat .v{font-size:18px;margin-top:2px}
-  .modes{display:flex;gap:10px;flex-wrap:wrap}
-  .modebtn{text-align:left}
+  .modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+  .modebtn{text-align:left;min-width:0}
   .modebtn small{display:block;font-size:11px;font-weight:400;color:var(--mut)}
   .modebtn.active small{color:#06121f}
   .modegroup{margin:0 0 12px}
@@ -208,7 +208,7 @@
   <span id="battTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <span id="hostTxt" class="hide" style="font-size:12px;font-weight:600"></span>
   <button id="connectBtn" class="primary">Connect</button>
-  <button id="diagCopy" title="Copy a plain-text report (puck, mode, host, assignments, live state, firmware counters, recent events) to paste into a chat">Copy diagnostics</button>
+  <button id="diagCopy" title="Copy a plain-text report (puck, mode, host, assignments, live state, firmware counters, recent events) to the clipboard">Copy diagnostics</button>
   <span id="updAvail" class="pill hide" title="A newer OpenPuck release is available — click to open the Firmware update tab">…</span>
   <span class="spacer"></span>
   <button id="betaBtn" class="beta" title="Show beta features warning and enable beta UI">Beta</button>
@@ -3410,6 +3410,24 @@ for(const b of document.querySelectorAll(".modebtn")){
     const msg="Switch to "+MODE_NAMES[m]+"? The copycat will reboot."+(clean?"\n\nNOTE: this page cannot connect in this mode (no WebUSB panel, no host-wake), so THIS PANEL WILL DISCONNECT and can't reach the device while it's in this mode. To get back, chord on the controller: hold all four back paddles (L4+R4+L5+R5) + A to return to Steam mode. The back4+D-pad chords are how you get back INTO these modes without the panel — check their assignments in the chords card first.":"");
     if(confirm(msg)){ send([0x03, m]); log("mode switch requested — device will reboot"); } };
 }
+// Mouse wheel over a focused, closed list steps its option (no wrap); the change event is sent 250 ms after the last tick
+// so fast scrolling does not flood the puck with writes. An unfocused list lets the page scroll.
+{
+  const timers=new WeakMap();
+  document.addEventListener("wheel",e=>{
+    const sel=e.target instanceof Element?e.target.closest("select"):null;
+    if(!sel||sel.disabled||sel.multiple||document.activeElement!==sel||e.ctrlKey||!e.deltaY) return;
+    const dir=e.deltaY>0?1:-1, opts=[...sel.options];
+    for(let i=sel.selectedIndex+dir;i>=0&&i<opts.length;i+=dir){
+      const o=opts[i]; if(o.disabled||o.hidden) continue;
+      sel.selectedIndex=i;
+      clearTimeout(timers.get(sel));
+      timers.set(sel,setTimeout(()=>sel.dispatchEvent(new Event("change",{bubbles:true})),250));
+      break;
+    }
+    e.preventDefault();
+  },{passive:false});
+}
 updateUf2UI();
 updateFwGate(); // start gated: stays inert until the first status blob proves the firmware speaks v15+
 if(!("usb" in navigator)) $("#connectBtn").outerHTML='<b style="color:var(--bad)">WebUSB not supported — use Chrome or Edge.</b>';
@@ -4980,7 +4998,7 @@ async function scSave(){
 })();
 
 // ===================== Copy diagnostics =====================
-// One plain-text report for pasting into a chat: page, puck, mode, host, assignments, live sample, the last page
+// One plain-text report: page, puck, mode, host, assignments, live sample, the last page
 // events and the firmware diagnostics frame (0x2C -> 0xB4, PROTOCOL.md 10.4). "Capture 3 s" also records what
 // changes while the user holds a paddle.
 var DIAG_EV_MAX=30;

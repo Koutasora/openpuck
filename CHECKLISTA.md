@@ -80,3 +80,5 @@ Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po
 - [ ] Mapping -> Live view: drążki w procentach (np. "2%, 3%"), triggery w procentach, surowe wartości w podpowiedzi; Copy diagnostics i Capture mają surowe liczby
 - [ ] Notka "First connect uses the Chrome/Edge device picker..." widoczna tylko bez połączenia, po połączeniu znika, po odłączeniu wraca
 - [ ] Mapping -> Sounds, Events: listy melodii węższe, etykieta i lista w jednym wierszu
+- [ ] Rolka myszy zmienia ustawienie w klikniętej (aktywnej) liście, jeden krok na ząbek, bez zawijania; bez kliknięcia lista nie reaguje i rolka przewija stronę
+- [ ] Status -> Modes: kafelki trybów USB równej wielkości w równych kolumnach (4 przy pełnej szerokości, mniej w wąskim oknie), bez poziomego przewijania
