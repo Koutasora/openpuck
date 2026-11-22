@@ -6,62 +6,45 @@
 - [x] Build firmware na LAB (`sh tools/build-lab.sh`), plik `build/openpuck/OpenPuck.uf2`
 - [ ] Wgrany .uf2 z LAB działa na głównym PC jak firmware autora
 
-## Etap 02: przypisania i profile
-- [x] Logika akcji i makr w osobnym module `binds`, test na LAB (`sh tests/binds/run.sh`) przechodzi
+## Etap 02: przypisania i strona (dawne etapy 02-05)
+Gotowe i zbudowane na LAB, testy bez sprzętu przechodzą:
+- [x] Logika przypisań, makr, profili i klawiatury/myszy w module `binds`, test `sh tests/binds/run.sh` (także rozpoznawanie hosta)
 - [x] Build wpisuje wersję i commit (`gen_version.sh` w `tools/build-lab.sh`)
-- [ ] Firmware wysyła do strony stan przycisków na żywo (pod podgląd w etapie 04) — polecenie WebUSB `0x27` gotowe i zbudowane, test na sprzęcie czeka
-- [ ] Tylny przycisk: przycisk pada, kombinacja, makro — gotowe i zbudowane (konsola `BA`/`BM`), test na sprzęcie czeka (PS5, Xbox)
-- [ ] 3 profile, przełączanie back-4 + LB/RB, wibracja — gotowe i zbudowane, test na sprzęcie czeka
-- [ ] Stary zapis ustawień dalej się wczytuje — `cfg.bin` bez zmian, przypisania w `binds.bin`; test na sprzęcie czeka
+- [x] Panel autora (`docs/index.html`) z rozszerzeniami: profile, akcje Button/Combo/Macro/Key/Mouse, rysunki Valve, Macros, Live view, Shortcuts, bateria, host; sprawdzony na atrapie pucka w Chromium
 
-## Etap 03: klawiatura i mysz na PC
-Gotowe i zbudowane (`sh tools/build-lab.sh`, plik `build/openpuck/OpenPuck.uf2`), test na sprzęcie czeka. Klawiatura i mysz
-działają tylko w trybach PS5 (z panelem) i DS4-gyro, tylko gdy puck uzna, że jest na PC. Mysz to istniejący interfejs
-"wake mouse", klawiatura to nowy interfejs dodawany po wykryciu PC (jedno ponowne wyliczenie USB, pad znika na chwilę).
+### 1. Wgranie i strona
+- [ ] Wgraj `build/openpuck/OpenPuck.uf2` przez zakładkę Firmware update panelu (tak jak w etapie 01); pad łączy się bez ponownego parowania
+- [ ] Uruchom stronę lokalnie: w folderze repo `python -m http.server 8000 -d docs`, otwórz `http://localhost:8000` w Chrome, Connect
+- [ ] Pasek u góry pokazuje wersję z commitem (nie "unknown"), baterię pada i host
+- [ ] Stare ustawienia (tryby, kombinacje back4, przypisania łopatek) zostały po wgraniu
 
-Przypisania ustawiasz w konsoli szeregowej (rozruch debug CDC w trybie Steam, jak dotąd dla `BA`/`BM`); zapisują się w
-`binds.bin`, więc działają po przełączeniu w tryb PS5. Typ pada: `3` = PS5, `2` = DS4-gyro; profil `1`; łopatki 0..3 = L4 R4 L5 R5:
-- `BA 1 3 0 K04` — L4 = klawisz A
-- `BA 1 3 1 K06:03` — R4 = Ctrl+Shift+C (kod klawisza hex : modyfikatory hex: 01 LCtrl, 02 LShift, 04 LAlt, 08 LWin)
-- `BA 1 3 2 MoL` — L5 = lewy przycisk myszy (`MoR` prawy, `MoM` środkowy, `MoB` wstecz, `MoF` dalej)
-- `BA 1 3 3 MoD+` — R5 = kółko w dół, powtarzane co 100 ms przy trzymaniu (`MoU` / `MoD` = jeden ząbek na wciśnięcie)
-- `BL` — lista przypisań; `HOST` — co puck myśli o hoście
+### 2. Przypisania pada (tryb PS5 i tryb Xbox, tester pada: joy.cpl albo gamepad-tester.com)
+- [ ] Button: łopatka daje wybrany przycisk
+- [ ] Combo: łopatka daje kilka przycisków naraz (np. L1 + R1)
+- [ ] Macro: łopatka odtwarza makro raz do końca; puszczenie w trakcie nie przerywa
+- [ ] Profile: przełączenie na stronie i na padzie (4 łopatki + RB następny, + LB poprzedni), liczba wibracji = numer profilu; LB/RB w tym czasie nie dochodzą do gry
+- [ ] Ustawienia zostają po odłączeniu zasilania pucka
+- [ ] Live view: lewa strona reaguje na pad (przyciski, drążki, triggery), prawa pokazuje to, co dostaje komputer
 
-Test na PC (Windows):
-- [ ] Wgraj `OpenPuck.uf2`, przełącz na tryb PS5 (z panelem), podłącz puck do PC i włącz pada
-- [ ] Po ok. 10 s (puck raz ponownie się wylicza, pad na moment znika) Menedżer urządzeń pokazuje trzy rzeczy: pad (DualSense), "Klawiatura HID" w Klawiaturach, "Mysz zgodna z HID" w Myszach
-- [ ] Tester pada (joy.cpl albo gamepad-tester.com): pad działa jak dotąd, wszystkie przyciski i drążki
-- [ ] Notatnik: łopatka z `K04` wpisuje literę, przytrzymana powtarza ją; `K06:03` daje Ctrl+Shift+C (np. w przeglądarce otwiera narzędzia)
-- [ ] Mysz: łopatka z `MoL` klika, `MoD+` przewija długą stronę w dół i przestaje po puszczeniu; `MoU` przewija o ząbek na wciśnięcie
-- [ ] Puszczona łopatka puszcza klawisz (żadnych "przyklejonych" liter); wyłączenie pada przy wciśniętej łopatce też
-- [ ] Kombinacje back4 (zmiana trybu, profile back4 + LB/RB) działają i nie wpisują niczego
-- [ ] Tryb DS4-gyro: to samo (menedżer urządzeń, Notatnik, mysz); w konsoli typ pada `2`
-- [ ] Kontrola wykrycia: puck w trybie Steam z konsolą (rozruch debug CDC) na PC, polecenie `HOST` pisze `host PC (...)`
-- [ ] Linux / macOS (jeśli masz pod ręką): klawiatura pojawia się po ok. 10 s od włączenia pada; `HOST` pokazuje powód "identity reports read"
+### 3. Klawiatura i mysz na PC (tryb PS5 z panelem, potem DS4-gyro)
+Działają tylko w tych dwóch trybach i tylko gdy puck uzna, że jest na PC. Po wykryciu PC puck raz się ponownie wylicza (pad znika na chwilę).
+- [ ] Po ok. 10 s Menedżer urządzeń pokazuje pad, "Klawiatura HID" i "Mysz zgodna z HID"; na stronie "Host: PC"
+- [ ] Key: łopatka wpisuje literę w Notatniku, przytrzymana powtarza; Ctrl+Shift+C działa (np. narzędzia w przeglądarce); przycisk Record na stronie ustawia skrót naciśnięty na klawiaturze
+- [ ] Mouse: klik lewy/prawy, kółko jeden ząbek na wciśnięcie, kółko powtarzane przy trzymaniu i stop po puszczeniu
+- [ ] Puszczona łopatka puszcza klawisz (nic się nie "przykleja"), także po wyłączeniu pada z wciśniętą łopatką
+- [ ] Kombinacje back4 nadal działają i niczego nie wpisują
+- [ ] Wybudzanie PC z uśpienia padem działa jak przed zmianą
+- [ ] Ustawienie "Keyboard/mouse host" na stronie: Always console usuwa klawiaturę, Always PC dodaje ją od razu po starcie, Auto wraca do rozpoznawania
 
-Test na konsoli:
-- [ ] Tryby konsolowe (PS5 console via auth adapter, PS5 game, DS4 game, PS3, Switch, Xbox OG, Xbox 360) działają jak przed zmianą, bez klawiatury w Menedżerze urządzeń na PC
-- [ ] Konsola z trybem PS5 albo DS4-gyro (PS4 / PS5, jeśli akceptuje pada): pad działa jak dotąd, brak klawiatury i brak kliknięć myszy od łopatek; po przepięciu na PC `HOST` pokazuje "PlayStation auth reports" albo zapamiętany wynik
-- [ ] Łopatka z `K..` albo `Mo..` na konsoli nic nie robi (nie wciska niczego w grze)
+### 4. Konsola
+- [ ] Tryby konsolowe (PS5 game, PS5 przez adapter, DS4 game, PS3, Switch, Xbox OG, Xbox 360) działają jak przed zmianą
+- [ ] Na konsoli łopatka z klawiszem/myszą nic nie robi; przypisania Button/Combo/Macro i profile działają
 
-Ustawienie ręczne hosta (gdy automat się pomyli), w konsoli szeregowej:
-- [ ] `HOST` pokazuje wykryty host, powód, ustawienie i czy interfejs klawiatury jest włączony
-- [ ] `HOST P` = zawsze PC: po restarcie w trybie PS5 klawiatura jest w Menedżerze urządzeń od razu, także bez wykrycia
-- [ ] `HOST C` = zawsze konsola: klawiatura znika, łopatki z klawiszem / myszą nic nie robią
-- [ ] `HOST A` = automat (domyślnie); ustawienie zostaje po odłączeniu zasilania
-- [ ] Stary `binds.bin` (wersja 1) dalej się wczytuje po wgraniu nowego firmware (przypisania z etapu 02 bez zmian)
+### 5. Strona
+- [ ] Shortcuts: ściągawka pokazuje tryby przypisane do kombinacji back4 w tym pucku; Save as PNG zapisuje obrazek (jasny i ciemny)
+- [ ] Macros: utworzenie makra, Test macro, zapis na padzie, przypisanie do łopatki
+- [ ] Strona działa przy wąskim oknie (telefon / wąska przeglądarka)
 
-## Etap 04: strona konfiguracji
-- [ ] Makieta zaakceptowana
-- [ ] Rysunek Steam Controllera z nazwami wg typu pada
-- [ ] Tabela przypisań i edytor makr
-- [ ] Podgląd na żywo: co wciskasz na padzie (nowy kanał WebUSB z firmware)
-- [ ] Procent baterii i stan ładowania pada
-- [ ] Podgląd na żywo: co dostaje komputer (Gamepad API + klawiatura/mysz w przeglądarce)
-- [ ] Przycisk "test makra" bez wychodzenia ze strony
-- [ ] Strona na GitHub Pages forka
-
-## Etap 05: testy i wydanie
-- [ ] Test na PC (tester pada, Notatnik)
-- [ ] Test na konsoli
-- [ ] Wydanie .uf2 na GitHubie forka
+### 6. Wydanie
+- [ ] Wydanie `.uf2` na GitHubie repo (po teście)
+- [ ] Strona dostępna z GitHuba (GitHub Pages albo inna droga; prywatne repo bez płatnego planu nie ma Pages)
