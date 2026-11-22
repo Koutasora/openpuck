@@ -217,7 +217,7 @@
   <button id="wipeBoard" class="danger debugonly" title="ERASE THE ENTIRE BOARD: firmware + all settings + bonds. The board reboots app-less and mounts as the UF2 drive on every boot until you re-flash OpenPuck. Debug only. Cannot be undone.">Wipe board</button>
 </div>
 <div class="wrap">
-  <p class="sub">First connect uses the Chrome/Edge device picker; reconnects are automatic. If the picker is empty, quit any app holding the device or replug.</p>
+  <p class="sub" id="connNote">First connect uses the Chrome/Edge device picker; reconnects are automatic. If the picker is empty, quit any app holding the device or replug.</p>
 
   <!-- holds the clone section while no OpenPuck is connected (the Backup & clone card is hidden then) -->
   <div class="card" id="cloneHome"><h2>Clone pairings from an official puck</h2></div>
@@ -1507,7 +1507,7 @@ async function openDevice(d){
     $("#connState").textContent="connected"; $("#connState").className="pill up";
     $("#connState").title = dev.serialNumber ? (kind+" serial "+dev.serialNumber) : "";
     $("#connectBtn").textContent="Reconnect";
-    $("#panel").classList.remove("hide");
+    $("#panel").classList.remove("hide"); $("#connNote").classList.add("hide");
     applyDeviceProfile(); // show the controller UI + hide puck-only cards (or vice-versa)
     cloneRender();
     log(`connected — ${kind} ${dev.serialNumber||"?"} (VID ${dev.vendorId.toString(16)} PID ${dev.productId.toString(16)} iface ${ifNum})`);
@@ -1564,7 +1564,7 @@ function onGone(){
   cloneRender();
   checkUpdateNotice(); // no device = no notice
   $("#connState").textContent="reconnecting…"; $("#connState").className="pill dn";
-  $("#panel").classList.add("hide");
+  $("#panel").classList.add("hide"); $("#connNote").classList.remove("hide");
   log("device disconnected (mode-switch / watchdog reboot) — auto-reconnecting when it returns");
   // The puck re-enumerates after a reboot; retry without the picker. The "connect" event also triggers this,
   // but poll a few times in case the event is missed.
