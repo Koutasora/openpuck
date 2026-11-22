@@ -35,7 +35,8 @@
   button:hover{border-color:var(--acc2)}
   button.primary{background:var(--acc2);border-color:var(--acc2);color:#06121f;font-weight:600}
   button.active{background:var(--acc2);border-color:var(--acc2);color:#06121f;font-weight:600}
-  button.beta{font-weight:600}
+  button.beta{font-weight:600;background:transparent;border-color:var(--warn)}
+  button.beta:hover{border-color:var(--warn)}
   button.beta.active{background:var(--acc2);border-color:var(--acc2);color:#06121f}
   button.danger{background:transparent;border-color:var(--bad);color:#ff9bb0;font-weight:600}
   button.danger:hover{border-color:#ff9bb0}
@@ -380,7 +381,7 @@
           <tbody id="rfJournalBody"></tbody>
         </table>
       </div>
-      <div id="rfAmbientBars" style="display:flex;gap:4px;align-items:flex-end;height:76px;margin-top:12px;padding:8px;background:#151821;border:1px solid #272d3d;border-radius:6px"></div>
+      <div id="rfAmbientBars" style="display:flex;gap:4px;align-items:flex-end;height:76px;margin-top:12px;padding:8px;background:#151821;border:1px solid #272d3d;border-radius:3px"></div>
     </div>
 
     <div class="card" id="mouseCard">
@@ -2404,7 +2405,7 @@ function renderLizard(){
 }
 function buildLizardRow(b, idx){
   const row=document.createElement("div");
-  row.style.cssText="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0e1017;border:1px solid #232a3a;border-radius:8px;padding:8px 10px;margin:8px 0";
+  row.style.cssText="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:8px 10px;margin:8px 0";
   const analog = (b.outType===LZO.AXIS || b.outType===LZO.SCROLL);
 
   // Trigger (When) + Hold — meaningful only for digital outputs
@@ -3121,7 +3122,7 @@ function lzV2Render(){
 		if(!b.od) b.od=[0,0,0,0,0,0,0];
 		while(b.od.length<7) b.od.push(0);
 		const box=document.createElement("div");
-		box.style.cssText="border:1px solid #232a3a;border-radius:8px;padding:9px;margin:7px 0;background:#0e1017";
+		box.style.cssText="border:1px solid #232a3a;border-radius:3px;padding:9px;margin:7px 0;background:#0e1017";
 		const top=document.createElement("div");
 		top.className="row"; top.style.flexWrap="wrap";
 
@@ -3377,8 +3378,9 @@ function bindsBuild(b){
 
 // Run fn on the shared bulk pipe: the status poll must not be in flight (its reply would be eaten by our read).
 async function bindsXfer(fn){
-  for(let i=0;i<200 && dev && (inflight||capturing||backupBusy||flightBusy||lizardBusy||rfBusy);i++) await sleep(10);
-  if(!dev || inflight) return null;
+  // during a firmware update the IN pipe belongs to the update acks (runUpdate stops the status poll)
+  for(let i=0;i<200 && dev && !dfuBusy && (inflight||capturing||backupBusy||flightBusy||lizardBusy||rfBusy);i++) await sleep(10);
+  if(!dev || dfuBusy || !polling || inflight) return null;
   inflight=true;
   try{ return await fn(); }
   catch(e){ log("binds err: "+e.message); return null; }
@@ -3406,7 +3408,7 @@ async function bindsAck(op){
   return !!f && f[1]===1;
 }
 async function bindsSave(){
-  if(!binds || bindsSaving || !dev) return;
+  if(!binds || bindsSaving || !dev || dfuBusy) return;
   bindsSaving=true; bindsMsg("saving…");
   const blob=bindsBuild(binds);
   const ok=await bindsXfer(async()=>{
@@ -3818,7 +3820,8 @@ function battText(l){
   return "Battery "+l.batt+"%"+(l.charge===2?" · charging":l.charge===4?" · charged":"");
 }
 async function livePoll(){
-  if(!dev||!bindsCap||inflight||bindsSaving||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return;
+  if(dfuBusy&&macroRec) macroRecStop();
+  if(!dev||!bindsCap||dfuBusy||!polling||inflight||bindsSaving||capturing||backupBusy||flightBusy||lizardBusy||rfBusy) return;
   inflight=true;
   try{ await send([0x27,0xFF]); const p=await readFrame(0xB0,24,256); if(p) live=parseLive(p); }
   catch(e){ log("live err: "+e.message); }
