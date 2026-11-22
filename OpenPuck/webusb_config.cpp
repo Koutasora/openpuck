@@ -13,6 +13,7 @@
 #include "fw_update.h"
 #include "usb_tx.h"
 #include "usb_mount.h" // modeSwitchReboot()
+#include "binds_fw.h"
 #include "xinput_auth.h"
 #include <Arduino.h>
 #include <string.h>
@@ -105,7 +106,8 @@ static bool boardCommand(uint8_t op)
 //                [v21: p[53] rumble strength as PERCENT/2 (field 22, revived); p[195] rumble style
 //                 (field 39, RUMBLE_STYLE_* in haptics.h)]
 //                [v22: p[196] RF recovery status/journal transport capability marker (0x52)]
-#define WB_PAYLEN 195
+//                [v23: p[197] active binds profile 0..2 (back-paddle actions, binds.h; commands 0x26..0x2A)]
+#define WB_PAYLEN 196
 // The blob send is drop-on-full (never blocks loop), so the vendor TX FIFO MUST be able to hold a whole blob
 // -- otherwise tud_vendor_write_available() never reaches the frame size and EVERY frame is dropped (blank
 // panel / stale mappings). The Makefile sets -DCFG_TUD_VENDOR_TX_BUFSIZE=256; guard it here so a build without
@@ -132,7 +134,9 @@ static void webusbSendBlob()
 
 	// clang-format off
 	// protocol version
-	// (21 = +rumble style (field 39, blob p[195]) and the REVIVED rumble-strength field 22 at blob p[53], 
+	// (23 = +active binds profile at blob p[197] and the binds/live-state ops 0x26..0x2A -- the panel MUST see >=23
+	// before sending those, older firmware drops them silently;
+	// 21 = +rumble style (field 39, blob p[195]) and the REVIVED rumble-strength field 22 at blob p[53], 
 	// now carrying percent/2; 
 	// 22 = +RF recovery capability marker at blob p[196];
 	// 20 = +per-type trackpad->stick mapping (fields 80..87, blob p[187..194]); 
@@ -154,7 +158,7 @@ static void webusbSendBlob()
 	// 7 = +raw accel; 
 	// 6 = +swPro120/gyroScale)
 	// clang-format on
-	p[2] = 22;
+	p[2] = 23;
 	p[3] = g_usbMode;
 	p[4] = (uint8_t)g_mDiv;
 	p[5] = (uint8_t)g_mFric;
@@ -340,6 +344,8 @@ static void webusbSendBlob()
 	// v22: append-only RF recovery transport capability. p[181] remains the
 	// upstream Steam Machine toggle; older RF builds used that byte for 0x52.
 	p[196] = 0x52;
+	// v23: active back-paddle profile
+	p[197] = g_binds.active;
 	// CRITICAL: usb_web.write() SPINS (`while (remain && _connected) yield();`) until the IN FIFO drains or the
 	// panel disconnects. If the panel holds the WebUSB interface open but stops reading its IN endpoint -- a
 	// backgrounded tab, or the host briefly not servicing transferIn under load -- the FIFO never empties and
@@ -790,6 +796,64 @@ static void webusbDrainCapture()
 		webusbCapEnd();
 }
 #endif // OPK_LOG
+// ---- binds frames (loop context; drop-on-full like the other panel frames, the panel retries) ----
+//   0xAE <2+n> <idx> <total> <n data>      blob chunk (BINDS_CHUNK bytes per chunk, last one shorter)
+//   0xAF 3 <op> <ok 1/0> <profile>         ack for 0x28 / 0x29 / 0x2A
+//   0xAC 24 <payload>                      live state, see docs/PROTOCOL.md
+static void webusbSendBindsChunk(uint8_t idx)
+{
+	static uint8_t f[4 + BINDS_CHUNK];
+	uint8_t n = bindsFwReadChunk(idx, f + 4);
+	if (!n || !usb_web.connected() || tud_vendor_write_available() < 4u + n)
+		return;
+	f[0] = 0xAE;
+	f[1] = (uint8_t)(2 + n);
+	f[2] = idx;
+	f[3] = BINDS_CHUNKS;
+	usb_web.write(f, (uint16_t)(4 + n));
+	usb_web.flush();
+}
+static void webusbSendBindsAck(uint8_t op, bool ok)
+{
+	uint8_t f[5] = { 0xAF, 3, op, (uint8_t)(ok ? 1 : 0), g_binds.active };
+	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
+		usb_web.write(f, sizeof f);
+		usb_web.flush();
+	}
+}
+static void webusbSendLive(uint8_t slot)
+{
+	if (slot >= NSLOT)
+		slot = (g_curSlot >= 0 && g_curSlot < NSLOT) ? (uint8_t)g_curSlot : 0;
+	uint8_t f[2 + 24];
+	const PuckInput &in = g_in[slot];
+	const uint32_t raw = g_rawButtons[slot], out = in.buttons;
+	f[0] = 0xAC;
+	f[1] = 24;
+	for (int k = 0; k < 4; k++) {
+		f[2 + k] = (uint8_t)(raw >> (8 * k));
+		f[6 + k] = (uint8_t)(out >> (8 * k));
+	}
+	f[10] = in.lt;
+	f[11] = in.rt;
+	const int16_t st[4] = { in.lx, in.ly, in.rx, in.ry };
+	for (int k = 0; k < 4; k++) {
+		f[12 + k * 2] = (uint8_t)st[k];
+		f[13 + k * 2] = (uint8_t)((uint16_t)st[k] >> 8);
+	}
+	f[20] = g_binds.active;
+	f[21] = slot;
+	f[22] = g_etype;
+	f[23] = (g_slot[slot].used && g_connReplyMs[slot] != 0 &&
+		 (millis() - g_connReplyMs[slot]) < 300u) ? 1 : 0;
+	f[24] = g_battery[slot];
+	f[25] = g_batteryState[slot];
+	if (usb_web.connected() && tud_vendor_write_available() >= sizeof f) {
+		usb_web.write(f, sizeof f);
+		usb_web.flush();
+	}
+}
+
 void webusbPoll()
 {
 	// 160 B holds the largest command: a firmware-update data chunk 0x21 = [op][off u32][len][<=128 data]
@@ -811,7 +875,7 @@ void webusbPoll()
 			// 0x16 = test rumble (v21); extend this range whenever a new opcode is added, or the
 			// parser drops it as garbage and the handler below never runs.
 			if ((op < 0x01 || op > 0x1A) &&
-			    (op < 0x20 || op > 0x25)) { // resync: drop one byte
+			    (op < 0x20 || op > 0x2A)) { // resync: drop one byte
 				memmove(buf, buf + 1, --n);
 				continue;
 			}
@@ -823,6 +887,11 @@ void webusbPoll()
 					memmove(buf, buf + 1, --n);
 					continue;
 				}
+			}
+			// 0x28 (binds chunk) carries its length at [2]; same one-byte-resync gate as 0x21.
+			if (op == 0x28 && n >= 3 && (buf[2] == 0 || buf[2] > BINDS_CHUNK)) {
+				memmove(buf, buf + 1, --n);
+				continue;
 			}
 			// Command length (fixed per opcode). 0x0D = write-one-bond-slot (27 B); 0x12 = set-one-lizard-
 			// binding (18 B); 0x05/0x0E/0x0F/0x10/0x13 carry one value byte; 0x02 a field+value; 0x0A a
@@ -838,6 +907,8 @@ void webusbPoll()
 					       2 :
 				(op == 0x0A) ? 4 :
 				(op == 0x25) ? 5 :
+				(op == 0x26 || op == 0x27 || op == 0x2A) ? 2 :
+				(op == 0x28) ? (uint8_t)(3 + (n >= 3 ? buf[2] : 0)) :
 				(op == 0x20) ? 9 :
 				(op == 0x21) ? (uint8_t)(6 + (n >= 6 ? buf[5] :
 								       0)) :
@@ -1089,6 +1160,21 @@ void webusbPoll()
 				fwupAbort();
 				fwupAckPost(FWUP_OK);
 
+				// ---- back-paddle binds (binds.h), protocol v23 ----
+				// 0x26 <idx>: read blob chunk idx -> 0xAE. 0x27 <slot|0xFF>: live state -> 0xAC.
+				// 0x28 <idx> <len> <data>: stage blob chunk (idx 0 restarts). 0x29: validate + apply + save the staged
+				// blob. 0x2A <profile>: set active profile (+ confirm buzz). 0x28/0x29/0x2A are acked with 0xAF.
+			} else if (op == 0x26) {
+				webusbSendBindsChunk(buf[1]);
+			} else if (op == 0x27) {
+				webusbSendLive(buf[1]);
+			} else if (op == 0x28) {
+				webusbSendBindsAck(op, bindsFwStageChunk(buf[1], buf + 3, buf[2]));
+			} else if (op == 0x29) {
+				webusbSendBindsAck(op, bindsFwStageCommit());
+			} else if (op == 0x2A) {
+				webusbSendBindsAck(op, bindsFwSetProfile(buf[1]));
+				g_blobRequest = true;
 			} else if (op == 0x02) {
 				uint8_t f = buf[1], v = buf[2];
 
@@ -1105,7 +1191,7 @@ void webusbPoll()
 						k = (uint8_t)((f - 40) % 9);
 					if (et < ET_COUNT) {
 						if (k < 4)
-							g_type[et].back[k] = v;
+							bindsFwSetButton(et, k, v); // BUTTON action in the active profile
 						else if (k == 4)
 							g_type[et].qamMap = v;
 						else if (k == 5)
@@ -1151,7 +1237,7 @@ void webusbPoll()
 				case 7:
 				case 8:
 					if (g_etype < ET_COUNT) {
-						g_type[g_etype].back[f - 5] = v;
+						bindsFwSetButton(g_etype, (uint8_t)(f - 5), v);
 						applyActiveType();
 					}
 					break;

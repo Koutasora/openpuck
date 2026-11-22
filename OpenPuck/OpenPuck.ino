@@ -29,6 +29,7 @@ using namespace Adafruit_LittleFS_Namespace;
 #include "radio.h"
 #include "controllers.h"
 #include "haptics.h"
+#include "binds_fw.h"
 #include "rf_link.h"
 #include "puck_hid.h" // puckCmdLogDrain()
 #include "rf_diag.h"
@@ -151,6 +152,7 @@ void setup()
 	factoryResetOnce(OPK_GIT_HASH);
 #endif
 	loadCfg();
+	bindsFwInit(); // binds.bin (or defaults from g_type[].back); needs cfg.bin loaded first
 	rfApplyStartupLastGoodChannel();
 	loadBonds();
 	// Lizard (desktop) keyboard/mouse binding table. Custom remapping applies ONLY in pure
@@ -387,6 +389,7 @@ void loop()
 	t = micros();
 	faultDiagSetStage(5);
 	hapticTask();
+	bindsFwTask();
 	acc[5] += (uint32_t)(micros() - t);
 	t = micros();
 	faultDiagSetStage(6);
@@ -433,6 +436,7 @@ void loop()
 	rfLinkTask();
 	faultDiagSetStage(5);
 	hapticTask();
+	bindsFwTask();
 	faultDiagSetStage(6);
 	ledTask();
 #if OPK_PWR_SWITCH

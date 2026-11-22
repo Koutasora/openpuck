@@ -14,6 +14,8 @@
 //               0x24                 firmware update: abort/disarm
 //               0x25 "WIPE"          FULL BOARD WIPE (debug): erase app+config+bond+bl-settings, reboot app-less
 //                                    -> mounts as UF2 every boot until re-flashed (see fwupArmFullWipe)
+//               0x26 <idx> / 0x27 <slot> / 0x28 <idx> <len> <data> / 0x29 / 0x2A <profile>   back-paddle binds
+//                                    (read chunk / live state / stage chunk / commit / set profile); docs/PROTOCOL.md
 //   dev->host:  0xA5 <len> <payload>  status blob (mode/tunables/link state/rates)
 //               0xAB 5 <status> <nextOff u32>  firmware-update ack, one per 0x20/0x21/0x22/0x24 (fw_update.h)
 // No setLandingPage() on purpose -- it would pop a Chrome "open <url>?" notification on every plug-in.

@@ -8,17 +8,124 @@
 #include "puck_hid.h" // g_cmdCapture (feature-command capture toggle)
 #include "fault_diag.h"
 #include "usb_mount.h" // modeSwitchReboot()
+#include "binds_fw.h"
 #include <Adafruit_TinyUSB.h>
 #include <Arduino.h>
 #include <stdlib.h>
 #include <string.h>
 
+// ---- back-paddle binds console (see the command list at the top) ----
+static const char *const ET_NAME[ET_COUNT] = { "xbox", "switch", "ds4", "ds5" };
+static const char *const PADDLE_NAME[BINDS_BACKS] = { "L4", "R4", "L5", "R5" };
+
+static void bindsConsoleList(bool help)
+{
+	if (help) {
+		Serial.println("# BP <1..3> | BA <p> <et> <i> B<code>|C<hexmask>|M<idx> | BM <idx> <hexmask>:<ms> ... | BL");
+		Serial.println("# et: 0 xbox 1 switch 2 ds4 3 ds5; i: 0 L4 1 R4 2 L5 3 R5; code 0..20; masks = TB_* (triton.h)");
+		return;
+	}
+	Serial.printf("# active profile %u\n", g_binds.active + 1);
+	for (int p = 0; p < BINDS_PROFILES; p++)
+		for (int e = 0; e < ET_COUNT; e++) {
+			Serial.printf("# P%d %-6s", p + 1, ET_NAME[e]);
+			for (int i = 0; i < BINDS_BACKS; i++) {
+				const BindAction &a = g_binds.act[p][e][i];
+				if (a.type == BA_BUTTON)
+					Serial.printf(" %s=B%u", PADDLE_NAME[i], a.arg);
+				else if (a.type == BA_COMBO)
+					Serial.printf(" %s=C%lX", PADDLE_NAME[i], (unsigned long)a.mask);
+				else
+					Serial.printf(" %s=M%u", PADDLE_NAME[i], a.arg);
+			}
+			Serial.println();
+		}
+	for (int m = 0; m < BINDS_MACROS; m++) {
+		const MacroDef &d = g_binds.macro[m];
+		if (!d.count)
+			continue;
+		Serial.printf("# macro %d:", m);
+		for (int k = 0; k < d.count; k++)
+			Serial.printf(" %lX:%u", (unsigned long)d.step[k].mask, d.step[k].ms);
+		Serial.println();
+	}
+}
+
+// args: "<p> <et> <i> <B|C|M><value>" or with a space after the letter
+static void bindsConsoleAction(const char *a)
+{
+	char *e;
+	long p = strtol(a, &e, 10);
+	long et = strtol(e, &e, 10);
+	long i = strtol(e, &e, 10);
+	while (*e == ' ')
+		e++;
+	char t = *e++;
+	bool ok = false;
+	if (t == 'B' || t == 'b')
+		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_BUTTON, (uint8_t)strtoul(e, 0, 10), 0);
+	else if (t == 'C' || t == 'c')
+		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_COMBO, 0, strtoul(e, 0, 16));
+	else if (t == 'M' || t == 'm')
+		ok = bindsSetAction(g_binds, (uint8_t)(p - 1), (uint8_t)et, (uint8_t)i, BA_MACRO, (uint8_t)strtoul(e, 0, 10), 0);
+	if (ok) {
+		bindsFwCommit();
+		Serial.println("# ok");
+	} else
+		Serial.println("# BA <p 1..3> <et 0..3> <i 0..3> B<code 0..20>|C<hexmask>|M<idx 0..7>");
+}
+
+static void bindsConsoleMacro(const char *a)
+{
+	char *e;
+	long idx = strtol(a, &e, 10);
+	MacroStep st[BINDS_STEPS];
+	uint8_t n = 0;
+	bool ok = true;
+	for (;;) {
+		while (*e == ' ')
+			e++;
+		if (!*e)
+			break;
+		if (n >= BINDS_STEPS) {
+			ok = false;
+			break;
+		}
+		char *c;
+		unsigned long m = strtoul(e, &c, 16);
+		if (*c != ':') {
+			ok = false;
+			break;
+		}
+		unsigned long ms = strtoul(c + 1, &e, 10);
+		if (ms > 0xFFFF) {
+			ok = false;
+			break;
+		}
+		st[n].mask = (uint32_t)m;
+		st[n].ms = (uint16_t)ms;
+		n++;
+	}
+	if (ok && idx >= 0 && bindsSetMacro(g_binds, (uint8_t)idx, st, n)) {
+		bindsFwCommit();
+		Serial.printf("# macro %ld: %u steps\n", idx, n);
+	} else
+		Serial.println("# BM <idx 0..7> [<hexmask>:<ms> ...] (max 16 steps, ms <= 65535)");
+}
+
+// Back-paddle binds (profiles p=1..3, et=0 Xbox 1 Switch 2 DS4 3 DS5, i=0..3 for L4 R4 L5 R5):
+//   BL                       list the binds    BH   this help
+//   BP <p>                   active profile (+ buzz)
+//   BA <p> <et> <i> B <code> paddle -> button code 0..20 (decimal)
+//   BA <p> <et> <i> C <hex>  paddle -> combo, hex mask of TB_* bits (triton.h)
+//   BA <p> <et> <i> M <idx>  paddle -> macro 0..7
+//   BM <idx> <hex>:<ms> ...  define macro idx (up to 16 steps); "BM <idx>" clears it
 // CDC commands: l=listen, s=stop, cN=channel, p<hex>=prefix, a<8hex>=base addr, b=bonds, etc.
 // Command order matters: else-if chain, FIRST matching letter wins. 'C' and 'H' appear twice; the second
 // occurrence is unreachable.
 void serialConsolePoll()
 {
-	static char line[24];
+	static char line[256]; // long enough for a 16-step macro line (BM)
 	static uint8_t li = 0;
 	while (Serial.available()) {
 		char c = Serial.read();
@@ -35,6 +142,18 @@ void serialConsolePoll()
 				delay(40);
 				faultDiagArmIntentionalReset();
 				NVIC_SystemReset();
+			} else if (!strcmp(line, "BL") || !strcmp(line, "BH")) {
+				bindsConsoleList(!strcmp(line, "BH"));
+			} else if (!strncmp(line, "BP ", 3)) {
+				long p = atol(line + 3);
+				if (p >= 1 && bindsFwSetProfile((uint8_t)(p - 1)))
+					Serial.printf("# profile %ld\n", p);
+				else
+					Serial.println("# BP <1..3>");
+			} else if (!strncmp(line, "BA ", 3)) {
+				bindsConsoleAction(line + 3);
+			} else if (!strncmp(line, "BM ", 3)) {
+				bindsConsoleMacro(line + 3);
 			} else if (!strcmp(line, "CD")) {
 				// A/B: content dedup on the Steam input forward (drop reports whose body minus the
 				// free-running counter is unchanged) -- caps delivered rate at the controller's real
