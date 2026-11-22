@@ -22,7 +22,7 @@
   .card{background:var(--card);border:1px solid #272d3d;border-radius:3px;padding:16px 18px;margin:0 0 16px}
   /* ReversePuck dongle: hide every puck-only Controller card, keep just the paired-pucks card (this leaves
      the debugonly/lizard inline visibility rules untouched, so switching back to a puck restores them). */
-  body.dongle #tabMain > .cards > .card:not(#pairedCard){display:none !important}
+  body.dongle .subpanel > .card:not(#pairedCard):not(#logCard):not([data-sub="status/fw"]){display:none !important}
   .cloneSub{font-size:13px;color:var(--fg);margin:16px 0 6px;padding-top:12px;border-top:1px solid #272d3d}
   #cloneHome .cloneSub{display:none}
   .card h2{font-size:14px;font-weight:700;color:var(--fg);margin:0 0 14px}
@@ -80,6 +80,11 @@
   #mainTabs .slot-tab{font-size:13px;padding:7px 18px}
   #mainTabs .slot-tab.beta-gated{border-color:var(--warn)}
   #mainTabs .slot-tab.beta-gated.active{border-color:var(--acc2)}
+  #subTabs{margin:0 0 16px;padding:0 0 10px;border-bottom:1px solid #272d3d}
+  #subTabs .slot-tab{font-size:12px;padding:4px 12px}
+  #subTabs .slot-tab.beta-gated{border-color:var(--warn)}
+  #subTabs .slot-tab.beta-gated.active{border-color:var(--acc2)}
+  #logCard #log{max-height:50vh;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:8px;min-height:60px}
 
   /* ---- firmware update tab ---- */
   .dropzone{border:2px dashed #36405a;border-radius:3px;padding:26px 18px;text-align:center;cursor:pointer;
@@ -233,14 +238,13 @@
   </div>
 
   <div id="panel" class="hide">
-    <div class="slot-tabs" id="mainTabs">
-      <span class="slot-tab active" data-tab="tabMain">Controller</span>
-      <span class="slot-tab" data-tab="tabUpdate">Firmware update</span>
-    </div>
+    <div class="slot-tabs" id="mainTabs"></div>
+    <div class="slot-tabs subtabs" id="subTabs"></div>
+    <div id="subPanels"></div>
 
     <div id="tabMain">
     <div class="cards">
-    <div class="card wide" id="pairedCard" style="display:none">
+    <div class="card wide" id="pairedCard" style="display:none" data-sub="mapping/pairing">
       <h2>Paired pucks</h2>
       <div class="row" style="gap:10px;align-items:center;margin-bottom:4px">
         <span class="pill" id="pairedLink">—</span>
@@ -249,7 +253,7 @@
       <div id="pairedList"><p class="note">Reading paired pucks…</p></div>
       <p class="note" style="margin-top:8px">This is a <strong>ReversePuck</strong> controller dongle (28DE:1302). It emulates a Steam Controller to whichever puck it's paired with. Pair new pucks with <code>scpair.py</code>; use the <em>Firmware update</em> tab to flash a new dongle build.</p>
     </div>
-    <div class="card">
+    <div class="card" data-sub="status/status">
       <h2>Version</h2>
       <div class="statgrid">
         <div class="stat"><div class="k">Firmware build</div><div class="v" id="stVersionBuild">—</div></div>
@@ -264,7 +268,7 @@
       <p class="note">This section reflects the connected puck. Reconnect after flashing or changing modes to verify what is currently running.</p>
     </div>
 
-    <div class="card">
+    <div class="card" data-sub="status/modes">
       <h2>USB mode</h2>
       <p class="note" id="curMode" style="margin-top:0"></p>
       <div id="modeGroups"></div>      <p class="note">Switching reboots the copycat and re-enumerates USB (~2 s). WebUSB works in every mode, including Steam/Lizard with Steam running (Chrome claims the vendor interface; Steam keeps the HID slots). Switch HORIPAD + WebUSB is PC-only. Original Xbox emulates one Microsoft Controller S and uses the Xbox mapping tab; LB/RB become White/Black. It's for a real Original Xbox console — a PC needs a driver for the original Xbox controller to see it as a gamepad.</p>
@@ -275,7 +279,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-sub="status/modes">
       <h2>Back4 chords (face + D-pad)</h2>
       <p class="note" style="margin-top:0">Hold all four back paddles (L4+R4+L5+R5) plus a face button or D-pad direction to switch mode without the WebUI. In modes marked "no panel" this page cannot connect; come back with back4 + A. <strong>A is always Steam</strong> — that is the way back out of any mode. B / X / Y and all four D-pad directions are configurable below (defaults: B=Lizard, X=Xbox, Y=Switch Pro).</p>
       <div class="chord-cols">
@@ -299,7 +303,7 @@
       <p id="dpadOld" class="note hide">This puck's firmware predates the D-pad chords — update it to configure them.</p>
     </div>
 
-    <div class="card wide">
+    <div class="card wide" data-sub="status/status">
       <h2>Link status</h2>
 
       <!-- Per-controller tabs: visible only when 2+ controllers are bonded -->
@@ -352,7 +356,7 @@
       </div>
     </div>
 
-    <div class="card wide hide" id="rfRecoveryCard">
+    <div class="card wide hide" id="rfRecoveryCard" data-sub="status/debug">
       <h2>RF recovery &amp; channel journal</h2>
       <div class="statgrid">
         <div class="stat"><div class="k">Active channel</div><div class="v" id="rfActiveCh">—</div></div>
@@ -378,14 +382,14 @@
       <div id="rfAmbientBars" style="display:flex;gap:4px;align-items:flex-end;height:76px;margin-top:12px;padding:8px;background:#151821;border:1px solid #272d3d;border-radius:3px"></div>
     </div>
 
-    <div class="card" id="mouseCard">
+    <div class="card" id="mouseCard" data-sub="mapping/settings">
       <h2>Trackpad mouse (lizard + Xbox)</h2>
       <div class="row"><label>Sensitivity</label><input type="range" id="mDiv" min="4" max="200" step="1"><span class="val" id="mDivV"></span></div>
       <div class="row"><label>Glide / friction</label><input type="range" id="mFric" min="0" max="99" step="1"><span class="val" id="mFricV"></span></div>
       <p class="note">Right-pad cursor in Steam-mode lizard (Steam closed) and in Xbox mode. Sensitivity is a divisor — lower = faster pointer. Glide = how long the cursor coasts after a flick.</p>
     </div>
 
-    <div class="card">
+    <div class="card" data-sub="mapping/settings">
       <h2>Switch Pro motion</h2>
       <!-- Gyro mapping (firmware >= v19). Older firmware always uses the corrected mapping and has no field
            to set -> the whole block hides (see #swGyroMapBlock in applyBlob). -->
@@ -396,7 +400,7 @@
       <p id="swGyroOld" class="note hide">This puck's firmware predates the gyro-mapping setting — update it to configure it.</p>
     </div>
 
-    <div class="card">
+    <div class="card" data-sub="mapping/settings">
       <h2>Rumble</h2>
       <!-- Host-rumble shaping (firmware >= v21). Applies to the translated modes (Xbox / Switch / PlayStation),
            where the puck decodes the host's rumble packet itself. Steam mode relays Steam's own haptics
@@ -411,7 +415,7 @@
       <p id="rumbleOld" class="note hide">This puck's firmware predates the rumble-shaping settings — update it to configure them.</p>
     </div>
 
-    <div class="card wide">
+    <div class="card wide" data-sub="mapping/mapping">
       <h2>Button mapping</h2>
       <p class="note" style="margin-top:0">Separate mappings per emulated controller type — each only offers targets that exist on that controller. The type matching the current mode is highlighted. Steam &amp; Lizard are native puck modes (Steam does its own remapping) and aren't configured here.</p>
       <div class="row hide" id="bindsBar" style="margin-top:0">
@@ -428,7 +432,7 @@
       <div id="typeCfgs"></div>
     </div>
 
-    <div class="card hide" id="macroCard">
+    <div class="card hide" id="macroCard" data-sub="mapping/macros">
       <h2>Macros</h2>
       <p class="note" style="margin-top:0">A macro plays once, start to end, when its paddle is pressed. Assign it to a paddle with the Macro action above.</p>
       <div class="slot-tabs" id="macroTabs"></div>
@@ -455,7 +459,7 @@
       <div class="figs one" id="macroFig"></div>
     </div>
 
-    <div class="card hide" id="liveCard">
+    <div class="card hide" id="liveCard" data-sub="mapping/live">
       <h2>Live view</h2>
       <div class="chord-cols">
         <div>
@@ -481,7 +485,7 @@
       </div>
     </div>
 
-    <div class="card" id="lizardCard" style="display:none">
+    <div class="card" id="lizardCard" style="display:none" data-sub="mapping/settings">
       <h2>Lizard / desktop mapping</h2>
       <p class="note" style="margin-top:0">Keyboard, mouse &amp; media bindings for <strong>Lizard (always)</strong> mode — each row maps a controller input to a desktop action. (Steam-mode seamless lizard, when Steam is closed, keeps the built-in default behavior and is not affected by this map.) Edits apply after <strong>Save to device</strong>.</p>
       <div id="lizardList"></div>
@@ -494,7 +498,7 @@
       <p class="note" id="lzStatus" style="margin-top:8px">—</p>
     </div>
 
-    <div class="card" id="backupCard">
+    <div class="card" id="backupCard" data-sub="mapping/pairing">
       <h2>Backup &amp; clone</h2>
       <p class="note" style="margin-top:0">Save this puck's controller pairings <em>and</em> every setting to a file, then restore them onto another puck. The other puck becomes a clone — any controller paired to this one connects to it with <strong>no re-pairing</strong>. (Also a plain backup: re-import after a factory erase to get everything back.)</p>
       <div class="row" style="margin:0;flex-wrap:wrap">
@@ -516,7 +520,7 @@
       </div>
     </div>
 
-    <div class="card wide debugonly">
+    <div class="card wide" data-sub="status/debug">
       <h2>Hang log</h2>
       <p class="note" style="margin-top:0">One row per reset: uptime before it, reason, the stuck loop stage and captured PC (when the watchdog ISR could run), and usbd stack free. Accumulates across resets in this tab — a page refresh clears it. Pair with <em>Test stability</em> above for unattended runs.</p>
       <div class="row" style="margin:0 0 8px;flex-wrap:wrap">
@@ -527,7 +531,7 @@
       <pre id="hangOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin:0;max-height:260px;overflow:auto;white-space:pre"></pre>
     </div>
 
-    <div class="card wide debugonly">
+    <div class="card wide" data-sub="status/debug">
       <h2>Loop-state trail</h2>
       <p class="note" style="margin-top:0">Every change of the <em>Loop</em> pill, timestamped — stall episodes, live wedge reports, heartbeat loss (hard wedge, USB silent), recoveries, disconnects and the reset cause on reconnect — so an unattended hang is recorded even if you weren't watching. Saved in this browser (localStorage): it <strong>survives page refreshes</strong> and device reboots, and clears only with the button.</p>
       <div class="row" style="margin:0 0 8px;flex-wrap:wrap">
@@ -537,7 +541,7 @@
       <pre id="trailOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin:0;max-height:260px;overflow:auto;white-space:pre-wrap">—</pre>
     </div>
 
-    <div class="card wide debugonly">
+    <div class="card wide" data-sub="status/debug">
       <h2>Flight recorder</h2>
       <p class="note" style="margin-top:0">The trail of events the firmware recorded in the seconds before its most recent <b>watchdog hang</b> — the ring survives the reset in <code>.noinit</code> RAM (like the hang PC), so it's the post-mortem of what wedged the board. Loads automatically after a hang reconnects; click to reload. Same data the console <code>FR</code> command prints. <span id="flightWedge" style="font-family:ui-monospace,Menlo,monospace"></span></p>
       <div class="row" style="margin:0 0 8px;flex-wrap:wrap">
@@ -547,7 +551,7 @@
       <pre id="flightOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin:0;max-height:320px;overflow:auto;white-space:pre">—</pre>
     </div>
 
-    <div class="card wide logonly">
+    <div class="card wide logonly" data-sub="status/debug">
       <h2>Capture — host → controller commands</h2>
       <p class="note" style="margin-top:0">The firmware logs everything from boot into a big RAM ring: Steam's writes (<code>ifN</code>), the frames we transmit to the controller (<code>TX→ctlr</code>), and RF <code>LINK UP/DOWN</code> edges. For the reconnect buzz: trigger it (it appears moments after the puck boots / the controller reconnects), then connect here and click <b>Dump from boot</b> — the trigger is still in the ring. (Only present in a logging build, <code>-DOPK_LOG=1</code>.)</p>
       <div class="row" style="margin:0;flex-wrap:wrap">
@@ -558,16 +562,28 @@
       <p class="note">Dump streams the whole ring (oldest→newest) and then keeps live-updating until you press Stop. <code>cmd</code> is the command/report byte, then the raw bytes.</p>
       <pre id="capOut" style="font:12px ui-monospace,Menlo,monospace;color:var(--fg);background:#0e1017;border:1px solid #232a3a;border-radius:3px;padding:10px;margin-top:10px;max-height:260px;overflow:auto;white-space:pre-wrap"></pre>
     </div>
+    <div class="card wide" id="logCard" data-sub="status/log">
+      <h2>Page log</h2>
+      <div class="row" style="margin:0 0 8px;flex-wrap:wrap">
+        <span class="note" style="flex:1;margin:0">What the page itself did and saw, newest first.</span>
+        <button id="logCopy">Copy</button>
+        <button id="logClear">Clear</button>
+        <span class="note" id="logMsg" style="margin:0"></span>
+      </div>
+      <div id="log"></div>
+      <div class="colhead" style="margin-top:14px">Recent events (the ones Copy diagnostics includes)</div>
+      <div id="evView" class="evlog">—</div>
+    </div>
     </div><!-- .cards -->
     </div><!-- #tabMain -->
 
     <div id="tabUpdate" class="hide">
-      <div id="updGate" class="card hide" style="border-color:#7a2233">
+      <div id="updGate" data-sub="status/fw" class="card hide" style="border-color:#7a2233">
         <h2 style="color:var(--bad)">Panel updates not supported by this firmware</h2>
         <p class="note" id="updGateMsg" style="margin:0"></p>
       </div>
 
-      <div class="card fwupcard">
+      <div class="card fwupcard" data-sub="status/fw">
         <h2>Update from a local file</h2>
         <input id="uf2File" class="hide" type="file" accept=".uf2,application/octet-stream">
         <div id="uf2Drop" class="dropzone">
@@ -580,7 +596,7 @@
         </div>
       </div>
 
-      <div class="card fwupcard" id="relCard">
+      <div class="card fwupcard" id="relCard" data-sub="status/fw">
         <h2>Update from a release</h2>
         <div class="row" style="margin-top:0">
           <span class="note" style="flex:1;margin:0">Official builds from <a href="https://github.com/safijari/openpuck/releases" target="_blank" rel="noopener" style="color:var(--acc2)">github.com/safijari/openpuck/releases</a> &nbsp;·&nbsp; installed: <b id="updInstalled">—</b></span>
@@ -591,7 +607,6 @@
       </div>
     </div><!-- #tabUpdate -->
 
-    <div id="log"></div>
   </div>
   <p class="foot">Steam Controller drawings &copy; Valve Corporation, CC BY-NC-SA 4.0 &middot; <a href="img/LICENSE-valve.txt">license and changes</a></p>
 </div>
@@ -686,7 +701,6 @@ $("#betaBtn").classList.toggle("active", BETA_UI);
 $("#betaBtn").title = BETA_UI
   ? "Show beta-disable confirmation and return to the standard UI"
   : "Show beta warning and enable beta UI";
-$('#mainTabs .slot-tab[data-tab="tabUpdate"]').classList.toggle("beta-gated", !BETA_UI);
 function escHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
@@ -743,7 +757,7 @@ $("#betaBtn").onclick=async()=>{
   location.href=u.toString();
 };
 var diagEv=[]; // ring of the last page events, for Copy diagnostics
-function log(m){ diagNote(m); const l=$("#log"); l.textContent=(new Date().toLocaleTimeString()+"  "+m+"\n"+l.textContent).slice(0,2000); }
+function log(m){ diagNote(m); const l=$("#log"); l.textContent=(new Date().toLocaleTimeString()+"  "+m+"\n"+l.textContent).slice(0,20000); }
 
 // ---- Loop-state trail (persistent) ----
 // Every transition of the Loop pill lands here with a wall-clock timestamp, persisted in localStorage --
@@ -1891,7 +1905,7 @@ function applyDeviceProfile(){
   const ua=$("#updAvail"); if(ua && d) ua.classList.add("hide");
   // flashing the dongle is a primary use, so reveal the Firmware-update tab for it even without ?beta=true
   // (which otherwise gates the tab for pucks).
-  if(d){ const ut=$('#mainTabs .slot-tab[data-tab="tabUpdate"]'); if(ut) ut.style.display=""; }
+  tabsRefresh();
   updateFwGate(); // the dongle always supports panel updates
 }
 
@@ -2755,7 +2769,7 @@ function checkUpdateNotice(){
   el.classList.toggle("hide", !newer);
   if(newer) el.textContent="⬆ update "+rel.tag_name+" available";
 }
-$("#updAvail").onclick=()=>{ document.querySelector('#mainTabs .slot-tab[data-tab="tabUpdate"]').click(); };
+$("#updAvail").onclick=()=>tabOpen("status/fw");
 
 // Firmware-tab gate: the connected puck must speak status v15+ (the 0x20..0x24 update ops) for ANY of the
 // update tab to be usable. Too old => banner explains + both cards go inert until a capable build is flashed
@@ -3050,30 +3064,99 @@ async function loadReleases(force){
 }
 $("#relRefresh").onclick=()=>loadReleases(true);
 
-// ---- top-level tabs ----
-for(const t of document.querySelectorAll("#mainTabs .slot-tab")){
-  t.onclick=async()=>{
-    if(t.dataset.tab==="tabUpdate" && !BETA_UI){
-      const ok=await betaPopup({
-        title:"Firmware update is beta",
-        body:["Firmware update is still being tested and may not work correctly.",
-          "A bad image or interrupted recovery path can leave you needing UF2 DFU to recover.",
-          "Enable beta mode before using this feature."],
-        okText:"Enable beta"
-      });
-      if(ok){
-        const u=new URL(location.href);
-        u.searchParams.set("beta","true");
-        location.href=u.toString();
-      }
-      return;
-    }
-    for(const x of document.querySelectorAll("#mainTabs .slot-tab")) x.classList.toggle("active",x===t);
-    $("#tabMain").classList.toggle("hide", t.dataset.tab!=="tabMain");
-    $("#tabUpdate").classList.toggle("hide", t.dataset.tab!=="tabUpdate");
-    if(t.dataset.tab==="tabUpdate") loadReleases(false); // lazy: first visit fetches the list
-  };
+// ---- tabs: two levels, Status / Mapping ----
+// Every card carries data-sub="<tab>/<sub>"; the panels below are built from that attribute (document order kept),
+// so the cards themselves, their ids and the code that drives them stay untouched. The Shortcuts card is moved by
+// scUpdate (outside the tabs while no puck is connected). Selection lives in the URL hash and in localStorage.
+const TAB_DEFS=[
+  ["status","Status",[["status","Status"],["modes","Modes"],["debug","Debug"],["log","Log"],["fw","Firmware update"]]],
+  ["mapping","Mapping",[["mapping","Mapping"],["live","Live view"],["settings","Settings"],["shortcuts","Shortcuts"],["macros","Macros"],["pairing","Pairing & backup"]]]];
+const TAB_STORE="opk_tab", TAB_DEFAULT="status/status";
+// the ReversePuck dongle only has the paired-pucks card, the log and the firmware flasher
+const DONGLE_TABS=["status/log","status/fw","mapping/pairing"];
+var curTabKey=TAB_DEFAULT;
+function tabKeys(){ return TAB_DEFS.flatMap(t=>t[2].map(s=>t[0]+"/"+s[0])); }
+function tabAllowed(key){ return tabKeys().includes(key) && (!isDongle || DONGLE_TABS.includes(key)); }
+function tabShow(key){
+  curTabKey=key; const [m]=key.split("/");
+  for(const b of document.querySelectorAll("#mainTabs .slot-tab")) b.classList.toggle("active",b.dataset.main===m);
+  for(const b of document.querySelectorAll("#subTabs .slot-tab")){
+    b.classList.toggle("active",b.dataset.key===key);
+    b.style.display=(b.dataset.key.split("/")[0]===m && tabAllowed(b.dataset.key))?"":"none";
+  }
+  for(const p of document.querySelectorAll("#subPanels .subpanel")) p.classList.toggle("hide",p.dataset.key!==key);
+  try{ localStorage.setItem(TAB_STORE,key); }catch(e){}
+  if(key==="status/fw") loadReleases(false); // lazy: first visit fetches the list
+  if(key==="status/log") logRender();
 }
+// keep the selection valid after a connect / dongle change
+function tabsRefresh(){
+  for(const b of document.querySelectorAll("#mainTabs .slot-tab"))
+    b.style.display=TAB_DEFS.find(t=>t[0]===b.dataset.main)[2].some(s=>tabAllowed(b.dataset.main+"/"+s[0]))?"":"none";
+  tabShow(tabAllowed(curTabKey)?curTabKey:(isDongle?"mapping/pairing":TAB_DEFAULT));
+}
+// user choice: the Firmware update tab keeps its beta gate
+async function tabOpen(key){
+  if(!tabAllowed(key)) return;
+  if(key==="status/fw" && !BETA_UI){
+    const ok=await betaPopup({
+      title:"Firmware update is beta",
+      body:["Firmware update is still being tested and may not work correctly.",
+        "A bad image or interrupted recovery path can leave you needing UF2 DFU to recover.",
+        "Enable beta mode before using this feature."],
+      okText:"Enable beta"
+    });
+    if(ok){ const u=new URL(location.href); u.searchParams.set("beta","true"); location.href=u.toString(); }
+    return;
+  }
+  if(location.hash.slice(1)!==key) location.hash=key; // pushes a history entry; hashchange does the rest
+  else tabShow(key);
+}
+function tabFromHash(){
+  const k=decodeURIComponent(location.hash.slice(1));
+  // a stored / linked Firmware update tab never opens by itself on a non-beta page
+  if(tabAllowed(k) && !(k==="status/fw" && !BETA_UI && !isDongle)) return k;
+  return null;
+}
+(function tabsInit(){
+  const main=$("#mainTabs"), sub=$("#subTabs"), panels=$("#subPanels");
+  main.textContent="";
+  for(const [m,name,subs] of TAB_DEFS){
+    const b=document.createElement("span"); b.className="slot-tab"; b.dataset.main=m; b.textContent=name;
+    b.onclick=()=>{ let k=curTabKey.startsWith(m+"/")?curTabKey:null;
+      if(!k){ try{ k=localStorage.getItem(TAB_STORE+"_"+m); }catch(e){} }
+      if(!k||!k.startsWith(m+"/")||!tabAllowed(k)) k=m+"/"+subs.find(x=>tabAllowed(m+"/"+x[0]))[0];
+      tabOpen(k); };
+    main.appendChild(b);
+    for(const [s,sn] of subs){
+      const k=m+"/"+s, t=document.createElement("span"); t.className="slot-tab"; t.dataset.key=k; t.textContent=sn;
+      t.onclick=()=>{ try{ localStorage.setItem(TAB_STORE+"_"+m,k); }catch(e){} tabOpen(k); };
+      sub.appendChild(t);
+      const p=document.createElement("div"); p.className="subpanel hide"; p.dataset.key=k; p.id="sub-"+m+"-"+s; panels.appendChild(p);
+    }
+  }
+  for(const c of document.querySelectorAll("[data-sub]")) $("#sub-"+c.dataset.sub.replace("/","-")).appendChild(c);
+  $("#tabMain").remove(); $("#tabUpdate").remove();
+  $('#subTabs .slot-tab[data-key="status/fw"]').classList.toggle("beta-gated",!BETA_UI);
+  let st=null; try{ st=localStorage.getItem(TAB_STORE); }catch(e){}
+  curTabKey=tabFromHash()||(tabAllowed(st)?st:null)||TAB_DEFAULT;
+  if(curTabKey==="status/fw" && !BETA_UI) curTabKey=TAB_DEFAULT;
+  tabShow(curTabKey);
+  try{ history.replaceState(null,"","#"+curTabKey); }catch(e){}
+  window.addEventListener("hashchange",()=>{ const k=tabFromHash(); if(k) tabShow(k); });
+})();
+
+// ---- Log tab: the page log (log()) plus the event ring that Copy diagnostics includes ----
+function logRender(){
+  const ev=$("#evView"); if(!ev) return;
+  ev.textContent=diagEv.length?diagEv.slice().reverse().map(e=>e.t+"  "+e.m+(e.n>1?" (x"+e.n+")":"")).join("\n"):"—";
+}
+$("#logCopy").onclick=async()=>{
+  const t=$("#log").textContent||"";
+  try{ await navigator.clipboard.writeText(t); $("#logMsg").textContent="copied"; }
+  catch(e){ const r=document.createRange(); r.selectNodeContents($("#log")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); $("#logMsg").textContent="clipboard blocked: the log is selected, copy it by hand"; }
+};
+$("#logClear").onclick=()=>{ $("#log").textContent=""; diagEv.length=0; logRender(); $("#logMsg").textContent="cleared"; };
 $("#backupExport").onclick=exportBackup;
 $("#backupImport").onclick=()=>$("#backupFile").click();
 $("#backupFile").onchange=async(e)=>{ const f=e.target.files[0]; if(f) await importBackup(f); e.target.value=""; };
@@ -3438,8 +3521,8 @@ const KEY_NAME={}, KEY_BY_CODE={};
 for(const [,list] of KEY_GROUPS) for(const [u,n,c,sh] of list){ KEY_NAME[u]=sh||n; KEY_BY_CODE[c]=u; }
 // modifier byte = HID keyboard modifier byte; the panel edits the left four, right ones are kept and shown
 const KEY_MODS=[[0x01,"Ctrl"],[0x02,"Shift"],[0x04,"Alt"],[0x08,"Win"],[0x10,"Right Ctrl"],[0x20,"Right Shift"],[0x40,"Right Alt"],[0x80,"Right Win"]];
-const MOUSE_ACTS=[[1,"Left click","Left click"],[2,"Right click","Right click"],[3,"Middle click","Middle click"],[4,"Back click","Back click"],
-  [5,"Forward click","Forward click"],[6,"Wheel up (one notch)","Wheel up"],[7,"Wheel down (one notch)","Wheel down"],
+const MOUSE_ACTS=[[1,"Left click (Mouse 1)","Left click (Mouse 1)"],[2,"Right click (Mouse 2)","Right click (Mouse 2)"],
+  [3,"Middle click (Mouse 3)","Middle click (Mouse 3)"],[4,"Back (Mouse 4)","Back (Mouse 4)"],[5,"Forward (Mouse 5)","Forward (Mouse 5)"],[6,"Wheel up (one notch)","Wheel up"],[7,"Wheel down (one notch)","Wheel down"],
   [8,"Wheel up (repeat while held)","Wheel up (repeat)"],[9,"Wheel down (repeat while held)","Wheel down (repeat)"]];
 function keyText(a){
   const m=KEY_MODS.filter(x=>a.mask&x[0]).map(x=>x[1]);
@@ -3628,15 +3711,18 @@ function makeFig(kind,opts){
 const mapFigs=[], liveFigs=[];
 let macroFig=null;
 // paddle legends on the underside drawing (the face and bumper names live in the lists, not on the drawing)
+function setLegend(e,t){
+  e.textContent=""; e.removeAttribute("textLength");
+  const i=t.indexOf(" ("), parts=(i>0&&t.length*19>BACK_M-24)?[t.slice(0,i),t.slice(i+1)]:[t];
+  parts.forEach((x,k)=>{ const ts=svgEl("tspan",{x:e.getAttribute("x"),dy:k?34:0},x);
+    if(x.length*19>BACK_M-24){ ts.setAttribute("textLength",BACK_M-24); ts.setAttribute("lengthAdjust","spacingAndGlyphs"); }
+    e.appendChild(ts); });
+}
 function figLabels(){
   if(!mapFigs.length) return;
   const et=curTab, b=mapFigs[1];
   for(let i=0;i<BIND_BACKS;i++){
-    const t=binds?actText(binds.act[binds.active][et][i],et):"", e=b.pd[i];
-    e.textContent=t;
-    // the margin is fixed: squeeze long actions (Ctrl+Shift+F13...) into it
-    if(t.length*21>BACK_M-24){ e.setAttribute("textLength",BACK_M-24); e.setAttribute("lengthAdjust","spacingAndGlyphs"); }
-    else { e.removeAttribute("textLength"); e.removeAttribute("lengthAdjust"); }
+    setLegend(b.pd[i],binds?actText(binds.act[binds.active][et][i],et):"");
   }
 }
 function figHighlight(fig,raw,out){
@@ -3987,7 +4073,7 @@ function liveRender(){
   $("#lvOut").textContent=maskNames(out,et,", ")||"—";
   for(const f of liveFigs){
     figHighlight(f,L.raw,out);
-    if(f.kind==="back") f.pd.forEach((e,i)=>{ e.textContent=held[i]||""; });
+    if(f.kind==="back") f.pd.forEach((e,i)=>setLegend(e,held[i]||""));
     if(f.kind==="front"){
       const k=26/32768, d=FIGD.front;
       f.dotL.setAttribute("cx",d.stickL[0]+L.lx*k); f.dotL.setAttribute("cy",d.stickL[1]-L.ly*k);
@@ -4111,7 +4197,7 @@ function scGroups(c){
 function scHl(tb){ for(const f of scFigs) figHighlight(f,0,tb); }
 function scUpdate(){
   const card=$("#shortcutsCard"), c=scChord();
-  if(dev){ const z=$("#lizardCard"); if(z && z.previousElementSibling!==card) z.parentNode.insertBefore(card,z); }
+  if(dev){ const h=$("#sub-mapping-shortcuts"); if(h && card.parentNode!==h) h.appendChild(card); }
   else { const h=$("#cloneHome"); if(h.nextElementSibling!==card) h.after(card); }
   const key=JSON.stringify(c);
   if(key===scKey) return;
@@ -4249,6 +4335,7 @@ function diagNote(m){
   const t=new Date().toLocaleTimeString(), last=diagEv[diagEv.length-1];
   if(last && last.m===m){ last.n++; last.t=t; return; }
   diagEv.push({t,m,n:1}); if(diagEv.length>DIAG_EV_MAX) diagEv.shift();
+  if(curTabKey==="status/log") logRender();
 }
 var diagLiveMiss=0;
 const DIAG_FLAGS=["keyboard in descriptor","keyboard add failed","wake mouse present","wake mouse ready","USB mounted","USB suspended"];
