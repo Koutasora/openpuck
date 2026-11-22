@@ -27,6 +27,8 @@ static uint16_t s_staged; // bytes staged so far
 static uint8_t s_pulsesLeft = 0;
 static bool s_pulseOn = false;
 static uint32_t s_pulseNextMs = 0;
+// With confirmation "Both" the melody starts after the last pulse: its zero 0x80 frames would cut a pulse short.
+static uint8_t s_pendEvent = SOUND_NONE;
 
 static void buzz(uint16_t amp)
 {
@@ -49,6 +51,10 @@ void bindsFwTask()
 		s_pulseOn = false;
 		s_pulsesLeft--;
 		s_pulseNextMs = millis() + PULSE_GAP_MS;
+		if (!s_pulsesLeft && s_pendEvent != SOUND_NONE) {
+			soundsFwPlayEvent(s_pendEvent);
+			s_pendEvent = SOUND_NONE;
+		}
 	}
 }
 
@@ -111,12 +117,16 @@ bool bindsFwSetProfile(uint8_t profile)
 		return false;
 	g_binds.active = profile;
 	bindsFwCommit();
+	const uint8_t event = (uint8_t)(SE_PROFILE1 + profile);
 	if (soundsFwVibrate()) {
 		s_pulsesLeft = (uint8_t)(profile + 1);
 		s_pulseOn = false;
 		s_pulseNextMs = millis();
+		s_pendEvent = event;
+	} else {
+		s_pendEvent = SOUND_NONE;
+		soundsFwPlayEvent(event);
 	}
-	soundsFwPlayEvent((uint8_t)(SE_PROFILE1 + profile));
 	return true;
 }
 

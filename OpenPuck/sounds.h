@@ -11,6 +11,9 @@
 #define SOUNDS_NOTES 32
 #define SOUNDS_FREQ_MAX 4000
 #define SOUNDS_NOTE_MS_MAX 5000
+// Every note and rest is two relay entries per controller (0x83 per side); the relay drains about one entry per
+// poll cycle (~4 ms), so shorter ones would flood the queue and push out the other frames.
+#define SOUNDS_NOTE_MS_MIN 30
 // volume = gain_db of the tone report, 0 = loudest
 #define SOUNDS_GAIN_MIN (-60)
 #define SOUNDS_GAIN_DEFAULT (-6)

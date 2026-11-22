@@ -236,7 +236,12 @@ static void testPreview()
 	b[7] = 0; // note 1 duration 0
 	b[8] = 0;
 	CHECK(!soundsParseMelody(m, b, sizeof b));
+	b[7] = SOUNDS_NOTE_MS_MIN - 1; // shorter than the minimum
+	CHECK(!soundsParseMelody(m, b, sizeof b));
 	CHECK(!memcmp(&m, &keep, sizeof m));
+	b[7] = SOUNDS_NOTE_MS_MIN;
+	CHECK(soundsParseMelody(m, b, sizeof b) &&
+	      m.note[1].ms == SOUNDS_NOTE_MS_MIN);
 	uint8_t z = 0;
 	CHECK(soundsParseMelody(m, &z, 1) && m.count == 0);
 }

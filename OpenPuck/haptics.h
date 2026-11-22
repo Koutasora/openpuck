@@ -112,6 +112,8 @@ extern uint16_t
 
 // anything still queued (xinput uses it to pace rumble re-queues)
 bool relayPending();
+// entries queued for one bond slot (0 for an invalid slot)
+uint8_t relayDepth(uint8_t slot);
 extern uint8_t g_relayOp; // relay frame opcode (E3 poll)
 extern uint8_t g_relaySub; // relay sub-TLV type byte = SET
 extern volatile uint8_t g_testHaptic; // 't<n>' injects n test haptics

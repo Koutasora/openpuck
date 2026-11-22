@@ -112,6 +112,13 @@ bool relayPending()
 	int cur = (g_curSlot >= 0 && g_curSlot < NSLOT) ? g_curSlot : 0;
 	return g_rqHead[cur] != g_rqTail[cur];
 }
+uint8_t relayDepth(uint8_t slot)
+{
+	if (slot >= NSLOT)
+		return 0;
+	return (uint8_t)((g_rqHead[slot] + RELAY_QLEN - g_rqTail[slot]) %
+			 RELAY_QLEN);
+}
 bool relayEnqueue(uint8_t rid, const uint8_t *payload, uint8_t plen,
 		  bool isHaptic, uint8_t slot, bool expectReply)
 {

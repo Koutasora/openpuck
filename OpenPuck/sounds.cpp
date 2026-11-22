@@ -85,7 +85,8 @@ bool soundsMelodyValid(const Melody &m)
 	if (m.count > SOUNDS_NOTES)
 		return false;
 	for (int i = 0; i < m.count; i++)
-		if (m.note[i].freq > SOUNDS_FREQ_MAX || !m.note[i].ms ||
+		if (m.note[i].freq > SOUNDS_FREQ_MAX ||
+		    m.note[i].ms < SOUNDS_NOTE_MS_MIN ||
 		    m.note[i].ms > SOUNDS_NOTE_MS_MAX)
 			return false;
 	return true;

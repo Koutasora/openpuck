@@ -7,13 +7,18 @@
 using namespace Adafruit_LittleFS_Namespace;
 
 #define SOUNDS_FILE "/sounds.bin"
-// Present only between a mode switch and the first melody after it: RAM does not survive the reboot.
+// Present only between a mode switch and the next boot: RAM does not survive the reboot. Removed as soon as it
+// is read, so the melody can only play on the first connection after that boot, never days later.
 #define SOUNDS_MODE_FILE "/sndmode.bin"
 // The controller reconnects in bursts when the link flaps; one connect melody per slot in this time is enough.
 #define CONNECT_MIN_GAP_MS 20000u
 
 // OUTPUT report 0x83 sides. Which value means "both" is not documented, so each tone goes out once per side.
 #define TONE_SIDES 2
+// A melody waits while a linked slot has more than this many entries queued (one note adds TONE_SIDES), so it
+// never pushes out other frames (imuForceRaw, id9, power-off). Given up after STALL_MAX_MS.
+#define QUEUE_BUSY_MAX 4
+#define STALL_MAX_MS 1000u
 
 // Stage buffers are static: loop task stack is small and the blob is ~1 KB.
 static uint8_t s_io[SOUNDS_BLOB_BYTES];
@@ -25,6 +30,7 @@ static uint8_t s_mask; // slots the running melody goes to
 static uint8_t s_pendConnect; // slots waiting for their connect melody
 static uint32_t s_lastConnectMs[NSLOT];
 static bool s_pendMode;
+static uint32_t s_stallSince; // 0 = the melody is not waiting for the queue
 
 static bool slotReady(uint8_t s)
 {
@@ -69,6 +75,15 @@ static void sendTone(uint8_t mask, uint16_t freq, uint16_t ms)
 	}
 }
 
+static bool queueBusy(uint8_t mask)
+{
+	for (uint8_t s = 0; s < NSLOT; s++)
+		if ((mask & (1u << s)) && hapticLinkUp((int)s) &&
+		    relayDepth(s) > QUEUE_BUSY_MAX)
+			return true;
+	return false;
+}
+
 static bool start(const Melody &m, uint8_t mask)
 {
 	if (!m.count || !mask)
@@ -77,13 +92,28 @@ static bool start(const Melody &m, uint8_t mask)
 		sendStop(s_mask);
 	s_mask = mask;
 	soundStart(s_player, m, millis());
+	s_stallSince = 0;
 	return true;
 }
 
 void soundsFwTask()
 {
 	if (soundPlaying(s_player)) {
-		const SoundStep st = soundStep(s_player, millis());
+		const uint32_t now = millis();
+		if ((int32_t)(now - s_player.dueMs) >= 0 && queueBusy(s_mask)) {
+			// delay the note rather than squeeze it in; a queue that never drains (link lost) ends the melody
+			if (!s_stallSince)
+				s_stallSince = now ? now : 1;
+			else if ((uint32_t)(now - s_stallSince) >
+				 STALL_MAX_MS) {
+				s_player.playing = false;
+				s_stallSince = 0;
+				sendStop(s_mask);
+			}
+			return;
+		}
+		s_stallSince = 0;
+		const SoundStep st = soundStep(s_player, now);
 		if (st.action == SA_TONE)
 			sendTone(s_mask, st.freq, st.ms);
 		else if (st.action == SA_STOP)
@@ -97,7 +127,9 @@ void soundsFwTask()
 		return;
 	if (s_pendMode) {
 		s_pendMode = false;
-		InternalFS.remove(SOUNDS_MODE_FILE);
+		// the setting may have been changed since the switch
+		if (!(g_sounds.confirm & SC_SOUND))
+			return;
 		// the mode melody replaces the connect one: both fire on the first connect after the reboot
 		s_pendConnect = 0;
 		const Melody *m =
@@ -189,6 +221,7 @@ void soundsFwInit()
 	if (m.open(SOUNDS_MODE_FILE, FILE_O_READ)) {
 		s_pendMode = true;
 		m.close();
+		InternalFS.remove(SOUNDS_MODE_FILE);
 	}
 }
 
